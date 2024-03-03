@@ -12,8 +12,10 @@ import (
 	"gopkg.in/routeros.v2/proto"
 )
 
-var uptimeRegex *regexp.Regexp
-var uptimeParts [5]time.Duration
+var (
+	uptimeRegex *regexp.Regexp
+	uptimeParts [5]time.Duration
+)
 
 func init() {
 	uptimeRegex = regexp.MustCompile(`(?:(\d*)w)?(?:(\d*)d)?(?:(\d*)h)?(?:(\d*)m)?(?:(\d*)s)?`)
@@ -32,7 +34,7 @@ func newResourceCollector() routerOSCollector {
 }
 
 func (c *resourceCollector) init() {
-	c.props = []string{"free-memory", "total-memory", "cpu-load", "free-hdd-space", "total-hdd-space", "uptime", "board-name", "version"}
+	c.props = []string{"free-memory", "total-memory", "cpu-load", "free-hdd-space", "total-hdd-space", "cpu-frequency", "bad-blocks", "cpu-count", "uptime", "board-name", "version"}
 
 	labelNames := []string{"name", "address", "boardname", "version"}
 	c.descriptions = make(map[string]*prometheus.Desc)
@@ -74,7 +76,7 @@ func (c *resourceCollector) fetch(ctx *collectorContext) ([]*proto.Sentence, err
 }
 
 func (c *resourceCollector) collectForStat(re *proto.Sentence, ctx *collectorContext) {
-	for _, p := range c.props[:6] {
+	for _, p := range c.props[:9] {
 		c.collectMetricForProperty(p, re, ctx)
 	}
 }
