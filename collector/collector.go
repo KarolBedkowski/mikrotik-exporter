@@ -153,6 +153,12 @@ func WithWlanIF() Option {
 	}
 }
 
+func WithQueue() Option {
+	return func(c *collector) {
+		c.collectors = append(c.collectors, newQueueCollector())
+	}
+}
+
 // WithMonitor enables ethernet monitor collector metrics
 func Monitor() Option {
 	return func(c *collector) {
@@ -263,7 +269,6 @@ func (c *collector) Collect(ch chan<- prometheus.Metric) {
 			dnsMsg.RecursionDesired = true
 			dnsMsg.SetQuestion(dns.Fqdn(dev.Srv.Record), dns.TypeSRV)
 			r, _, err := dnsCli.Exchange(dnsMsg, dnsServer)
-
 			if err != nil {
 				os.Exit(1)
 			}

@@ -55,6 +55,7 @@ var (
 	withIpsec     = flag.Bool("with-ipsec", false, "retrieves ipsec metrics")
 	withLte       = flag.Bool("with-lte", false, "retrieves lte metrics")
 	withNetwatch  = flag.Bool("with-netwatch", false, "retrieves netwatch metrics")
+	withQueue     = flag.Bool("with-queue", false, "retrieves queue metrics")
 
 	cfg *config.Config
 
@@ -280,6 +281,10 @@ func collectorOptions() []collector.Option {
 
 	if *tls {
 		opts = append(opts, collector.WithTLS(*insecure))
+	}
+
+	if *withQueue || cfg.Features.Queue {
+		opts = append(opts, collector.WithQueue())
 	}
 
 	return opts
