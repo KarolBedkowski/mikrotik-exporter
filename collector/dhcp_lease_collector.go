@@ -15,11 +15,10 @@ type dhcpLeaseCollector struct {
 }
 
 func (c *dhcpLeaseCollector) init() {
-	c.props = []string{"active-mac-address", "server", "status", "expires-after", "active-address", "host-name"}
+	c.props = []string{"active-mac-address", "server", "status", "active-address", "host-name"}
 
-	labelNames := []string{"name", "address", "activemacaddress", "server", "status", "expiresafter", "activeaddress", "hostname"}
+	labelNames := []string{"name", "address", "activemacaddress", "server", "status", "activeaddress", "hostname"}
 	c.descriptions = description("dhcp", "leases_metrics", "number of metrics", labelNames)
-
 }
 
 func newDHCPLCollector() routerOSCollector {
@@ -61,17 +60,6 @@ func (c *dhcpLeaseCollector) fetch(ctx *collectorContext) ([]*proto.Sentence, er
 func (c *dhcpLeaseCollector) collectMetric(ctx *collectorContext, re *proto.Sentence) {
 	v := 1.0
 
-	f, err := parseDuration(re.Map["expires-after"])
-	if err != nil {
-		log.WithFields(log.Fields{
-			"device":   ctx.device.Name,
-			"property": "expires-after",
-			"value":    re.Map["expires-after"],
-			"error":    err,
-		}).Error("error parsing duration metric value")
-		return
-	}
-
 	activemacaddress := re.Map["active-mac-address"]
 	server := re.Map["server"]
 	status := re.Map["status"]
@@ -79,7 +67,7 @@ func (c *dhcpLeaseCollector) collectMetric(ctx *collectorContext, re *proto.Sent
 	// QuoteToASCII because of broken DHCP clients
 	hostname := strconv.QuoteToASCII(re.Map["host-name"])
 
-	metric, err := prometheus.NewConstMetric(c.descriptions, prometheus.GaugeValue, v, ctx.device.Name, ctx.device.Address, activemacaddress, server, status, strconv.FormatFloat(f, 'f', 0, 64), activeaddress, hostname)
+	metric, err := prometheus.NewConstMetric(c.descriptions, prometheus.GaugeValue, v, ctx.device.Name, ctx.device.Address, activemacaddress, server, status, activeaddress, hostname)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"device": ctx.device.Name,
