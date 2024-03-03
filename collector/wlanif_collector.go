@@ -53,7 +53,7 @@ func (c *wlanIFCollector) collect(ctx *collectorContext) error {
 }
 
 func (c *wlanIFCollector) fetchInterfaceNames(ctx *collectorContext) ([]string, error) {
-	reply, err := ctx.client.Run("/interface/wireless/print", "?disabled=false", "=.proplist=name")
+	reply, err := ctx.client.Run("/interface/wireless/print", "=.proplist=name")
 	if err != nil {
 		log.WithFields(log.Fields{
 			"device": ctx.device.Name,
