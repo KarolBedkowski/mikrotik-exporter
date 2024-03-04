@@ -25,6 +25,7 @@ func init() {
 type resourceCollector struct {
 	props        []string
 	descriptions map[string]*prometheus.Desc
+	versions     *prometheus.Desc
 }
 
 func newResourceCollector() routerOSCollector {
@@ -34,19 +35,26 @@ func newResourceCollector() routerOSCollector {
 }
 
 func (c *resourceCollector) init() {
-	c.props = []string{"free-memory", "total-memory", "cpu-load", "free-hdd-space", "total-hdd-space", "cpu-frequency", "bad-blocks", "cpu-count", "uptime", "board-name", "version"}
+	c.props = []string{
+		"free-memory", "total-memory", "cpu-load", "free-hdd-space", "total-hdd-space",
+		"cpu-frequency", "bad-blocks", "cpu-count", "uptime", "board-name", "version",
+	}
 
-	labelNames := []string{"name", "address", "boardname", "version"}
+	labelNames := []string{"name", "address"}
 	c.descriptions = make(map[string]*prometheus.Desc)
-	for _, p := range c.props {
+	for _, p := range c.props[:len(c.props)-2] {
 		c.descriptions[p] = descriptionForPropertyName("system", p, labelNames)
 	}
+	c.versions = description("system", "routeros", "Board and system version",
+		[]string{"name", "address", "board_name", "version"})
 }
 
 func (c *resourceCollector) describe(ch chan<- *prometheus.Desc) {
 	for _, d := range c.descriptions {
 		ch <- d
 	}
+
+	ch <- c.versions
 }
 
 func (c *resourceCollector) collect(ctx *collectorContext) error {
@@ -76,6 +84,15 @@ func (c *resourceCollector) fetch(ctx *collectorContext) ([]*proto.Sentence, err
 }
 
 func (c *resourceCollector) collectForStat(re *proto.Sentence, ctx *collectorContext) {
+	//	const boardname = "BOARD"
+	//	const version = "3.33.3"
+
+	boardname := re.Map["board-name"]
+	version := re.Map["version"]
+
+	ctx.ch <- prometheus.MustNewConstMetric(c.versions, prometheus.GaugeValue, 1,
+		ctx.device.Name, ctx.device.Address, boardname, version)
+
 	for _, p := range c.props[:9] {
 		c.collectMetricForProperty(p, re, ctx)
 	}
@@ -85,11 +102,6 @@ func (c *resourceCollector) collectMetricForProperty(property string, re *proto.
 	var v float64
 	var vtype prometheus.ValueType
 	var err error
-	//	const boardname = "BOARD"
-	//	const version = "3.33.3"
-
-	boardname := re.Map["board-name"]
-	version := re.Map["version"]
 
 	if property == "uptime" {
 		v, err = parseUptime(re.Map[property])
@@ -113,7 +125,7 @@ func (c *resourceCollector) collectMetricForProperty(property string, re *proto.
 	}
 
 	desc := c.descriptions[property]
-	ctx.ch <- prometheus.MustNewConstMetric(desc, vtype, v, ctx.device.Name, ctx.device.Address, boardname, version)
+	ctx.ch <- prometheus.MustNewConstMetric(desc, vtype, v, ctx.device.Name, ctx.device.Address)
 }
 
 func parseUptime(uptime string) (float64, error) {
