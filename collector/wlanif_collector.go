@@ -13,6 +13,7 @@ import (
 type wlanIFCollector struct {
 	props        []string
 	descriptions map[string]*prometheus.Desc
+	frequency    *prometheus.Desc
 }
 
 func newWlanIFCollector() routerOSCollector {
@@ -28,6 +29,9 @@ func (c *wlanIFCollector) init() {
 	for _, p := range c.props {
 		c.descriptions[p] = descriptionForPropertyName("wlan_interface", p, labelNames)
 	}
+
+	c.frequency = description("wlan_interface", "frequency",
+		"WiFi frequency", []string{"name", "address", "interface", "freqidx"})
 }
 
 func (c *wlanIFCollector) describe(ch chan<- *prometheus.Desc) {
@@ -85,6 +89,9 @@ func (c *wlanIFCollector) collectForInterface(iface string, ctx *collectorContex
 		// there's always going to be only one sentence in reply, as we
 		// have to explicitly specify the interface
 		c.collectMetricForProperty(p, iface, reply.Re[0], ctx)
+		if p == "noise-floor" {
+			c.collectMetricForFreq(iface, reply.Re[0], ctx)
+		}
 	}
 
 	return nil
@@ -108,4 +115,33 @@ func (c *wlanIFCollector) collectMetricForProperty(property, iface string, re *p
 	}
 
 	ctx.ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, v, ctx.device.Name, ctx.device.Address, iface, channel)
+}
+
+func (c *wlanIFCollector) collectMetricForFreq(iface string, re *proto.Sentence, ctx *collectorContext) {
+	channel := re.Map["channel"]
+
+	for idx, part := range strings.Split(channel, "+") {
+		freq, _, found := strings.Cut(part, "/")
+		if !found {
+			freq = part
+		}
+
+		if freq == "" {
+			continue
+		}
+
+		v, err := strconv.ParseFloat(freq, 64)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"property":  freq,
+				"interface": iface,
+				"device":    ctx.device.Name,
+				"error":     err,
+			}).Error("error parsing frequency metric value")
+			return
+		}
+
+		ctx.ch <- prometheus.MustNewConstMetric(c.frequency, prometheus.GaugeValue,
+			v, ctx.device.Name, ctx.device.Address, iface, strconv.Itoa(idx+1))
+	}
 }
