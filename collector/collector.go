@@ -53,6 +53,8 @@ type collector struct {
 	timeout     time.Duration
 	enableTLS   bool
 	insecureTLS bool
+	connections map[string]*routeros.Client
+	connLock    sync.Mutex
 }
 
 // WithBGP enables BGP routing metrics
@@ -225,6 +227,7 @@ func NewCollector(cfg *config.Config, opts ...Option) (prometheus.Collector, err
 			newInterfaceCollector(),
 			newResourceCollector(),
 		},
+		connections: make(map[string]*routeros.Client),
 	}
 
 	for _, o := range opts {
@@ -302,7 +305,7 @@ func (c *collector) Collect(ch chan<- prometheus.Metric) {
 }
 
 func (c *collector) getIdentity(d *config.Device) error {
-	cl, err := c.connect(d)
+	cl, err := c.getConnection(d)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"device": d.Name,
@@ -310,7 +313,7 @@ func (c *collector) getIdentity(d *config.Device) error {
 		}).Error("error dialing device fetching identity")
 		return err
 	}
-	defer cl.Close()
+
 	reply, err := cl.Run("/system/identity/print")
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -345,7 +348,7 @@ func (c *collector) collectForDevice(d config.Device, ch chan<- prometheus.Metri
 }
 
 func (c *collector) connectAndCollect(d *config.Device, ch chan<- prometheus.Metric) error {
-	cl, err := c.connect(d)
+	cl, err := c.getConnection(d)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"device": d.Name,
@@ -353,7 +356,7 @@ func (c *collector) connectAndCollect(d *config.Device, ch chan<- prometheus.Met
 		}).Error("error dialing device")
 		return err
 	}
-	defer cl.Close()
+	// defer cl.Close()
 
 	for _, co := range c.collectors {
 		ctx := &collectorContext{ch, d, cl}
@@ -364,6 +367,29 @@ func (c *collector) connectAndCollect(d *config.Device, ch chan<- prometheus.Met
 	}
 
 	return nil
+}
+
+func (c *collector) getConnection(d *config.Device) (*routeros.Client, error) {
+	c.connLock.Lock()
+	defer c.connLock.Unlock()
+
+	// unique key for connections
+	key := d.Name + "-" + d.Address + "-" + d.User
+	// try do get connection from cache
+	if client, ok := c.connections[key]; ok && client != nil {
+		if _, err := client.Run("/system/identity/print"); err == nil {
+			return client, nil
+		}
+		client.Close()
+		delete(c.connections, key)
+	}
+
+	client, err := c.connect(d)
+	if err == nil {
+		c.connections[key] = client
+	}
+
+	return client, err
 }
 
 func (c *collector) connect(d *config.Device) (*routeros.Client, error) {
