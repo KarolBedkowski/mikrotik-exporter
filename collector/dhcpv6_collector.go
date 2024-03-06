@@ -22,7 +22,7 @@ func (c *dhcpv6Collector) init() {
 	const prefix = "dhcpv6"
 
 	labelNames := []string{"name", "address", "server"}
-	c.bindingCountDesc = description(prefix, "binding_count", "number of active bindings per DHCPv6 server", labelNames)
+	c.bindingCountDesc = description(prefix, "binding", "number of active bindings per DHCPv6 server", labelNames)
 }
 
 func (c *dhcpv6Collector) describe(ch chan<- *prometheus.Desc) {

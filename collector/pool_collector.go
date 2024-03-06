@@ -16,7 +16,7 @@ func (c *poolCollector) init() {
 	const prefix = "ip_pool"
 
 	labelNames := []string{"name", "address", "ip_version", "pool"}
-	c.usedCountDesc = description(prefix, "pool_used_count", "number of used IP/prefixes in a pool", labelNames)
+	c.usedCountDesc = description(prefix, "pool_used", "number of used IP/prefixes in a pool", labelNames)
 }
 
 func newPoolCollector() routerOSCollector {

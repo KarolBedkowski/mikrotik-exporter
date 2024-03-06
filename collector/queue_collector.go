@@ -37,8 +37,8 @@ func (c *queueCollector) init() {
 	c.simpleQueueDescriptions = make(map[string]*prometheus.Desc)
 	c.simpleQueueDescriptions["disabled"] = descriptionForPropertyName("simple_queue", "disabled", labelNames)
 	for _, p := range c.simpleQueueProps[4:] {
-		c.simpleQueueDescriptions["tx_"+p] = descriptionForPropertyName("simple_queue", "tx_"+p, labelNames)
-		c.simpleQueueDescriptions["rx_"+p] = descriptionForPropertyName("simple_queue", "rx_"+p, labelNames)
+		c.simpleQueueDescriptions["tx_"+p] = descriptionForPropertyName("simple_queue", "tx_"+p+"_total", labelNames)
+		c.simpleQueueDescriptions["rx_"+p] = descriptionForPropertyName("simple_queue", "rx_"+p+"_total", labelNames)
 	}
 }
 

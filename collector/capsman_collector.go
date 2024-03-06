@@ -32,8 +32,8 @@ func (c *capsmanCollector) init() {
 		c.descriptions[p] = descriptionForPropertyName("capsman_station", p, labelNames)
 	}
 	for _, p := range c.props[len(c.props)-2:] {
-		c.descriptions["tx_"+p] = descriptionForPropertyName("capsman_station", "tx_"+p, labelNames)
-		c.descriptions["rx_"+p] = descriptionForPropertyName("capsman_station", "rx_"+p, labelNames)
+		c.descriptions["tx_"+p] = descriptionForPropertyName("capsman_station", "tx_"+p+"_total", labelNames)
+		c.descriptions["rx_"+p] = descriptionForPropertyName("capsman_station", "rx_"+p+"_total", labelNames)
 	}
 
 	c.radioProps = []string{"interface", "radio-mac", "remote-cap-identity", "remote-cap-name", "provisioned"}

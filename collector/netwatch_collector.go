@@ -22,7 +22,7 @@ func newNetwatchCollector() routerOSCollector {
 
 func (c *netwatchCollector) init() {
 	c.props = []string{"host", "comment", "status"}
-	labelNames := []string{"name", "address", "host", "comment"}
+	labelNames := []string{"name", "address", "host", "comment", "status"}
 	c.descriptions = make(map[string]*prometheus.Desc)
 	for _, p := range c.props[1:] {
 		c.descriptions[p] = descriptionForPropertyName("netwatch", p, labelNames)
@@ -73,14 +73,14 @@ func (c *netwatchCollector) collectForStat(re *proto.Sentence, ctx *collectorCon
 func (c *netwatchCollector) collectMetricForProperty(property, host, comment string, re *proto.Sentence, ctx *collectorContext) {
 	desc := c.descriptions[property]
 	if value := re.Map[property]; value != "" {
-		var numericValue float64
+		var upVal, downVal, unknownVal float64
 		switch value {
 		case "up":
-			numericValue = 1
+			upVal = 1
 		case "unknown":
-			numericValue = 0
+			unknownVal = 1
 		case "down":
-			numericValue = -1
+			downVal = 1
 		default:
 			log.WithFields(log.Fields{
 				"device":   ctx.device.Name,
@@ -90,6 +90,8 @@ func (c *netwatchCollector) collectMetricForProperty(property, host, comment str
 				"error":    fmt.Errorf("unexpected netwatch status value"),
 			}).Error("error parsing netwatch metric value")
 		}
-		ctx.ch <- prometheus.MustNewConstMetric(desc, prometheus.CounterValue, numericValue, ctx.device.Name, ctx.device.Address, host, comment)
+		ctx.ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, upVal, ctx.device.Name, ctx.device.Address, host, comment, "up")
+		ctx.ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, downVal, ctx.device.Name, ctx.device.Address, host, comment, "down")
+		ctx.ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, unknownVal, ctx.device.Name, ctx.device.Address, host, comment, "unknown")
 	}
 }

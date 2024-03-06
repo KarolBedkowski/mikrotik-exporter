@@ -16,7 +16,7 @@ func (c *dhcpCollector) init() {
 	const prefix = "dhcp"
 
 	labelNames := []string{"name", "address", "server"}
-	c.leasesActiveCountDesc = description(prefix, "leases_active_count", "number of active leases per DHCP server", labelNames)
+	c.leasesActiveCountDesc = description(prefix, "leases_active", "number of active leases per DHCP server", labelNames)
 }
 
 func newDHCPCollector() routerOSCollector {
