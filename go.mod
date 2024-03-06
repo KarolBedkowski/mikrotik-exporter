@@ -6,6 +6,7 @@ toolchain go1.22.0
 
 require (
 	github.com/go-routeros/routeros v0.0.0-20210123142807-2a44d57c6730
+	github.com/hashicorp/go-multierror v1.1.1
 	github.com/miekg/dns v1.1.58
 	github.com/prometheus/client_golang v1.19.0
 	github.com/prometheus/common v0.49.0
@@ -18,6 +19,7 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/hashicorp/errwrap v1.0.0 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_model v0.6.0 // indirect

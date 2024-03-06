@@ -17,6 +17,7 @@ import (
 	"mikrotik-exporter/config"
 
 	"github.com/go-routeros/routeros"
+	"github.com/hashicorp/go-multierror"
 	"github.com/miekg/dns"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
@@ -331,6 +332,8 @@ func (c *collector) getIdentity(d *config.Device) error {
 func (c *collector) collectForDevice(d config.Device, ch chan<- prometheus.Metric) {
 	begin := time.Now()
 
+	log.WithFields(log.Fields{"device": d.Name}).Debug("start collect for device")
+
 	err := c.connectAndCollect(&d, ch)
 
 	duration := time.Since(begin)
@@ -358,15 +361,18 @@ func (c *collector) connectAndCollect(d *config.Device, ch chan<- prometheus.Met
 	}
 	// defer cl.Close()
 
+	var result error
+
 	for _, co := range c.collectors {
 		ctx := &collectorContext{ch, d, cl}
+		log.WithFields(log.Fields{"device": d.Name, "collector": co}).Debug("collect")
 		err = co.collect(ctx)
 		if err != nil {
-			return err
+			result = multierror.Append(result, err)
 		}
 	}
 
-	return nil
+	return result
 }
 
 func (c *collector) getConnection(d *config.Device) (*routeros.Client, error) {
