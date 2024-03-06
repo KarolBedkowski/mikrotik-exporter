@@ -1,4 +1,4 @@
-[![Docker Pulls](https://img.shields.io/docker/pulls/nshttpd/mikrotik-exporter.svg)](https://hub.docker.com/r/nshttpd/mikrotik-exporter/)
+Upstream: https://github.com/nshttpd/mikrotik-exporter
 
 ## prometheus-mikrotik
 
@@ -105,5 +105,3 @@ mikrotik_interface_tx_byte{address="10.10.0.1",interface="ether6",name="my_route
 mikrotik_interface_tx_byte{address="10.10.0.1",interface="ether7",name="my_router"} 3.18354425e+08
 mikrotik_interface_tx_byte{address="10.10.0.1",interface="ether8",name="my_router"} 1.86405031e+08
 ```
-
- 
