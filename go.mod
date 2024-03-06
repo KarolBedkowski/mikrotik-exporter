@@ -5,12 +5,12 @@ go 1.21
 toolchain go1.22.0
 
 require (
+	github.com/go-routeros/routeros v0.0.0-20210123142807-2a44d57c6730
 	github.com/miekg/dns v1.1.58
 	github.com/prometheus/client_golang v1.19.0
 	github.com/prometheus/common v0.49.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.8.2
-	gopkg.in/routeros.v2 v2.0.0-20190905230420-1bbf141cdd91
 	gopkg.in/yaml.v2 v2.4.0
 )
 

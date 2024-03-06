@@ -9,7 +9,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/routeros.v2/proto"
+	"github.com/go-routeros/routeros/proto"
 )
 
 var (

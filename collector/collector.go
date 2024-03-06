@@ -16,10 +16,10 @@ import (
 
 	"mikrotik-exporter/config"
 
+	"github.com/go-routeros/routeros"
 	"github.com/miekg/dns"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
-	routeros "gopkg.in/routeros.v2"
 )
 
 const (

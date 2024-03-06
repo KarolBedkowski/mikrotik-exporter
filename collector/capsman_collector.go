@@ -4,9 +4,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/go-routeros/routeros/proto"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/routeros.v2/proto"
 )
 
 type capsmanCollector struct {
