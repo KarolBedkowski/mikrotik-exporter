@@ -80,6 +80,10 @@ func (c *queueCollector) collectQueue(ctx *collectorContext) error {
 		return err
 	}
 
+	if len(reply.Re) == 0 {
+		return nil
+	}
+
 	for _, p := range c.monitorProps {
 		c.collectMetricForProperty(p, reply.Re[0], ctx)
 	}

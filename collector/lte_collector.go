@@ -81,6 +81,10 @@ func (c *lteCollector) collectForInterface(iface string, ctx *collectorContext) 
 		return err
 	}
 
+	if len(reply.Re) == 0 {
+		return nil
+	}
+
 	for _, p := range c.props[3:] {
 		// there's always going to be only one sentence in reply, as we
 		// have to explicitly specify the interface
