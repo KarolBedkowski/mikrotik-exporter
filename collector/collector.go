@@ -16,7 +16,7 @@ import (
 
 	"mikrotik-exporter/config"
 
-	"github.com/go-routeros/routeros"
+	"mikrotik-exporter/routeros"
 	"github.com/hashicorp/go-multierror"
 	"github.com/miekg/dns"
 	"github.com/prometheus/client_golang/prometheus"

@@ -5,7 +5,6 @@ go 1.21
 toolchain go1.22.0
 
 require (
-	github.com/go-routeros/routeros v0.0.0-20210123142807-2a44d57c6730
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/miekg/dns v1.1.58
 	github.com/prometheus/client_golang v1.19.0

@@ -3,7 +3,7 @@ package collector
 import (
 	"strings"
 
-	"github.com/go-routeros/routeros/proto"
+	"mikrotik-exporter/routeros/proto"
 
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
