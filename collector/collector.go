@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"mikrotik-exporter/config"
-
 	"mikrotik-exporter/routeros"
 
 	"github.com/hashicorp/go-multierror"
@@ -52,6 +51,7 @@ var (
 type deviceCollector struct {
 	device     config.Device
 	collectors []string
+	cl         *routeros.Client
 }
 
 type collector struct {
@@ -60,7 +60,6 @@ type collector struct {
 	timeout     time.Duration
 	enableTLS   bool
 	insecureTLS bool
-	connections map[string]*routeros.Client
 	connLock    sync.Mutex
 }
 
@@ -95,17 +94,16 @@ func NewCollector(cfg *config.Config, opts ...Option) (prometheus.Collector, err
 			panic(err)
 		}
 		featNames := feat.FeatureNames()
-		dc := deviceCollector{d, featNames}
+		dc := deviceCollector{d, featNames, nil}
 		dcs = append(dcs, dc)
 
 		log.WithFields(log.Fields{"device": &dc}).Debug("new device")
 	}
 
 	c := &collector{
-		devices:     dcs,
-		collectors:  newCollectors(cfg),
-		timeout:     DefaultTimeout,
-		connections: make(map[string]*routeros.Client),
+		devices:    dcs,
+		collectors: newCollectors(cfg),
+		timeout:    DefaultTimeout,
 	}
 
 	for _, o := range opts {
@@ -162,8 +160,9 @@ func (c *collector) Collect(ch chan<- prometheus.Metric) {
 					d.Address = strings.TrimRight(s.Target, ".")
 					d.User = dev.User
 					d.Password = dev.Password
-					_ = c.getIdentity(&d)
-					realDevices = append(realDevices, deviceCollector{d, dc.collectors})
+					ndc := deviceCollector{d, dc.collectors, nil}
+					_ = c.getIdentity(&ndc)
+					realDevices = append(realDevices, ndc)
 				}
 			}
 		} else {
@@ -183,11 +182,11 @@ func (c *collector) Collect(ch chan<- prometheus.Metric) {
 	wg.Wait()
 }
 
-func (c *collector) getIdentity(d *config.Device) error {
+func (c *collector) getIdentity(d *deviceCollector) error {
 	cl, err := c.getConnection(d)
 	if err != nil {
 		log.WithFields(log.Fields{
-			"device": d.Name,
+			"device": d.device.Name,
 			"error":  err,
 		}).Error("error dialing device fetching identity")
 		return err
@@ -198,13 +197,13 @@ func (c *collector) getIdentity(d *config.Device) error {
 	reply, err := cl.Run("/system/identity/print")
 	if err != nil {
 		log.WithFields(log.Fields{
-			"device": d.Name,
+			"device": d.device.Name,
 			"error":  err,
 		}).Error("error fetching ethernet interfaces")
 		return err
 	}
 	for _, id := range reply.Re {
-		d.Name = id.Map["name"]
+		d.device.Name = id.Map["name"]
 	}
 	return nil
 }
@@ -233,7 +232,7 @@ func (c *collector) collectForDevice(d deviceCollector, ch chan<- prometheus.Met
 
 func (c *collector) connectAndCollect(d *deviceCollector, ch chan<- prometheus.Metric) error {
 	name := d.device.Name
-	cl, err := c.getConnection(&d.device)
+	cl, err := c.getConnection(d)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"device": name,
@@ -241,7 +240,7 @@ func (c *collector) connectAndCollect(d *deviceCollector, ch chan<- prometheus.M
 		}).Error("error dialing device")
 		return err
 	}
-	defer c.closeConnection(&d.device)
+	defer c.closeConnection(d)
 
 	var result error
 
@@ -258,39 +257,36 @@ func (c *collector) connectAndCollect(d *deviceCollector, ch chan<- prometheus.M
 	return result
 }
 
-func (c *collector) getConnection(d *config.Device) (*routeros.Client, error) {
+func (c *collector) getConnection(d *deviceCollector) (*routeros.Client, error) {
 	c.connLock.Lock()
 	defer c.connLock.Unlock()
 
 	// unique key for connections
-	key := d.Name + "-" + d.Address + "-" + d.User
 	// try do get connection from cache
-	if client, ok := c.connections[key]; ok && client != nil {
-		if _, err := client.Run("/system/identity/print"); err == nil {
-			return client, nil
+	if d.cl != nil {
+		if _, err := d.cl.Run("/system/identity/print"); err == nil {
+			return d.cl, nil
 		}
-		client.Close()
-		delete(c.connections, key)
+		d.cl.Close()
+		d.cl = nil
 	}
 
-	client, err := c.connect(d)
+	client, err := c.connect(&d.device)
 	if err == nil {
-		c.connections[key] = client
+		d.cl = client
 	}
 
 	return client, err
 }
 
-func (c *collector) closeConnection(d *config.Device) {
+func (c *collector) closeConnection(d *deviceCollector) {
 	c.connLock.Lock()
 	defer c.connLock.Unlock()
 
-	if (config.SrvRecord{}) != d.Srv {
-		key := d.Name + "-" + d.Address + "-" + d.User
-
-		if cl, ok := c.connections[key]; ok {
-			cl.Close()
-			c.connections[key] = nil
+	if (config.SrvRecord{}) != d.device.Srv {
+		if d.cl != nil {
+			d.cl.Close()
+			d.cl = nil
 		}
 	}
 }
@@ -352,7 +348,7 @@ func (c *collector) connect(d *config.Device) (*routeros.Client, error) {
 		return nil, fmt.Errorf("RouterOS: /login: invalid ret (challenge) hex string received: %s", err)
 	}
 
-	r, err = client.Run("/login", "=name="+d.User, "=response="+challengeResponse(b, d.Password))
+	_, err = client.Run("/login", "=name="+d.User, "=response="+challengeResponse(b, d.Password))
 	if err != nil {
 		return nil, err
 	}
