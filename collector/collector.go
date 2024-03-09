@@ -55,7 +55,7 @@ type deviceCollector struct {
 }
 
 type collector struct {
-	devices     []deviceCollector
+	devices     []*deviceCollector
 	collectors  map[string]routerOSCollector
 	timeout     time.Duration
 	enableTLS   bool
@@ -87,14 +87,14 @@ func NewCollector(cfg *config.Config, opts ...Option) (prometheus.Collector, err
 		"numDevices": len(cfg.Devices),
 	}).Info("setting up collector for devices")
 
-	dcs := make([]deviceCollector, 0, len(cfg.Devices))
+	dcs := make([]*deviceCollector, 0, len(cfg.Devices))
 	for _, d := range cfg.Devices {
 		feat, err := cfg.DeviceFeatures(d.Name)
 		if err != nil {
 			panic(err)
 		}
 		featNames := feat.FeatureNames()
-		dc := deviceCollector{d, featNames, nil}
+		dc := &deviceCollector{d, featNames, nil}
 		dcs = append(dcs, dc)
 
 		log.WithFields(log.Fields{"device": &dc}).Debug("new device")
@@ -127,7 +127,7 @@ func (c *collector) Describe(ch chan<- *prometheus.Desc) {
 func (c *collector) Collect(ch chan<- prometheus.Metric) {
 	wg := sync.WaitGroup{}
 
-	var realDevices []deviceCollector
+	var realDevices []*deviceCollector
 
 	for _, dc := range c.devices {
 		dev := dc.device
@@ -160,8 +160,8 @@ func (c *collector) Collect(ch chan<- prometheus.Metric) {
 					d.Address = strings.TrimRight(s.Target, ".")
 					d.User = dev.User
 					d.Password = dev.Password
-					ndc := deviceCollector{d, dc.collectors, nil}
-					_ = c.getIdentity(&ndc)
+					ndc := &deviceCollector{d, dc.collectors, nil}
+					_ = c.getIdentity(ndc)
 					realDevices = append(realDevices, ndc)
 				}
 			}
@@ -173,7 +173,7 @@ func (c *collector) Collect(ch chan<- prometheus.Metric) {
 	wg.Add(len(realDevices))
 
 	for _, dev := range realDevices {
-		go func(d deviceCollector) {
+		go func(d *deviceCollector) {
 			c.collectForDevice(d, ch)
 			wg.Done()
 		}(dev)
@@ -208,13 +208,13 @@ func (c *collector) getIdentity(d *deviceCollector) error {
 	return nil
 }
 
-func (c *collector) collectForDevice(d deviceCollector, ch chan<- prometheus.Metric) {
+func (c *collector) collectForDevice(d *deviceCollector, ch chan<- prometheus.Metric) {
 	begin := time.Now()
 	name := d.device.Name
 
 	log.WithFields(log.Fields{"device": d.device.Name}).Debug("start collect for device")
 
-	err := c.connectAndCollect(&d, ch)
+	err := c.connectAndCollect(d, ch)
 
 	duration := time.Since(begin)
 	var success float64
