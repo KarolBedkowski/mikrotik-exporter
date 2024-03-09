@@ -4,18 +4,17 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 
-	"github.com/prometheus/common/version"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
+	"github.com/prometheus/client_golang/prometheus/collectors/version"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	log "github.com/sirupsen/logrus"
 
 	"mikrotik-exporter/collector"
 	"mikrotik-exporter/config"
-
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	log "github.com/sirupsen/logrus"
 )
 
 // single device can be defined via CLI flags, multiple via config file.
@@ -90,7 +89,7 @@ func loadConfig() (*config.Config, error) {
 }
 
 func loadConfigFromFile() (*config.Config, error) {
-	b, err := ioutil.ReadFile(*configFile)
+	b, err := os.ReadFile(*configFile)
 	if err != nil {
 		return nil, err
 	}
@@ -163,7 +162,7 @@ func createMetricsHandler() (http.Handler, error) {
 
 	registry := prometheus.NewRegistry()
 
-	err = registry.Register(prometheus.NewGoCollector())
+	err = registry.Register(collectors.NewGoCollector())
 	if err != nil {
 		return nil, err
 	}

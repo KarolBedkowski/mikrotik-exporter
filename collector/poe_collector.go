@@ -4,9 +4,10 @@ import (
 	"strconv"
 	"strings"
 
+	"mikrotik-exporter/routeros/proto"
+
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
-	"mikrotik-exporter/routeros/proto"
 )
 
 type poeCollector struct {
@@ -104,10 +105,6 @@ func (c *poeCollector) collectMetricsForInterface(name string, se *proto.Sentenc
 
 		ctx.ch <- prometheus.MustNewConstMetric(c.descForKey(prop), prometheus.GaugeValue, value, ctx.device.Name, ctx.device.Address, name)
 	}
-}
-
-func (c *poeCollector) valueForKey(name, value string) (float64, error) {
-	return strconv.ParseFloat(value, 64)
 }
 
 func (c *poeCollector) descForKey(name string) *prometheus.Desc {

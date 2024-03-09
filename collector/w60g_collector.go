@@ -4,9 +4,10 @@ import (
 	"strconv"
 	"strings"
 
+	"mikrotik-exporter/routeros/proto"
+
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
-	"mikrotik-exporter/routeros/proto"
 )
 
 type w60gInterfaceCollector struct {
@@ -118,10 +119,6 @@ func neww60gInterfaceCollector() routerOSCollector {
 		txPacketErrorRateDesc: description(prefix, "txPacketErrorRate", "TX Packet Error Rate", labelNames),
 		props:                 []string{"signal", "rssi", "tx-mcs", "frequency", "tx-phy-rate", "tx-sector", "distance", "tx-packet-error-rate"},
 	}
-}
-
-func (c *w60gInterfaceCollector) valueForKey(name, value string) (float64, error) {
-	return strconv.ParseFloat(value, 64)
 }
 
 func (c *w60gInterfaceCollector) descForKey(name string) *prometheus.Desc {
