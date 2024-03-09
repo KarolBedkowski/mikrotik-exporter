@@ -1,7 +1,6 @@
 package collector
 
 import (
-	"fmt"
 	"strconv"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -36,8 +35,7 @@ func (c *dhcpCollector) collect(ctx *collectorContext) error {
 	}
 
 	for _, n := range names {
-		err := c.colllectForDHCPServer(ctx, n)
-		if err != nil {
+		if err := c.colllectForDHCPServer(ctx, n); err != nil {
 			return err
 		}
 	}
@@ -64,18 +62,21 @@ func (c *dhcpCollector) fetchDHCPServerNames(ctx *collectorContext) ([]string, e
 }
 
 func (c *dhcpCollector) colllectForDHCPServer(ctx *collectorContext, dhcpServer string) error {
-	reply, err := ctx.client.Run("/ip/dhcp-server/lease/print", fmt.Sprintf("?server=%s", dhcpServer), "=active=", "=count-only=")
+	reply, err := ctx.client.Run("/ip/dhcp-server/lease/print", "?server="+dhcpServer, "=active=", "=count-only=")
 	if err != nil {
 		log.WithFields(log.Fields{
 			"dhcp_server": dhcpServer,
 			"device":      ctx.device.Name,
 			"error":       err,
 		}).Error("error fetching DHCP lease counts")
+
 		return err
 	}
+
 	if reply.Done.Map["ret"] == "" {
 		return nil
 	}
+
 	v, err := strconv.ParseFloat(reply.Done.Map["ret"], 32)
 	if err != nil {
 		log.WithFields(log.Fields{

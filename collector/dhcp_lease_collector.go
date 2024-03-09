@@ -4,19 +4,19 @@ import (
 	"strconv"
 	"strings"
 
+	"mikrotik-exporter/routeros/proto"
+
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
-	"mikrotik-exporter/routeros/proto"
 )
 
 type dhcpLeaseCollector struct {
-	props        []string
+	props        string
 	descriptions *prometheus.Desc
 }
 
 func (c *dhcpLeaseCollector) init() {
-	c.props = []string{"active-mac-address", "server", "status", "active-address", "host-name"}
-
+	c.props = strings.Join([]string{"active-mac-address", "server", "status", "active-address", "host-name"}, ",")
 	labelNames := []string{"name", "address", "activemacaddress", "server", "status", "activeaddress", "hostname"}
 	c.descriptions = description("dhcp", "leases_metrics", "number of metrics", labelNames)
 }
@@ -45,12 +45,14 @@ func (c *dhcpLeaseCollector) collect(ctx *collectorContext) error {
 }
 
 func (c *dhcpLeaseCollector) fetch(ctx *collectorContext) ([]*proto.Sentence, error) {
-	reply, err := ctx.client.Run("/ip/dhcp-server/lease/print", "?status=bound", "=.proplist="+strings.Join(c.props, ","))
+	reply, err := ctx.client.Run("/ip/dhcp-server/lease/print", "?status=bound", "=.proplist="+c.props)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"device": ctx.device.Name,
 			"error":  err,
+			"reply":  reply,
 		}).Error("error fetching DHCP leases metrics")
+
 		return nil, err
 	}
 
@@ -67,11 +69,14 @@ func (c *dhcpLeaseCollector) collectMetric(ctx *collectorContext, re *proto.Sent
 	// QuoteToASCII because of broken DHCP clients
 	hostname := strconv.QuoteToASCII(re.Map["host-name"])
 
-	metric, err := prometheus.NewConstMetric(c.descriptions, prometheus.GaugeValue, v, ctx.device.Name, ctx.device.Address, activemacaddress, server, status, activeaddress, hostname)
+	metric, err := prometheus.NewConstMetric(c.descriptions, prometheus.GaugeValue, v,
+		ctx.device.Name, ctx.device.Address,
+		activemacaddress, server, status, activeaddress, hostname)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"device": ctx.device.Name,
 			"error":  err,
+			"reply":  re,
 		}).Error("error parsing dhcp lease")
 		return
 	}

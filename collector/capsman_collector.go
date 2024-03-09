@@ -4,16 +4,17 @@ import (
 	"strconv"
 	"strings"
 
+	"mikrotik-exporter/routeros/proto"
+
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
-	"mikrotik-exporter/routeros/proto"
 )
 
 type capsmanCollector struct {
-	props        []string
+	proplist     string
 	descriptions map[string]*prometheus.Desc
 
-	radioProps            []string
+	radioProplist         string
 	radiosProvisionedDesc *prometheus.Desc
 }
 
@@ -25,18 +26,22 @@ func newCapsmanCollector() routerOSCollector {
 
 func (c *capsmanCollector) init() {
 	//"rx-signal", "tx-signal",
-	c.props = []string{"interface", "mac-address", "ssid", "uptime", "tx-signal", "rx-signal", "packets", "bytes"}
-	labelNames := []string{"name", "address", "interface", "mac_address", "ssid"}
-	c.descriptions = make(map[string]*prometheus.Desc)
-	for _, p := range c.props[3 : len(c.props)-2] {
-		c.descriptions[p] = descriptionForPropertyName("capsman_station", p, labelNames)
-	}
-	for _, p := range c.props[len(c.props)-2:] {
-		c.descriptions["tx_"+p] = descriptionForPropertyName("capsman_station", "tx_"+p+"_total", labelNames)
-		c.descriptions["rx_"+p] = descriptionForPropertyName("capsman_station", "rx_"+p+"_total", labelNames)
-	}
+	props := []string{"interface", "mac-address", "ssid", "uptime", "tx-signal", "rx-signal", "packets", "bytes"}
+	c.proplist = strings.Join(props, ",")
 
-	c.radioProps = []string{"interface", "radio-mac", "remote-cap-identity", "remote-cap-name", "provisioned"}
+	labelNames := []string{"name", "address", "interface", "mac_address", "ssid"}
+
+	c.descriptions = make(map[string]*prometheus.Desc, 7)
+	c.descriptions["uptime"] = descriptionForPropertyName("capsman_station", "uptime", labelNames)
+	c.descriptions["tx-signal"] = descriptionForPropertyName("capsman_station", "tx-signal", labelNames)
+	c.descriptions["rx-signal"] = descriptionForPropertyName("capsman_station", "rx-signal", labelNames)
+	c.descriptions["tx_packets"] = descriptionForPropertyName("capsman_station", "tx_packets_total", labelNames)
+	c.descriptions["rx_packets"] = descriptionForPropertyName("capsman_station", "rx_packets_total", labelNames)
+	c.descriptions["tx_bytes"] = descriptionForPropertyName("capsman_station", "tx_bytes_total", labelNames)
+	c.descriptions["rx_bytes"] = descriptionForPropertyName("capsman_station", "rx_bytes_total", labelNames)
+
+	radioProps := []string{"interface", "radio-mac", "remote-cap-identity", "remote-cap-name", "provisioned"}
+	c.radioProplist = strings.Join(radioProps, ",")
 	labelNames = []string{"name", "address", "interface", "radio_mac", "remote_cap_identity", "remote_cap_name"}
 	c.radiosProvisionedDesc = description("capsman", "radio_provisioned", "Status of provision remote radios", labelNames)
 }
@@ -59,15 +64,11 @@ func (c *capsmanCollector) collect(ctx *collectorContext) error {
 	}
 
 	err = c.collectRadiosProvisioned(ctx)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 func (c *capsmanCollector) fetch(ctx *collectorContext) ([]*proto.Sentence, error) {
-	reply, err := ctx.client.Run("/caps-man/registration-table/print", "=.proplist="+strings.Join(c.props, ","))
+	reply, err := ctx.client.Run("/caps-man/registration-table/print", "=.proplist="+c.proplist)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"device": ctx.device.Name,
@@ -84,30 +85,33 @@ func (c *capsmanCollector) collectForStat(re *proto.Sentence, ctx *collectorCont
 	mac := re.Map["mac-address"]
 	ssid := re.Map["ssid"]
 
-	for _, p := range c.props[3 : len(c.props)-2] {
-		c.collectMetricForProperty(p, iface, mac, ssid, re, ctx)
-	}
-	for _, p := range c.props[len(c.props)-2:] {
-		c.collectMetricForTXRXCounters(p, iface, mac, ssid, re, ctx)
-	}
+	c.collectMetricForProperty("uptime", iface, mac, ssid, re, ctx)
+	c.collectMetricForProperty("tx-signal", iface, mac, ssid, re, ctx)
+	c.collectMetricForProperty("rx-signal", iface, mac, ssid, re, ctx)
+
+	c.collectMetricForTXRXCounters("packets", iface, mac, ssid, re, ctx)
+	c.collectMetricForTXRXCounters("bytes", iface, mac, ssid, re, ctx)
 }
 
 func (c *capsmanCollector) collectMetricForProperty(property, iface, mac, ssid string, re *proto.Sentence, ctx *collectorContext) {
 	if re.Map[property] == "" {
 		return
 	}
+
 	p := re.Map[property]
-	i := strings.Index(p, "@")
-	if i > -1 {
+	if i := strings.Index(p, "@"); i > -1 {
 		p = p[:i]
 	}
+
 	var v float64
 	var err error
-	if property != "uptime" {
-		v, err = strconv.ParseFloat(p, 64)
-	} else {
+
+	if property == "uptime" {
 		v, err = parseDuration(p)
+	} else {
+		v, err = strconv.ParseFloat(p, 64)
 	}
+
 	if err != nil {
 		log.WithFields(log.Fields{
 			"device":   ctx.device.Name,
@@ -115,6 +119,7 @@ func (c *capsmanCollector) collectMetricForProperty(property, iface, mac, ssid s
 			"value":    re.Map[property],
 			"error":    err,
 		}).Error("error parsing capsman station metric value")
+
 		return
 	}
 
@@ -131,8 +136,10 @@ func (c *capsmanCollector) collectMetricForTXRXCounters(property, iface, mac, ss
 			"value":    re.Map[property],
 			"error":    err,
 		}).Error("error parsing capsman station metric value")
+
 		return
 	}
+
 	desc_tx := c.descriptions["tx_"+property]
 	desc_rx := c.descriptions["rx_"+property]
 	ctx.ch <- prometheus.MustNewConstMetric(desc_tx, prometheus.CounterValue, tx, ctx.device.Name, ctx.device.Address, iface, mac, ssid)
@@ -140,12 +147,13 @@ func (c *capsmanCollector) collectMetricForTXRXCounters(property, iface, mac, ss
 }
 
 func (c *capsmanCollector) collectRadiosProvisioned(ctx *collectorContext) error {
-	reply, err := ctx.client.Run("/caps-man/radio/print", "=.proplist="+strings.Join(c.radioProps, ","))
+	reply, err := ctx.client.Run("/caps-man/radio/print", "=.proplist="+c.radioProplist)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"device": ctx.device.Name,
 			"error":  err,
 		}).Error("error fetching capsman radios metrics")
+
 		return err
 	}
 

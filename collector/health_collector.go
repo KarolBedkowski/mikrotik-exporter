@@ -3,13 +3,13 @@ package collector
 import (
 	"strconv"
 
+	"mikrotik-exporter/routeros/proto"
+
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
-	"mikrotik-exporter/routeros/proto"
 )
 
 type healthCollector struct {
-	props        []string
 	descriptions map[string]*prometheus.Desc
 }
 
@@ -20,14 +20,11 @@ func newhealthCollector() routerOSCollector {
 }
 
 func (c *healthCollector) init() {
-	c.props = []string{"voltage", "temperature", "cpu-temperature"}
-
 	labelNames := []string{"name", "address"}
-	helpText := []string{"Input voltage to the RouterOS board, in volts", "Temperature of RouterOS board, in degrees Celsius", "Temperature of RouterOS CPU, in degrees Celsius"}
 	c.descriptions = make(map[string]*prometheus.Desc)
-	for i, p := range c.props {
-		c.descriptions[p] = descriptionForPropertyNameHelpText("health", p, labelNames, helpText[i])
-	}
+	c.descriptions["voltage"] = descriptionForPropertyNameHelpText("health", "voltage", labelNames, "Input voltage to the RouterOS board, in volts")
+	c.descriptions["temperature"] = descriptionForPropertyNameHelpText("health", "temperature", labelNames, "Temperature of RouterOS board, in degrees Celsius")
+	c.descriptions["cpu-temperature"] = descriptionForPropertyNameHelpText("health", "cpu-temperature", labelNames, "Temperature of RouterOS CPU, in degrees Celsius")
 }
 
 func (c *healthCollector) describe(ch chan<- *prometheus.Desc) {
@@ -60,6 +57,7 @@ func (c *healthCollector) fetch(ctx *collectorContext) ([]*proto.Sentence, error
 			"device": ctx.device.Name,
 			"error":  err,
 		}).Error("error fetching system health metrics")
+
 		return nil, err
 	}
 
@@ -67,9 +65,9 @@ func (c *healthCollector) fetch(ctx *collectorContext) ([]*proto.Sentence, error
 }
 
 func (c *healthCollector) collectForStat(re *proto.Sentence, ctx *collectorContext) {
-	for _, p := range c.props[:3] {
-		c.collectMetricForProperty(p, re, ctx)
-	}
+	c.collectMetricForProperty("voltage", re, ctx)
+	c.collectMetricForProperty("temperature", re, ctx)
+	c.collectMetricForProperty("cpu-temperature", re, ctx)
 }
 
 func (c *healthCollector) collectMetricForProperty(property string, re *proto.Sentence, ctx *collectorContext) {
@@ -85,8 +83,8 @@ func (c *healthCollector) collectMetricForProperty(property string, re *proto.Se
 			return
 		}
 	}
-	v, err = strconv.ParseFloat(value, 64)
 
+	v, err = strconv.ParseFloat(value, 64)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"device":   ctx.device.Name,

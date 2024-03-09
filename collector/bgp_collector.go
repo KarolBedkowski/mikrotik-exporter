@@ -4,13 +4,15 @@ import (
 	"strconv"
 	"strings"
 
+	"mikrotik-exporter/routeros/proto"
+
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
-	"mikrotik-exporter/routeros/proto"
 )
 
 type bgpCollector struct {
 	props        []string
+	proplist     string
 	descriptions map[string]*prometheus.Desc
 }
 
@@ -22,6 +24,7 @@ func newBGPCollector() routerOSCollector {
 
 func (c *bgpCollector) init() {
 	c.props = []string{"name", "remote-as", "state", "prefix-count", "updates-sent", "updates-received", "withdrawn-sent", "withdrawn-received"}
+	c.proplist = strings.Join(c.props, ",")
 
 	const prefix = "bgp"
 	labelNames := []string{"name", "address", "session", "asn"}
@@ -54,7 +57,7 @@ func (c *bgpCollector) collect(ctx *collectorContext) error {
 }
 
 func (c *bgpCollector) fetch(ctx *collectorContext) ([]*proto.Sentence, error) {
-	reply, err := ctx.client.Run("/routing/bgp/peer/print", "=.proplist="+strings.Join(c.props, ","))
+	reply, err := ctx.client.Run("/routing/bgp/peer/print", "=.proplist="+c.proplist)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"device": ctx.device.Name,

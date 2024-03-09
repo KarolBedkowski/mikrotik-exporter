@@ -43,7 +43,10 @@ func (c *firmwareCollector) collect(ctx *collectorContext) error {
 		if strings.EqualFold(pkg.Map["disabled"], "true") {
 			v = 0.0
 		}
-		ctx.ch <- prometheus.MustNewConstMetric(c.description, prometheus.GaugeValue, v, ctx.device.Name, pkg.Map["name"], pkg.Map["disabled"], pkg.Map["version"], pkg.Map["build-time"])
+
+		ctx.ch <- prometheus.MustNewConstMetric(c.description, prometheus.GaugeValue, v,
+			ctx.device.Name, pkg.Map["name"], pkg.Map["disabled"], pkg.Map["version"],
+			pkg.Map["build-time"])
 	}
 
 	return nil

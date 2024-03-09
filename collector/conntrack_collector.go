@@ -4,13 +4,14 @@ import (
 	"strconv"
 	"strings"
 
+	"mikrotik-exporter/routeros/proto"
+
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
-	"mikrotik-exporter/routeros/proto"
 )
 
 type conntrackCollector struct {
-	props            []string
+	props            string
 	totalEntriesDesc *prometheus.Desc
 	maxEntriesDesc   *prometheus.Desc
 }
@@ -20,7 +21,7 @@ func newConntrackCollector() routerOSCollector {
 
 	labelNames := []string{"name", "address"}
 	return &conntrackCollector{
-		props:            []string{"total-entries", "max-entries"},
+		props:            strings.Join([]string{"total-entries", "max-entries"}, ","),
 		totalEntriesDesc: description(prefix, "entries", "Number of tracked connections", labelNames),
 		maxEntriesDesc:   description(prefix, "max_entries", "Conntrack table capacity", labelNames),
 	}
@@ -32,7 +33,7 @@ func (c *conntrackCollector) describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *conntrackCollector) collect(ctx *collectorContext) error {
-	reply, err := ctx.client.Run("/ip/firewall/connection/tracking/print", "=.proplist="+strings.Join(c.props, ","))
+	reply, err := ctx.client.Run("/ip/firewall/connection/tracking/print", "=.proplist="+c.props)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"device": ctx.device.Name,
@@ -53,6 +54,7 @@ func (c *conntrackCollector) collectMetricForProperty(property string, desc *pro
 	if re.Map[property] == "" {
 		return
 	}
+
 	v, err := strconv.ParseFloat(re.Map[property], 64)
 	if err != nil {
 		log.WithFields(log.Fields{
