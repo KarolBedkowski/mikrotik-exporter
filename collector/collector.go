@@ -17,6 +17,7 @@ import (
 	"mikrotik-exporter/config"
 
 	"mikrotik-exporter/routeros"
+
 	"github.com/hashicorp/go-multierror"
 	"github.com/miekg/dns"
 	"github.com/prometheus/client_golang/prometheus"
@@ -48,125 +49,19 @@ var (
 	)
 )
 
+type deviceCollector struct {
+	device     config.Device
+	collectors []string
+}
+
 type collector struct {
-	devices     []config.Device
-	collectors  []routerOSCollector
+	devices     []deviceCollector
+	collectors  map[string]routerOSCollector
 	timeout     time.Duration
 	enableTLS   bool
 	insecureTLS bool
 	connections map[string]*routeros.Client
 	connLock    sync.Mutex
-}
-
-// WithBGP enables BGP routing metrics
-func WithBGP() Option {
-	return func(c *collector) {
-		c.collectors = append(c.collectors, newBGPCollector())
-	}
-}
-
-// WithRoutes enables routing table metrics
-func WithRoutes() Option {
-	return func(c *collector) {
-		c.collectors = append(c.collectors, newRoutesCollector())
-	}
-}
-
-// WithDHCP enables DHCP serrver metrics
-func WithDHCP() Option {
-	return func(c *collector) {
-		c.collectors = append(c.collectors, newDHCPCollector())
-	}
-}
-
-// WithDHCPL enables DHCP server leases
-func WithDHCPL() Option {
-	return func(c *collector) {
-		c.collectors = append(c.collectors, newDHCPLCollector())
-	}
-}
-
-// WithDHCPv6 enables DHCPv6 serrver metrics
-func WithDHCPv6() Option {
-	return func(c *collector) {
-		c.collectors = append(c.collectors, newDHCPv6Collector())
-	}
-}
-
-// WithFirmware grab installed firmware and version
-func WithFirmware() Option {
-	return func(c *collector) {
-		c.collectors = append(c.collectors, newFirmwareCollector())
-	}
-}
-
-// WithHealth enables board Health metrics
-func WithHealth() Option {
-	return func(c *collector) {
-		c.collectors = append(c.collectors, newhealthCollector())
-	}
-}
-
-// WithPOE enables PoE metrics
-func WithPOE() Option {
-	return func(c *collector) {
-		c.collectors = append(c.collectors, newPOECollector())
-	}
-}
-
-// WithPools enables IP(v6) pool metrics
-func WithPools() Option {
-	return func(c *collector) {
-		c.collectors = append(c.collectors, newPoolCollector())
-	}
-}
-
-// WithOptics enables optical diagnstocs
-func WithOptics() Option {
-	return func(c *collector) {
-		c.collectors = append(c.collectors, newOpticsCollector())
-	}
-}
-
-// WithW60G enables w60g metrics
-func WithW60G() Option {
-	return func(c *collector) {
-		c.collectors = append(c.collectors, neww60gInterfaceCollector())
-	}
-}
-
-// WithWlanSTA enables wlan STA metrics
-func WithWlanSTA() Option {
-	return func(c *collector) {
-		c.collectors = append(c.collectors, newWlanSTACollector())
-	}
-}
-
-// WithWlanIF enables wireless interface metrics
-func WithCapsman() Option {
-	return func(c *collector) {
-		c.collectors = append(c.collectors, newCapsmanCollector())
-	}
-}
-
-// WithWlanIF enables wireless interface metrics
-func WithWlanIF() Option {
-	return func(c *collector) {
-		c.collectors = append(c.collectors, newWlanIFCollector())
-	}
-}
-
-func WithQueue() Option {
-	return func(c *collector) {
-		c.collectors = append(c.collectors, newQueueCollector())
-	}
-}
-
-// WithMonitor enables ethernet monitor collector metrics
-func Monitor() Option {
-	return func(c *collector) {
-		c.collectors = append(c.collectors, newMonitorCollector())
-	}
 }
 
 // WithTimeout sets timeout for connecting to router
@@ -184,34 +79,6 @@ func WithTLS(insecure bool) Option {
 	}
 }
 
-// WithIpsec enables ipsec metrics
-func WithIpsec() Option {
-	return func(c *collector) {
-		c.collectors = append(c.collectors, newIpsecCollector())
-	}
-}
-
-// WithConntrack enables firewall/NAT connection tracking metrics
-func WithConntrack() Option {
-	return func(c *collector) {
-		c.collectors = append(c.collectors, newConntrackCollector())
-	}
-}
-
-// WithLte enables lte metrics
-func WithLte() Option {
-	return func(c *collector) {
-		c.collectors = append(c.collectors, newLteCollector())
-	}
-}
-
-// WithNetwatch enables netwatch metrics
-func WithNetwatch() Option {
-	return func(c *collector) {
-		c.collectors = append(c.collectors, newNetwatchCollector())
-	}
-}
-
 // Option applies options to collector
 type Option func(*collector)
 
@@ -221,13 +88,24 @@ func NewCollector(cfg *config.Config, opts ...Option) (prometheus.Collector, err
 		"numDevices": len(cfg.Devices),
 	}).Info("setting up collector for devices")
 
+	dcs := make([]deviceCollector, 0, len(cfg.Devices))
+	for _, d := range cfg.Devices {
+		feat, err := cfg.DeviceFeatures(d.Name)
+		if err != nil {
+			panic(err)
+		}
+		featNames := feat.FeatureNames()
+		featNames = append(featNames, "Interface", "Resource")
+		dc := deviceCollector{d, featNames}
+		dcs = append(dcs, dc)
+
+		log.WithFields(log.Fields{"device": &dc}).Debug("new device")
+	}
+
 	c := &collector{
-		devices: cfg.Devices,
-		timeout: DefaultTimeout,
-		collectors: []routerOSCollector{
-			newInterfaceCollector(),
-			newResourceCollector(),
-		},
+		devices:     dcs,
+		collectors:  newCollectors(cfg),
+		timeout:     DefaultTimeout,
 		connections: make(map[string]*routeros.Client),
 	}
 
@@ -252,9 +130,10 @@ func (c *collector) Describe(ch chan<- *prometheus.Desc) {
 func (c *collector) Collect(ch chan<- prometheus.Metric) {
 	wg := sync.WaitGroup{}
 
-	var realDevices []config.Device
+	var realDevices []deviceCollector
 
-	for _, dev := range c.devices {
+	for _, dc := range c.devices {
+		dev := dc.device
 		if (config.SrvRecord{}) != dev.Srv {
 			log.WithFields(log.Fields{
 				"SRV": dev.Srv.Record,
@@ -285,18 +164,18 @@ func (c *collector) Collect(ch chan<- prometheus.Metric) {
 					d.User = dev.User
 					d.Password = dev.Password
 					_ = c.getIdentity(&d)
-					realDevices = append(realDevices, d)
+					realDevices = append(realDevices, deviceCollector{d, dc.collectors})
 				}
 			}
 		} else {
-			realDevices = append(realDevices, dev)
+			realDevices = append(realDevices, dc)
 		}
 	}
 
 	wg.Add(len(realDevices))
 
 	for _, dev := range realDevices {
-		go func(d config.Device) {
+		go func(d deviceCollector) {
 			c.collectForDevice(d, ch)
 			wg.Done()
 		}(dev)
@@ -329,32 +208,34 @@ func (c *collector) getIdentity(d *config.Device) error {
 	return nil
 }
 
-func (c *collector) collectForDevice(d config.Device, ch chan<- prometheus.Metric) {
+func (c *collector) collectForDevice(d deviceCollector, ch chan<- prometheus.Metric) {
 	begin := time.Now()
+	name := d.device.Name
 
-	log.WithFields(log.Fields{"device": d.Name}).Debug("start collect for device")
+	log.WithFields(log.Fields{"device": d.device.Name}).Debug("start collect for device")
 
 	err := c.connectAndCollect(&d, ch)
 
 	duration := time.Since(begin)
 	var success float64
 	if err != nil {
-		log.Errorf("ERROR: %s collector failed after %fs: %s", d.Name, duration.Seconds(), err)
+		log.Errorf("ERROR: %s collector failed after %fs: %s", name, duration.Seconds(), err)
 		success = 0
 	} else {
-		log.Debugf("OK: %s collector succeeded after %fs.", d.Name, duration.Seconds())
+		log.Debugf("OK: %s collector succeeded after %fs.", name, duration.Seconds())
 		success = 1
 	}
 
-	ch <- prometheus.MustNewConstMetric(scrapeDurationDesc, prometheus.GaugeValue, duration.Seconds(), d.Name)
-	ch <- prometheus.MustNewConstMetric(scrapeSuccessDesc, prometheus.GaugeValue, success, d.Name)
+	ch <- prometheus.MustNewConstMetric(scrapeDurationDesc, prometheus.GaugeValue, duration.Seconds(), name)
+	ch <- prometheus.MustNewConstMetric(scrapeSuccessDesc, prometheus.GaugeValue, success, name)
 }
 
-func (c *collector) connectAndCollect(d *config.Device, ch chan<- prometheus.Metric) error {
-	cl, err := c.getConnection(d)
+func (c *collector) connectAndCollect(d *deviceCollector, ch chan<- prometheus.Metric) error {
+	name := d.device.Name
+	cl, err := c.getConnection(&d.device)
 	if err != nil {
 		log.WithFields(log.Fields{
-			"device": d.Name,
+			"device": name,
 			"error":  err,
 		}).Error("error dialing device")
 		return err
@@ -363,9 +244,10 @@ func (c *collector) connectAndCollect(d *config.Device, ch chan<- prometheus.Met
 
 	var result error
 
-	for _, co := range c.collectors {
-		ctx := &collectorContext{ch, d, cl}
-		log.WithFields(log.Fields{"device": d.Name, "collector": co}).Debug("collect")
+	for _, coName := range d.collectors {
+		co := c.collectors[coName]
+		ctx := &collectorContext{ch, &d.device, cl}
+		log.WithFields(log.Fields{"device": d.device.Name, "collector": co}).Debug("collect")
 		err = co.collect(ctx)
 		if err != nil {
 			result = multierror.Append(result, err)
@@ -475,4 +357,85 @@ func challengeResponse(cha []byte, password string) string {
 	_, _ = io.WriteString(h, password)
 	h.Write(cha)
 	return fmt.Sprintf("00%x", h.Sum(nil))
+}
+
+func newROSCollector(name string) routerOSCollector {
+	switch name {
+	case "BGP":
+		return newBGPCollector()
+	case "Routes":
+		return newRoutesCollector()
+	case "DHCPL":
+		return newDHCPLCollector()
+	case "DHCPv6":
+		return newDHCPv6Collector()
+	case "DHCP":
+		return newDHCPCollector()
+	case "Firmware":
+		return newFirmwareCollector()
+	case "Health":
+		return newhealthCollector()
+	case "POE":
+		return newPOECollector()
+	case "Pool":
+		return newPoolCollector()
+	case "Optics":
+		return newOpticsCollector()
+	case "W60gInterface":
+		return neww60gInterfaceCollector()
+	case "WlanSTA":
+		return newWlanSTACollector()
+	case "Capsman":
+		return newCapsmanCollector()
+	case "WlanIF":
+		return newWlanIFCollector()
+	case "Monitor":
+		return newMonitorCollector()
+	case "Ipsec":
+		return newIpsecCollector()
+	case "Conntrack":
+		return newConntrackCollector()
+	case "Lte":
+		return newLteCollector()
+	case "Netwatch":
+		return newNetwatchCollector()
+	case "Queue":
+		return newQueueCollector()
+	}
+
+	return nil
+}
+
+func newCollectors(cfg *config.Config) map[string]routerOSCollector {
+	collectors := make(map[string]routerOSCollector)
+	collectors["Interface"] = newInterfaceCollector()
+	collectors["Resource"] = newResourceCollector()
+
+	uniqueNames := make(map[string]struct{})
+	for _, name := range cfg.Features.FeatureNames() {
+		uniqueNames[name] = struct{}{}
+	}
+	for _, dev := range cfg.Devices {
+		if len(dev.Profile) > 0 {
+			features, err := cfg.DeviceFeatures(dev.Name)
+			if err != nil {
+				panic(err)
+			}
+
+			for _, name := range features.FeatureNames() {
+				uniqueNames[name] = struct{}{}
+			}
+		}
+	}
+
+	for k := range uniqueNames {
+		c := newROSCollector(k)
+		if c == nil {
+			panic("unknown collector " + k)
+		}
+		log.WithFields(log.Fields{"collector": k}).Debug("new collector")
+		collectors[k] = c
+	}
+
+	return collectors
 }

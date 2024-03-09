@@ -7,6 +7,16 @@ devices:
     address: 192.168.2.1
     user: test
     password: 123
+  - name: testProfileMinimal
+    address: 192.168.2.1
+    user: test
+    password: 123
+    profile: minimal
+  - name: testProfileBasic
+    address: 192.168.2.1
+    user: test
+    password: 123
+    profile: basic
 
 features:
   bgp: true
@@ -23,3 +33,39 @@ features:
   lte: true
   netwatch: true
   queue: true
+
+
+profiles:
+  all:
+    bgp: true
+    capsman: true
+    conntrack: true
+    dhcp: true
+    dhcpl: true
+    dhcpv6: true
+    firmware: true
+    health: true
+    ipsec: true
+    lte: true
+    monitor: true
+    netwatch: true
+    optics: true
+    poe: true
+    pools: true
+    queue: true
+    routes: true
+    w60g: true
+    wlanif: true
+    wlansta: true
+  minimal:
+    firmware: true
+    health: true
+    monitor: true
+  basic:
+    dhcp: true
+    dhcpl: true
+    firmware: true
+    health: true
+    monitor: true
+    routes: true
+    wlanif: true

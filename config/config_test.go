@@ -13,7 +13,7 @@ func TestShouldParse(t *testing.T) {
 		t.Fatalf("could not parse: %v", err)
 	}
 
-	if len(c.Devices) != 2 {
+	if len(c.Devices) != 4 {
 		t.Fatalf("expected 2 devices, got %v", len(c.Devices))
 	}
 
@@ -32,6 +32,12 @@ func TestShouldParse(t *testing.T) {
 	assertFeature("Lte", c.Features.Lte, t)
 	assertFeature("Netwatch", c.Features.Netwatch, t)
 	assertFeature("Queue", c.Features.Queue, t)
+
+	f, _ := c.DeviceFeatures("testProfileMinimal")
+	assertFeature("Firmware", f.Firmware, t)
+	assertFeature("Health", f.Health, t)
+	assertFeature("Monitor", f.Monitor, t)
+	assertNotFeature("BGP", f.BGP, t)
 }
 
 func loadTestFile(t *testing.T) []byte {
@@ -64,5 +70,11 @@ func assertDevice(name, address, user, password string, c Device, t *testing.T) 
 func assertFeature(name string, v bool, t *testing.T) {
 	if !v {
 		t.Fatalf("exprected feature %s to be enabled", name)
+	}
+}
+
+func assertNotFeature(name string, v bool, t *testing.T) {
+	if v {
+		t.Fatalf("exprected feature %s to be disabled", name)
 	}
 }
