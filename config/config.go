@@ -5,6 +5,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/hashicorp/go-multierror"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -47,13 +48,15 @@ func isValidFeature(name string) bool {
 type Features map[string]bool
 
 func (f Features) validate() error {
+	var result *multierror.Error
+
 	for key := range f {
 		if !isValidFeature(key) {
-			return fmt.Errorf("invalid feature '%s'", key)
+			result = multierror.Append(result, fmt.Errorf("invalid feature '%s'", key))
 		}
 	}
 
-	return nil
+	return result.ErrorOrNil()
 }
 
 func (f Features) FeatureNames() []string {
@@ -104,8 +107,7 @@ func Load(r io.Reader) (*Config, error) {
 
 	c := &Config{}
 
-	err = yaml.Unmarshal(b, c)
-	if err != nil {
+	if err := yaml.Unmarshal(b, c); err != nil {
 		return nil, err
 	}
 

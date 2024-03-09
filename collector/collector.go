@@ -242,19 +242,18 @@ func (c *collector) connectAndCollect(d *deviceCollector, ch chan<- prometheus.M
 	}
 	defer c.closeConnection(d)
 
-	var result error
+	var result *multierror.Error
 
 	for _, coName := range d.collectors {
 		co := c.collectors[coName]
 		ctx := &collectorContext{ch, &d.device, cl}
 		log.WithFields(log.Fields{"device": d.device.Name, "collector": co}).Debug("collect")
-		err = co.collect(ctx)
-		if err != nil {
+		if err = co.collect(ctx); err != nil {
 			result = multierror.Append(result, err)
 		}
 	}
 
-	return result
+	return result.ErrorOrNil()
 }
 
 func (c *collector) getConnection(d *deviceCollector) (*routeros.Client, error) {
@@ -283,6 +282,7 @@ func (c *collector) closeConnection(d *deviceCollector) {
 	c.connLock.Lock()
 	defer c.connLock.Unlock()
 
+	// close connection for srv-defined targets
 	if (config.SrvRecord{}) != d.device.Srv {
 		if d.cl != nil {
 			d.cl.Close()
