@@ -193,6 +193,8 @@ func (c *collector) getIdentity(d *config.Device) error {
 		return err
 	}
 
+	defer c.closeConnection(d)
+
 	reply, err := cl.Run("/system/identity/print")
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -239,7 +241,7 @@ func (c *collector) connectAndCollect(d *deviceCollector, ch chan<- prometheus.M
 		}).Error("error dialing device")
 		return err
 	}
-	// defer cl.Close()
+	defer c.closeConnection(&d.device)
 
 	var result error
 
@@ -277,6 +279,20 @@ func (c *collector) getConnection(d *config.Device) (*routeros.Client, error) {
 	}
 
 	return client, err
+}
+
+func (c *collector) closeConnection(d *config.Device) {
+	c.connLock.Lock()
+	defer c.connLock.Unlock()
+
+	if (config.SrvRecord{}) != d.Srv {
+		key := d.Name + "-" + d.Address + "-" + d.User
+
+		if cl, ok := c.connections[key]; ok {
+			cl.Close()
+			c.connections[key] = nil
+		}
+	}
 }
 
 func (c *collector) connect(d *config.Device) (*routeros.Client, error) {
