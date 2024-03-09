@@ -1,9 +1,9 @@
 package collector
 
 import (
+	"math"
 	"strconv"
 	"strings"
-	"math"
 
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
@@ -14,7 +14,7 @@ type queueCollector struct {
 	monitorProps        []string
 	monitorDescriptions map[string]*prometheus.Desc
 
-	simpleQueueProps []string
+	simpleQueueProps        []string
 	simpleQueueDescriptions map[string]*prometheus.Desc
 }
 
@@ -74,8 +74,8 @@ func (c *queueCollector) collectQueue(ctx *collectorContext) error {
 	reply, err := ctx.client.Run("/queue/monitor", "=once=", "=.proplist="+strings.Join(c.monitorProps, ","))
 	if err != nil {
 		log.WithFields(log.Fields{
-			"device":    ctx.device.Name,
-			"error":     err,
+			"device": ctx.device.Name,
+			"error":  err,
 		}).Error("error fetching queue statistics")
 		return err
 	}
@@ -99,9 +99,9 @@ func (c *queueCollector) collectMetricForProperty(property string, re *proto.Sen
 	v, err := strconv.ParseFloat(re.Map[property], 64)
 	if err != nil {
 		log.WithFields(log.Fields{
-			"property":  property,
-			"device":    ctx.device.Name,
-			"error":     err,
+			"property": property,
+			"device":   ctx.device.Name,
+			"error":    err,
 		}).Error("error parsing queue metric value")
 		return
 	}
@@ -168,7 +168,7 @@ func (c *queueCollector) collectForSimpleQqueue(re *proto.Sentence, ctx *collect
 				}
 			}
 			ctx.ch <- prometheus.MustNewConstMetric(desc, vtype, v, ctx.device.Name, ctx.device.Address,
-			re.Map["name"], re.Map["queue"], re.Map["comment"])
+				re.Map["name"], re.Map["queue"], re.Map["comment"])
 
 		}
 	}
@@ -192,7 +192,7 @@ func (c *queueCollector) collectMetricForTXRXCounters(property, name, queue, com
 }
 
 func splitToFloats(metric string) (float64, float64, error) {
-	if metric  == "" {
+	if metric == "" {
 		return 0, 0, nil
 	}
 	strs := strings.Split(metric, "/")
@@ -202,7 +202,7 @@ func splitToFloats(metric string) (float64, float64, error) {
 	var m1, m2 float64
 	var err error
 
-	if strs[0]!= "" {
+	if strs[0] != "" {
 		m1, err = strconv.ParseFloat(strs[0], 64)
 		if err != nil {
 			return math.NaN(), math.NaN(), err

@@ -58,6 +58,7 @@ func (f Features) validate() error {
 
 func (f Features) FeatureNames() []string {
 	res := make([]string, 0, len(f))
+
 	for name, enabled := range f {
 		if enabled {
 			res = append(res, strings.ToLower(name))
@@ -102,6 +103,7 @@ func Load(r io.Reader) (*Config, error) {
 	}
 
 	c := &Config{}
+
 	err = yaml.Unmarshal(b, c)
 	if err != nil {
 		return nil, err

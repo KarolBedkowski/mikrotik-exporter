@@ -58,7 +58,6 @@ func (c *monitorCollector) collectForMonitor(eths []string, ctx *collectorContex
 		"=numbers="+strings.Join(eths, ","),
 		"=once=",
 		"=.proplist=name,"+strings.Join(c.props, ","))
-
 	if err != nil {
 		log.WithFields(log.Fields{
 			"device": ctx.device.Name,
@@ -86,7 +85,6 @@ func (c *monitorCollector) collectMetricsForEth(name string, se *proto.Sentence,
 		ctx.ch <- prometheus.MustNewConstMetric(c.descriptions[prop], prometheus.GaugeValue, value, ctx.device.Name, ctx.device.Address, name)
 
 	}
-
 }
 
 func (c *monitorCollector) valueForProp(name, value string) int {

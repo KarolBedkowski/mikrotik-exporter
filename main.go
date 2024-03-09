@@ -60,6 +60,7 @@ func main() {
 		log.Errorf("Could not load config: %v", err)
 		os.Exit(3)
 	}
+
 	cfg = c
 
 	startServer()
@@ -102,9 +103,11 @@ func loadConfigFromFlags() (*config.Config, error) {
 	if *user == "" {
 		*user = os.Getenv("MIKROTIK_USER")
 	}
+
 	if *password == "" {
 		*password = os.Getenv("MIKROTIK_PASSWORD")
 	}
+
 	if *device == "" || *address == "" || *user == "" || *password == "" {
 		return nil, fmt.Errorf("missing required param for single device configuration")
 	}
@@ -127,6 +130,7 @@ func startServer() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	http.Handle(*metricsPath, h)
 
 	http.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
@@ -149,6 +153,7 @@ func startServer() {
 
 func createMetricsHandler() (http.Handler, error) {
 	opts := collectorOptions()
+
 	nc, err := collector.NewCollector(cfg, opts...)
 	if err != nil {
 		return nil, err
@@ -157,10 +162,12 @@ func createMetricsHandler() (http.Handler, error) {
 	promhttp.Handler()
 
 	registry := prometheus.NewRegistry()
+
 	err = registry.Register(prometheus.NewGoCollector())
 	if err != nil {
 		return nil, err
 	}
+
 	err = registry.Register(nc)
 	if err != nil {
 		return nil, err

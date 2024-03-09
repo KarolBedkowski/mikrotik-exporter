@@ -4,9 +4,9 @@ import (
 	"strconv"
 	"strings"
 
-	"mikrotik-exporter/routeros/proto"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
+	"mikrotik-exporter/routeros/proto"
 )
 
 type capsmanCollector struct {

@@ -8,7 +8,7 @@ import (
 )
 
 func TestSplitStringToFloats(t *testing.T) {
-	var testCases = []struct {
+	testCases := []struct {
 		input    string
 		expected struct {
 			f1 float64
@@ -80,7 +80,7 @@ func TestSplitStringToFloats(t *testing.T) {
 }
 
 func TestParseDuration(t *testing.T) {
-	var testCases = []struct {
+	testCases := []struct {
 		input    string
 		output   float64
 		hasError bool

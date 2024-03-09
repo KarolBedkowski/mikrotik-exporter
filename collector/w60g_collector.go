@@ -31,6 +31,7 @@ func (c *w60gInterfaceCollector) describe(ch chan<- *prometheus.Desc) {
 	ch <- c.txDistanceDesc
 	ch <- c.txPacketErrorRateDesc
 }
+
 func (c *w60gInterfaceCollector) collect(ctx *collectorContext) error {
 	reply, err := ctx.client.Run("/interface/w60g/print", "=.proplist=name")
 	if err != nil {
@@ -53,6 +54,7 @@ func (c *w60gInterfaceCollector) collect(ctx *collectorContext) error {
 
 	return c.collectw60gMetricsForInterfaces(ifaces, ctx)
 }
+
 func (c *w60gInterfaceCollector) collectw60gMetricsForInterfaces(ifaces []string, ctx *collectorContext) error {
 	reply, err := ctx.client.Run("/interface/w60g/monitor",
 		"=numbers="+strings.Join(ifaces, ","),

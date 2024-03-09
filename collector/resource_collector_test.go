@@ -5,7 +5,6 @@ import (
 )
 
 func TestParseUptime(t *testing.T) {
-
 	uptimes := []struct {
 		u string
 		v float64

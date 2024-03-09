@@ -12,8 +12,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var durationRegex *regexp.Regexp
-var durationParts [6]time.Duration
+var (
+	durationRegex *regexp.Regexp
+	durationParts [6]time.Duration
+)
 
 func init() {
 	durationRegex = regexp.MustCompile(`(?:(\d*)w)?(?:(\d*)d)?(?:(\d*)h)?(?:(\d*)m)?(?:(\d*)s)?(?:(\d*)ms)?`)

@@ -22,7 +22,7 @@ func newLteCollector() routerOSCollector {
 }
 
 func (c *lteCollector) init() {
-	c.props = []string{"current-cellid", "primary-band" ,"ca-band", "rssi", "rsrp", "rsrq", "sinr"}
+	c.props = []string{"current-cellid", "primary-band", "ca-band", "rssi", "rsrp", "rsrq", "sinr"}
 	labelNames := []string{"name", "address", "interface", "cellid", "primaryband", "caband"}
 	c.descriptions = make(map[string]*prometheus.Desc)
 	for _, p := range c.props {
