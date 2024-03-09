@@ -95,7 +95,6 @@ func NewCollector(cfg *config.Config, opts ...Option) (prometheus.Collector, err
 			panic(err)
 		}
 		featNames := feat.FeatureNames()
-		featNames = append(featNames, "Interface", "Resource")
 		dc := deviceCollector{d, featNames}
 		dcs = append(dcs, dc)
 
@@ -361,46 +360,50 @@ func challengeResponse(cha []byte, password string) string {
 
 func newROSCollector(name string) routerOSCollector {
 	switch name {
-	case "BGP":
+	case "bgp":
 		return newBGPCollector()
-	case "Routes":
+	case "routes":
 		return newRoutesCollector()
-	case "DHCPL":
+	case "dhcpl":
 		return newDHCPLCollector()
-	case "DHCPv6":
+	case "dhcpv6":
 		return newDHCPv6Collector()
-	case "DHCP":
+	case "dhcp":
 		return newDHCPCollector()
-	case "Firmware":
+	case "firmware":
 		return newFirmwareCollector()
-	case "Health":
+	case "health":
 		return newhealthCollector()
-	case "POE":
+	case "poe":
 		return newPOECollector()
-	case "Pool":
+	case "pools":
 		return newPoolCollector()
-	case "Optics":
+	case "optics":
 		return newOpticsCollector()
-	case "W60gInterface":
+	case "w60ginterface":
 		return neww60gInterfaceCollector()
-	case "WlanSTA":
+	case "wlansta":
 		return newWlanSTACollector()
-	case "Capsman":
+	case "capsman":
 		return newCapsmanCollector()
-	case "WlanIF":
+	case "wlanif":
 		return newWlanIFCollector()
-	case "Monitor":
+	case "monitor":
 		return newMonitorCollector()
-	case "Ipsec":
+	case "ipsec":
 		return newIpsecCollector()
-	case "Conntrack":
+	case "conntrack":
 		return newConntrackCollector()
-	case "Lte":
+	case "lte":
 		return newLteCollector()
-	case "Netwatch":
+	case "netwatch":
 		return newNetwatchCollector()
-	case "Queue":
+	case "queue":
 		return newQueueCollector()
+	case "interface":
+		return newInterfaceCollector()
+	case "resource":
+		return newResourceCollector()
 	}
 
 	return nil
@@ -408,8 +411,6 @@ func newROSCollector(name string) routerOSCollector {
 
 func newCollectors(cfg *config.Config) map[string]routerOSCollector {
 	collectors := make(map[string]routerOSCollector)
-	collectors["Interface"] = newInterfaceCollector()
-	collectors["Resource"] = newResourceCollector()
 
 	uniqueNames := make(map[string]struct{})
 	for _, name := range cfg.Features.FeatureNames() {
@@ -429,12 +430,12 @@ func newCollectors(cfg *config.Config) map[string]routerOSCollector {
 	}
 
 	for k := range uniqueNames {
-		c := newROSCollector(k)
-		if c == nil {
+		if c := newROSCollector(k); c != nil {
+			log.WithFields(log.Fields{"collector": k}).Debug("new collector")
+			collectors[k] = c
+		} else {
 			panic("unknown collector " + k)
 		}
-		log.WithFields(log.Fields{"collector": k}).Debug("new collector")
-		collectors[k] = c
 	}
 
 	return collectors
