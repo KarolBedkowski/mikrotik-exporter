@@ -5,7 +5,7 @@ import (
 	"log"
 	"strings"
 
-	"github.com/go-routeros/routeros"
+	"mikrotik-exporter/routeros"
 )
 
 var (

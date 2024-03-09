@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-routeros/routeros"
+	"mikrotik-exporter/routeros"
 )
 
 var (
