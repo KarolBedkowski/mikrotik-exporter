@@ -2,7 +2,8 @@ package config
 
 import (
 	"bytes"
-	"io/ioutil"
+	"os"
+	"strings"
 	"testing"
 )
 
@@ -19,29 +20,29 @@ func TestShouldParse(t *testing.T) {
 
 	assertDevice("test1", "192.168.1.1", "foo", "bar", c.Devices[0], t)
 	assertDevice("test2", "192.168.2.1", "test", "123", c.Devices[1], t)
-	assertFeature("BGP", c.Features.BGP, t)
-	assertFeature("Conntrack", c.Features.Conntrack, t)
-	assertFeature("DHCP", c.Features.DHCP, t)
-	assertFeature("DHCPv6", c.Features.DHCPv6, t)
-	assertFeature("Pools", c.Features.Pools, t)
-	assertFeature("Routes", c.Features.Routes, t)
-	assertFeature("Optics", c.Features.Optics, t)
-	assertFeature("WlanSTA", c.Features.WlanSTA, t)
-	assertFeature("WlanIF", c.Features.WlanIF, t)
-	assertFeature("Ipsec", c.Features.Ipsec, t)
-	assertFeature("Lte", c.Features.Lte, t)
-	assertFeature("Netwatch", c.Features.Netwatch, t)
-	assertFeature("Queue", c.Features.Queue, t)
+	assertFeature("BGP", c.Features, t)
+	assertFeature("Conntrack", c.Features, t)
+	assertFeature("DHCP", c.Features, t)
+	assertFeature("DHCPv6", c.Features, t)
+	assertFeature("Pools", c.Features, t)
+	assertFeature("Routes", c.Features, t)
+	assertFeature("Optics", c.Features, t)
+	assertFeature("WlanSTA", c.Features, t)
+	assertFeature("WlanIF", c.Features, t)
+	assertFeature("Ipsec", c.Features, t)
+	assertFeature("Lte", c.Features, t)
+	assertFeature("Netwatch", c.Features, t)
+	assertFeature("Queue", c.Features, t)
 
 	f, _ := c.DeviceFeatures("testProfileMinimal")
-	assertFeature("Firmware", f.Firmware, t)
-	assertFeature("Health", f.Health, t)
-	assertFeature("Monitor", f.Monitor, t)
-	assertNotFeature("BGP", f.BGP, t)
+	assertFeature("Firmware", f, t)
+	assertFeature("Health", f, t)
+	assertFeature("Monitor", f, t)
+	assertNotFeature("BGP", f, t)
 }
 
 func loadTestFile(t *testing.T) []byte {
-	b, err := ioutil.ReadFile("config.test.yml")
+	b, err := os.ReadFile("config.test.yml")
 	if err != nil {
 		t.Fatalf("could not load config: %v", err)
 	}
@@ -67,14 +68,16 @@ func assertDevice(name, address, user, password string, c Device, t *testing.T) 
 	}
 }
 
-func assertFeature(name string, v bool, t *testing.T) {
-	if !v {
-		t.Fatalf("exprected feature %s to be enabled", name)
+func assertFeature(name string, f Features, t *testing.T) {
+	name = strings.ToLower(name)
+	if v, ok := f[name]; !ok || !v {
+		t.Fatalf("expected feature %s to be enabled", name)
 	}
 }
 
-func assertNotFeature(name string, v bool, t *testing.T) {
-	if v {
-		t.Fatalf("exprected feature %s to be disabled", name)
+func assertNotFeature(name string, f Features, t *testing.T) {
+	name = strings.ToLower(name)
+	if v, ok := f[name]; ok && v {
+		t.Fatalf("expected feature %s to be disabled", name)
 	}
 }
