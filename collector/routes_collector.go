@@ -25,7 +25,6 @@ func (c *routesCollector) init() {
 	labelNames := []string{"name", "address", "ip_version"}
 	c.countDesc = description("", prefix, "number of routes in RIB", labelNames)
 	c.countProtocolDesc = description(prefix, "protocol", "number of routes per protocol in RIB", append(labelNames, "protocol"))
-
 	c.protocols = []string{"bgp", "static", "ospf", "dynamic", "connect", "rip"}
 }
 
@@ -35,8 +34,7 @@ func (c *routesCollector) describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *routesCollector) collect(ctx *collectorContext) error {
-	err := c.colllectForIPVersion("4", "ip", ctx)
-	if err != nil {
+	if err := c.colllectForIPVersion("4", "ip", ctx); err != nil {
 		return err
 	}
 
@@ -44,14 +42,12 @@ func (c *routesCollector) collect(ctx *collectorContext) error {
 }
 
 func (c *routesCollector) colllectForIPVersion(ipVersion, topic string, ctx *collectorContext) error {
-	err := c.colllectCount(ipVersion, topic, ctx)
-	if err != nil {
+	if err := c.colllectCount(ipVersion, topic, ctx); err != nil {
 		return err
 	}
 
 	for _, p := range c.protocols {
-		err := c.colllectCountProtcol(ipVersion, topic, p, ctx)
-		if err != nil {
+		if err := c.colllectCountProtcol(ipVersion, topic, p, ctx); err != nil {
 			return err
 		}
 	}
@@ -68,11 +64,14 @@ func (c *routesCollector) colllectCount(ipVersion, topic string, ctx *collectorC
 			"topic":      topic,
 			"error":      err,
 		}).Error("error fetching routes metrics")
+
 		return err
 	}
+
 	if reply.Done.Map["ret"] == "" {
 		return nil
 	}
+
 	v, err := strconv.ParseFloat(reply.Done.Map["ret"], 32)
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -80,6 +79,7 @@ func (c *routesCollector) colllectCount(ipVersion, topic string, ctx *collectorC
 			"device":     ctx.device.Name,
 			"error":      err,
 		}).Error("error parsing routes metrics")
+
 		return err
 	}
 
@@ -88,7 +88,7 @@ func (c *routesCollector) colllectCount(ipVersion, topic string, ctx *collectorC
 }
 
 func (c *routesCollector) colllectCountProtcol(ipVersion, topic, protocol string, ctx *collectorContext) error {
-	reply, err := ctx.client.Run(fmt.Sprintf("/%s/route/print", topic), "?disabled=false", fmt.Sprintf("?%s", protocol), "=count-only=")
+	reply, err := ctx.client.Run(fmt.Sprintf("/%s/route/print", topic), "?disabled=false", "?"+protocol, "=count-only=")
 	if err != nil {
 		log.WithFields(log.Fields{
 			"ip_version": ipVersion,
@@ -96,11 +96,14 @@ func (c *routesCollector) colllectCountProtcol(ipVersion, topic, protocol string
 			"device":     ctx.device.Name,
 			"error":      err,
 		}).Error("error fetching routes metrics")
+
 		return err
 	}
+
 	if reply.Done.Map["ret"] == "" {
 		return nil
 	}
+
 	v, err := strconv.ParseFloat(reply.Done.Map["ret"], 32)
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -109,6 +112,7 @@ func (c *routesCollector) colllectCountProtcol(ipVersion, topic, protocol string
 			"device":     ctx.device.Name,
 			"error":      err,
 		}).Error("error parsing routes metrics")
+
 		return err
 	}
 

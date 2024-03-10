@@ -5,13 +5,15 @@ import (
 	"strconv"
 	"strings"
 
+	"mikrotik-exporter/routeros/proto"
+
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
-	"mikrotik-exporter/routeros/proto"
 )
 
 type wlanIFCollector struct {
 	props        []string
+	propslist    string
 	descriptions map[string]*prometheus.Desc
 	frequency    *prometheus.Desc
 }
@@ -19,25 +21,30 @@ type wlanIFCollector struct {
 func newWlanIFCollector() routerOSCollector {
 	c := &wlanIFCollector{}
 	c.init()
+
 	return c
 }
 
 func (c *wlanIFCollector) init() {
-	c.props = []string{"channel", "registered-clients", "noise-floor", "overall-tx-ccq"}
-	labelNames := []string{"name", "address", "interface", "channel"}
+	c.props = []string{"registered-clients", "noise-floor", "overall-tx-ccq"}
+	c.propslist = strings.Join(append(c.props, "channel"), ",")
 	c.descriptions = make(map[string]*prometheus.Desc)
+	c.frequency = description("wlan_interface", "frequency",
+		"WiFi frequency", []string{"name", "address", "interface", "freqidx"})
+
+	labelNames := []string{"name", "address", "interface", "channel"}
+
 	for _, p := range c.props {
 		c.descriptions[p] = descriptionForPropertyName("wlan_interface", p, labelNames)
 	}
-
-	c.frequency = description("wlan_interface", "frequency",
-		"WiFi frequency", []string{"name", "address", "interface", "freqidx"})
 }
 
 func (c *wlanIFCollector) describe(ch chan<- *prometheus.Desc) {
 	for _, d := range c.descriptions {
 		ch <- d
 	}
+
+	ch <- c.frequency
 }
 
 func (c *wlanIFCollector) collect(ctx *collectorContext) error {
@@ -63,10 +70,11 @@ func (c *wlanIFCollector) fetchInterfaceNames(ctx *collectorContext) ([]string, 
 			"device": ctx.device.Name,
 			"error":  err,
 		}).Error("error fetching wireless interface names")
+
 		return nil, err
 	}
 
-	names := []string{}
+	names := make([]string, 0, len(reply.Re))
 	for _, re := range reply.Re {
 		names = append(names, re.Map["name"])
 	}
@@ -75,13 +83,14 @@ func (c *wlanIFCollector) fetchInterfaceNames(ctx *collectorContext) ([]string, 
 }
 
 func (c *wlanIFCollector) collectForInterface(iface string, ctx *collectorContext) error {
-	reply, err := ctx.client.Run("/interface/wireless/monitor", fmt.Sprintf("=numbers=%s", iface), "=once=", "=.proplist="+strings.Join(c.props, ","))
+	reply, err := ctx.client.Run("/interface/wireless/monitor", fmt.Sprintf("=numbers=%s", iface), "=once=", "=.proplist="+c.propslist)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"interface": iface,
 			"device":    ctx.device.Name,
 			"error":     err,
 		}).Error("error fetching interface statistics")
+
 		return err
 	}
 
@@ -89,24 +98,22 @@ func (c *wlanIFCollector) collectForInterface(iface string, ctx *collectorContex
 		return nil
 	}
 
-	for _, p := range c.props[1:] {
+	for _, p := range c.props {
 		// there's always going to be only one sentence in reply, as we
 		// have to explicitly specify the interface
 		c.collectMetricForProperty(p, iface, reply.Re[0], ctx)
-		if p == "noise-floor" {
-			c.collectMetricForFreq(iface, reply.Re[0], ctx)
-		}
 	}
+
+	c.collectMetricForFreq(iface, reply.Re[0], ctx)
 
 	return nil
 }
 
 func (c *wlanIFCollector) collectMetricForProperty(property, iface string, re *proto.Sentence, ctx *collectorContext) {
-	desc := c.descriptions[property]
-	channel := re.Map["channel"]
 	if re.Map[property] == "" {
 		return
 	}
+
 	v, err := strconv.ParseFloat(re.Map[property], 64)
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -117,6 +124,9 @@ func (c *wlanIFCollector) collectMetricForProperty(property, iface string, re *p
 		}).Error("error parsing interface metric value")
 		return
 	}
+
+	desc := c.descriptions[property]
+	channel := re.Map["channel"]
 
 	ctx.ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, v, ctx.device.Name, ctx.device.Address, iface, channel)
 }
@@ -142,6 +152,7 @@ func (c *wlanIFCollector) collectMetricForFreq(iface string, re *proto.Sentence,
 				"device":    ctx.device.Name,
 				"error":     err,
 			}).Error("error parsing frequency metric value")
+
 			return
 		}
 

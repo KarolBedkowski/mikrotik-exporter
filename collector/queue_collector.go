@@ -5,17 +5,20 @@ import (
 	"strconv"
 	"strings"
 
+	"mikrotik-exporter/routeros/proto"
+
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
-	"mikrotik-exporter/routeros/proto"
 )
 
 type queueCollector struct {
-	monitorProps        []string
-	monitorDescriptions map[string]*prometheus.Desc
+	monitorProps     []string
+	monitorPropslist string
 
-	simpleQueueProps        []string
-	simpleQueueDescriptions map[string]*prometheus.Desc
+	simpleQueueProps     []string
+	simpleQueuePropslist string
+
+	descriptions map[string]*prometheus.Desc
 }
 
 func newQueueCollector() routerOSCollector {
@@ -26,28 +29,35 @@ func newQueueCollector() routerOSCollector {
 
 func (c *queueCollector) init() {
 	c.monitorProps = []string{"queued-packets", "queued-bytes"}
+	c.monitorPropslist = strings.Join(c.simpleQueueProps, ",")
+
 	labelNames := []string{"name", "address"}
-	c.monitorDescriptions = make(map[string]*prometheus.Desc)
+	c.descriptions = make(map[string]*prometheus.Desc)
 	for _, p := range c.monitorProps {
-		c.monitorDescriptions[p] = descriptionForPropertyName("queue", p, labelNames)
+		c.descriptions[p] = descriptionForPropertyName("queue", p, labelNames)
 	}
 
-	c.simpleQueueProps = []string{"name", "queue", "comment", "disabled", "bytes", "packets", "queued-bytes", "queued-packets"}
+	c.simpleQueueProps = []string{
+		"name", "queue", "comment",
+		"disabled", "bytes", "packets",
+		"queued-bytes", "queued-packets",
+	}
+	c.simpleQueuePropslist = strings.Join(c.simpleQueueProps, ",")
 	labelNames = []string{"name", "address", "simple_queue_name", "queue", "comment"}
-	c.simpleQueueDescriptions = make(map[string]*prometheus.Desc)
-	c.simpleQueueDescriptions["disabled"] = descriptionForPropertyName("simple_queue", "disabled", labelNames)
+	c.descriptions = make(map[string]*prometheus.Desc)
+	c.descriptions["disabled"] = descriptionForPropertyName("simple_queue", "disabled", labelNames)
 	for _, p := range c.simpleQueueProps[4:] {
-		c.simpleQueueDescriptions["tx_"+p] = descriptionForPropertyName("simple_queue", "tx_"+p+"_total", labelNames)
-		c.simpleQueueDescriptions["rx_"+p] = descriptionForPropertyName("simple_queue", "rx_"+p+"_total", labelNames)
+		c.descriptions["tx_"+p] = descriptionForPropertyName("simple_queue", "tx_"+p+"_total", labelNames)
+		c.descriptions["rx_"+p] = descriptionForPropertyName("simple_queue", "rx_"+p+"_total", labelNames)
 	}
 }
 
 func (c *queueCollector) describe(ch chan<- *prometheus.Desc) {
-	for _, d := range c.monitorDescriptions {
+	for _, d := range c.descriptions {
 		ch <- d
 	}
 
-	for _, d := range c.simpleQueueDescriptions {
+	for _, d := range c.descriptions {
 		ch <- d
 	}
 }
@@ -71,7 +81,7 @@ func (c *queueCollector) collect(ctx *collectorContext) error {
 }
 
 func (c *queueCollector) collectQueue(ctx *collectorContext) error {
-	reply, err := ctx.client.Run("/queue/monitor", "=once=", "=.proplist="+strings.Join(c.monitorProps, ","))
+	reply, err := ctx.client.Run("/queue/monitor", "=once=", "=.proplist="+c.monitorPropslist)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"device": ctx.device.Name,
@@ -92,7 +102,7 @@ func (c *queueCollector) collectQueue(ctx *collectorContext) error {
 }
 
 func (c *queueCollector) collectMetricForProperty(property string, re *proto.Sentence, ctx *collectorContext) {
-	desc := c.monitorDescriptions[property]
+	desc := c.descriptions[property]
 	if re.Map[property] == "" {
 		return
 	}
@@ -110,7 +120,7 @@ func (c *queueCollector) collectMetricForProperty(property string, re *proto.Sen
 }
 
 func (c *queueCollector) fetchSimpleQueue(ctx *collectorContext) ([]*proto.Sentence, error) {
-	reply, err := ctx.client.Run("/queue/simple/print", "=.proplist="+strings.Join(c.simpleQueueProps, ","))
+	reply, err := ctx.client.Run("/queue/simple/print", "=.proplist="+c.simpleQueuePropslist)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"device": ctx.device.Name,
@@ -124,7 +134,7 @@ func (c *queueCollector) fetchSimpleQueue(ctx *collectorContext) ([]*proto.Sente
 
 func (c *queueCollector) collectForSimpleQqueue(re *proto.Sentence, ctx *collectorContext) {
 	for _, p := range c.simpleQueueProps[3:] {
-		desc := c.simpleQueueDescriptions[p]
+		desc := c.descriptions[p]
 		if value := re.Map[p]; value != "" {
 			var (
 				v     float64
@@ -185,8 +195,8 @@ func (c *queueCollector) collectMetricForTXRXCounters(property, name, queue, com
 		}).Error("error parsing queue metric value")
 		return
 	}
-	desc_tx := c.simpleQueueDescriptions["tx_"+property]
-	desc_rx := c.simpleQueueDescriptions["rx_"+property]
+	desc_tx := c.descriptions["tx_"+property]
+	desc_rx := c.descriptions["rx_"+property]
 	ctx.ch <- prometheus.MustNewConstMetric(desc_tx, prometheus.CounterValue, tx, ctx.device.Name, ctx.device.Address, name, queue, comment)
 	ctx.ch <- prometheus.MustNewConstMetric(desc_rx, prometheus.CounterValue, rx, ctx.device.Name, ctx.device.Address, name, queue, comment)
 }
@@ -195,10 +205,12 @@ func splitToFloats(metric string) (float64, float64, error) {
 	if metric == "" {
 		return 0, 0, nil
 	}
+
 	strs := strings.Split(metric, "/")
 	if len(strs) != 2 {
 		return 0, 0, nil
 	}
+
 	var m1, m2 float64
 	var err error
 

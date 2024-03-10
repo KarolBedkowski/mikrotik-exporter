@@ -83,40 +83,33 @@ func (c *monitorCollector) collectMetricsForEth(name string, se *proto.Sentence,
 		value := float64(c.valueForProp(prop, v))
 
 		ctx.ch <- prometheus.MustNewConstMetric(c.descriptions[prop], prometheus.GaugeValue, value, ctx.device.Name, ctx.device.Address, name)
-
 	}
 }
 
 func (c *monitorCollector) valueForProp(name, value string) int {
-	switch {
-	case name == "status":
-		return func(v string) int {
-			if v == "link-ok" {
-				return 1
-			}
-			return 0
-		}(value)
-	case name == "rate":
-		return func(v string) int {
-			switch {
-			case v == "10Mbps":
-				return 10
-			case v == "100Mbps":
-				return 100
-			case v == "1Gbps":
-				return 1000
-			case v == "10Gbps":
-				return 10000
-			}
-			return 0
-		}(value)
-	case name == "full-duplex":
-		return func(v string) int {
-			if v == "true" {
-				return 1
-			}
-			return 0
-		}(value)
+	switch name {
+	case "status":
+		if value == "link-ok" {
+			return 1
+		}
+		return 0
+	case "rate":
+		switch value {
+		case "10Mbps":
+			return 10
+		case "100Mbps":
+			return 100
+		case "1Gbps":
+			return 1000
+		case "10Gbps":
+			return 10000
+		}
+		return 0
+	case "full-duplex":
+		if value == "true" {
+			return 1
+		}
+		return 0
 	default:
 		return 0
 	}

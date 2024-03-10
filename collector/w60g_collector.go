@@ -20,6 +20,7 @@ type w60gInterfaceCollector struct {
 	txDistanceDesc        *prometheus.Desc
 	txPacketErrorRateDesc *prometheus.Desc
 	props                 []string
+	propslist             string
 }
 
 func (c *w60gInterfaceCollector) describe(ch chan<- *prometheus.Desc) {
@@ -60,7 +61,7 @@ func (c *w60gInterfaceCollector) collectw60gMetricsForInterfaces(ifaces []string
 	reply, err := ctx.client.Run("/interface/w60g/monitor",
 		"=numbers="+strings.Join(ifaces, ","),
 		"=once=",
-		"=.proplist=name,"+strings.Join(c.props, ","))
+		"=.proplist=name,"+c.propslist)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"device": ctx.device.Name,
@@ -107,6 +108,7 @@ func (c *w60gInterfaceCollector) collectMetricsForw60gInterface(name string, se 
 func neww60gInterfaceCollector() routerOSCollector {
 	const prefix = "w60ginterface"
 
+	props := []string{"signal", "rssi", "tx-mcs", "frequency", "tx-phy-rate", "tx-sector", "distance", "tx-packet-error-rate"}
 	labelNames := []string{"name", "address", "interface"}
 	return &w60gInterfaceCollector{
 		frequencyDesc:         description(prefix, "frequency", "frequency of tx in MHz", labelNames),
@@ -117,7 +119,8 @@ func neww60gInterfaceCollector() routerOSCollector {
 		txSectorDesc:          description(prefix, "txSector", "TX Sector", labelNames),
 		txDistanceDesc:        description(prefix, "txDistance", "Distance to remote", labelNames),
 		txPacketErrorRateDesc: description(prefix, "txPacketErrorRate", "TX Packet Error Rate", labelNames),
-		props:                 []string{"signal", "rssi", "tx-mcs", "frequency", "tx-phy-rate", "tx-sector", "distance", "tx-packet-error-rate"},
+		props:                 props,
+		propslist:             strings.Join(props, ","),
 	}
 }
 

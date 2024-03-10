@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"strings"
 
+	"mikrotik-exporter/routeros/proto"
+
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
-	"mikrotik-exporter/routeros/proto"
 )
 
 type netwatchCollector struct {
-	props        []string
+	propslist    string
 	descriptions map[string]*prometheus.Desc
 }
 
@@ -21,12 +22,10 @@ func newNetwatchCollector() routerOSCollector {
 }
 
 func (c *netwatchCollector) init() {
-	c.props = []string{"host", "comment", "status"}
+	c.propslist = strings.Join([]string{"host", "comment", "status"}, ",")
 	labelNames := []string{"name", "address", "host", "comment", "status"}
 	c.descriptions = make(map[string]*prometheus.Desc)
-	for _, p := range c.props[1:] {
-		c.descriptions[p] = descriptionForPropertyName("netwatch", p, labelNames)
-	}
+	c.descriptions["status"] = descriptionForPropertyName("netwatch", "status", labelNames)
 }
 
 func (c *netwatchCollector) describe(ch chan<- *prometheus.Desc) {
@@ -49,7 +48,7 @@ func (c *netwatchCollector) collect(ctx *collectorContext) error {
 }
 
 func (c *netwatchCollector) fetch(ctx *collectorContext) ([]*proto.Sentence, error) {
-	reply, err := ctx.client.Run("/tool/netwatch/print", "?disabled=false", "=.proplist="+strings.Join(c.props, ","))
+	reply, err := ctx.client.Run("/tool/netwatch/print", "?disabled=false", "=.proplist="+c.propslist)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"device": ctx.device.Name,
@@ -64,16 +63,14 @@ func (c *netwatchCollector) fetch(ctx *collectorContext) ([]*proto.Sentence, err
 func (c *netwatchCollector) collectForStat(re *proto.Sentence, ctx *collectorContext) {
 	host := re.Map["host"]
 	comment := re.Map["comment"]
-
-	for _, p := range c.props[2:] {
-		c.collectMetricForProperty(p, host, comment, re, ctx)
-	}
+	c.collectMetricForProperty("status", host, comment, re, ctx)
 }
 
 func (c *netwatchCollector) collectMetricForProperty(property, host, comment string, re *proto.Sentence, ctx *collectorContext) {
 	desc := c.descriptions[property]
 	if value := re.Map[property]; value != "" {
 		var upVal, downVal, unknownVal float64
+
 		switch value {
 		case "up":
 			upVal = 1
@@ -90,6 +87,7 @@ func (c *netwatchCollector) collectMetricForProperty(property, host, comment str
 				"error":    fmt.Errorf("unexpected netwatch status value"),
 			}).Error("error parsing netwatch metric value")
 		}
+
 		ctx.ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, upVal, ctx.device.Name, ctx.device.Address, host, comment, "up")
 		ctx.ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, downVal, ctx.device.Name, ctx.device.Address, host, comment, "down")
 		ctx.ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, unknownVal, ctx.device.Name, ctx.device.Address, host, comment, "unknown")

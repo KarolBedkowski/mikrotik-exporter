@@ -59,7 +59,7 @@ func (c *poolCollector) fetchPoolNames(ipVersion, topic string, ctx *collectorCo
 		return nil, err
 	}
 
-	names := []string{}
+	names := make([]string, 0, len(reply.Re))
 	for _, re := range reply.Re {
 		names = append(names, re.Map["name"])
 	}
@@ -78,9 +78,11 @@ func (c *poolCollector) collectForPool(ipVersion, topic, pool string, ctx *colle
 		}).Error("error fetching pool counts")
 		return err
 	}
+
 	if reply.Done.Map["ret"] == "" {
 		return nil
 	}
+
 	v, err := strconv.ParseFloat(reply.Done.Map["ret"], 32)
 	if err != nil {
 		log.WithFields(log.Fields{

@@ -7,9 +7,10 @@ import (
 	"strings"
 	"time"
 
+	"mikrotik-exporter/routeros/proto"
+
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
-	"mikrotik-exporter/routeros/proto"
 )
 
 var (
@@ -29,19 +30,21 @@ type resourceCollector struct {
 }
 
 func newResourceCollector() routerOSCollector {
-	c := &resourceCollector{}
+	c := &resourceCollector{
+		descriptions: make(map[string]*prometheus.Desc),
+	}
+
 	c.init()
 	return c
 }
 
 func (c *resourceCollector) init() {
 	c.props = []string{
-		"free-memory", "total-memory", "cpu-load", "free-hdd-space", "total-hdd-space",
-		"cpu-frequency", "bad-blocks", "uptime", "cpu-count", "board-name", "version",
+		"free-memory", "total-memory", "cpu-load", "free-hdd-space", "total-hdd-space", "cpu-frequency", "bad-blocks",
+		"uptime", "cpu-count",
+		"board-name", "version",
 	}
-
 	labelNames := []string{"name", "address"}
-	c.descriptions = make(map[string]*prometheus.Desc)
 	for _, p := range c.props[:len(c.props)-4] {
 		c.descriptions[p] = descriptionForPropertyName("system", p, labelNames)
 	}
@@ -79,6 +82,7 @@ func (c *resourceCollector) fetch(ctx *collectorContext) ([]*proto.Sentence, err
 			"device": ctx.device.Name,
 			"error":  err,
 		}).Error("error fetching system resource metrics")
+
 		return nil, err
 	}
 
@@ -102,7 +106,7 @@ func (c *resourceCollector) collectForStat(re *proto.Sentence, ctx *collectorCon
 
 func (c *resourceCollector) collectMetricForProperty(property string, re *proto.Sentence, ctx *collectorContext) {
 	var v float64
-	var vtype prometheus.ValueType
+	var vtype prometheus.ValueType = prometheus.GaugeValue
 	var err error
 
 	if property == "uptime" {
@@ -112,8 +116,8 @@ func (c *resourceCollector) collectMetricForProperty(property string, re *proto.
 		if re.Map[property] == "" {
 			return
 		}
+
 		v, err = strconv.ParseFloat(re.Map[property], 64)
-		vtype = prometheus.GaugeValue
 	}
 
 	if err != nil {
@@ -123,6 +127,7 @@ func (c *resourceCollector) collectMetricForProperty(property string, re *proto.
 			"value":    re.Map[property],
 			"error":    err,
 		}).Error("error parsing system resource metric value")
+
 		return
 	}
 
@@ -149,10 +154,13 @@ func parseUptime(uptime string) (float64, error) {
 					"value":  match,
 					"error":  err,
 				}).Error("error parsing uptime field value")
+
 				return float64(0), err
 			}
+
 			u += time.Duration(v) * uptimeParts[i-1]
 		}
 	}
+
 	return u.Seconds(), nil
 }

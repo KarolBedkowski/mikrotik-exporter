@@ -247,7 +247,7 @@ func (c *collector) connectAndCollect(d *deviceCollector, ch chan<- prometheus.M
 	for _, coName := range d.collectors {
 		co := c.collectors[coName]
 		ctx := &collectorContext{ch, &d.device, cl}
-		log.WithFields(log.Fields{"device": d.device.Name, "collector": co}).Debug("collect")
+		log.WithFields(log.Fields{"device": d.device.Name, "collector": fmt.Sprintf("%#v", co)}).Debug("collect")
 		if err = co.collect(ctx); err != nil {
 			result = multierror.Append(result, err)
 		}
@@ -260,14 +260,16 @@ func (c *collector) getConnection(d *deviceCollector) (*routeros.Client, error) 
 	c.connLock.Lock()
 	defer c.connLock.Unlock()
 
-	// unique key for connections
 	// try do get connection from cache
 	if d.cl != nil {
-		if _, err := d.cl.Run("/system/identity/print"); err == nil {
+		// check is connection alive
+		if reply, err := d.cl.Run("/system/identity/print"); err == nil && len(reply.Re) > 0 {
 			return d.cl, nil
 		}
 		d.cl.Close()
 		d.cl = nil
+
+		log.WithFields(log.Fields{"device": d.device.Name}).Info("reconnecting")
 	}
 
 	client, err := c.connect(&d.device)
@@ -392,7 +394,7 @@ func newROSCollector(name string) routerOSCollector {
 		return newPoolCollector()
 	case "optics":
 		return newOpticsCollector()
-	case "w60ginterface":
+	case "w60g":
 		return neww60gInterfaceCollector()
 	case "wlansta":
 		return newWlanSTACollector()

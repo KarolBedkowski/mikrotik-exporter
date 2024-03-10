@@ -15,17 +15,20 @@ type poeCollector struct {
 	powerDesc   *prometheus.Desc
 	voltageDesc *prometheus.Desc
 	props       []string
+	propslist   string
 }
 
 func newPOECollector() routerOSCollector {
 	const prefix = "poe"
 
 	labelNames := []string{"name", "address", "interface"}
+	props := []string{"poe-out-current", "poe-out-voltage", "poe-out-power"}
 	return &poeCollector{
 		currentDesc: description(prefix, "current", "current in mA", labelNames),
 		powerDesc:   description(prefix, "wattage", "Power in W", labelNames),
 		voltageDesc: description(prefix, "voltage", "Voltage in V", labelNames),
-		props:       []string{"poe-out-current", "poe-out-voltage", "poe-out-power"},
+		props:       props,
+		propslist:   strings.Join(append(props, "name"), ","),
 	}
 }
 
@@ -59,10 +62,7 @@ func (c *poeCollector) collect(ctx *collectorContext) error {
 }
 
 func (c *poeCollector) collectPOEMetricsForInterfaces(ifaces []string, ctx *collectorContext) error {
-	reply, err := ctx.client.Run("/interface/ethernet/poe/monitor",
-		"=numbers="+strings.Join(ifaces, ","),
-		"=once=",
-		"=.proplist=name,"+strings.Join(c.props, ","))
+	reply, err := ctx.client.Run("/interface/ethernet/poe/monitor", "=numbers="+strings.Join(ifaces, ","), "=once=", "=.proplist="+c.propslist)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"device": ctx.device.Name,
@@ -72,12 +72,9 @@ func (c *poeCollector) collectPOEMetricsForInterfaces(ifaces []string, ctx *coll
 	}
 
 	for _, se := range reply.Re {
-		name, ok := se.Map["name"]
-		if !ok {
-			continue
+		if name, ok := se.Map["name"]; ok {
+			c.collectMetricsForInterface(name, se, ctx)
 		}
-
-		c.collectMetricsForInterface(name, se, ctx)
 	}
 
 	return nil
@@ -86,12 +83,10 @@ func (c *poeCollector) collectPOEMetricsForInterfaces(ifaces []string, ctx *coll
 func (c *poeCollector) collectMetricsForInterface(name string, se *proto.Sentence, ctx *collectorContext) {
 	for _, prop := range c.props {
 		v, ok := se.Map[prop]
-		if !ok {
+		if !ok || v == "" {
 			continue
 		}
-		if v == "" {
-			continue
-		}
+
 		value, err := strconv.ParseFloat(v, 64)
 		if err != nil {
 			log.WithFields(log.Fields{
