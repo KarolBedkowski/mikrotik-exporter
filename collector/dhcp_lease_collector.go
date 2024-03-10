@@ -10,6 +10,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+func init() {
+	registerCollector("dhcpl", newDHCPLCollector)
+}
+
 type dhcpLeaseCollector struct {
 	propslist    string
 	descriptions *prometheus.Desc

@@ -7,6 +7,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+func init() {
+	registerCollector("firmware", newFirmwareCollector)
+}
+
 type firmwareCollector struct {
 	description *prometheus.Desc
 }

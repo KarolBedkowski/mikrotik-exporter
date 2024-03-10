@@ -8,6 +8,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+func init() {
+	registerCollector("dhcpv6", newDHCPv6Collector)
+}
+
 type dhcpv6Collector struct {
 	bindingCountDesc *prometheus.Desc
 }

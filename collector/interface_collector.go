@@ -10,6 +10,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+func init() {
+	registerCollector("interface", newInterfaceCollector)
+}
+
 type interfaceCollector struct {
 	props        []string
 	propslist    string

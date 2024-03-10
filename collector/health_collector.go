@@ -9,6 +9,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+func init() {
+	registerCollector("health", newhealthCollector)
+}
+
 type healthCollector struct {
 	descriptions map[string]*prometheus.Desc
 }

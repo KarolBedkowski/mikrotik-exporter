@@ -10,6 +10,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+func init() {
+	registerCollector("bgp", newBGPCollector)
+}
+
 type bgpCollector struct {
 	props        []string
 	proplist     string

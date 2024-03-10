@@ -10,6 +10,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+func init() {
+	registerCollector("w60g", neww60gInterfaceCollector)
+}
+
 type w60gInterfaceCollector struct {
 	frequencyDesc         *prometheus.Desc
 	txMCSDesc             *prometheus.Desc

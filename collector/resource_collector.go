@@ -19,6 +19,8 @@ var (
 )
 
 func init() {
+	registerCollector("resource", newResourceCollector)
+
 	uptimeRegex = regexp.MustCompile(`(?:(\d*)w)?(?:(\d*)d)?(?:(\d*)h)?(?:(\d*)m)?(?:(\d*)s)?`)
 	uptimeParts = [5]time.Duration{time.Hour * 168, time.Hour * 24, time.Hour, time.Minute, time.Second}
 }

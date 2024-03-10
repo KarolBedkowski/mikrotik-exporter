@@ -9,6 +9,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+func init() {
+	registerCollector("monitor", newMonitorCollector)
+}
+
 type monitorCollector struct {
 	props        []string // props from monitor, can add other ether props later if needed
 	propslist    string

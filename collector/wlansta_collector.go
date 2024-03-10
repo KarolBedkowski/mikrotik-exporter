@@ -10,6 +10,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+func init() {
+	registerCollector("wlansta", newWlanSTACollector)
+}
+
 type wlanSTACollector struct {
 	propslist    string
 	descriptions map[string]*prometheus.Desc

@@ -10,6 +10,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+func init() {
+	registerCollector("optics", newOpticsCollector)
+}
+
 type opticsCollector struct {
 	rxStatusDesc    *prometheus.Desc
 	txStatusDesc    *prometheus.Desc

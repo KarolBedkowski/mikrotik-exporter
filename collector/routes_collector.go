@@ -8,6 +8,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+func init() {
+	registerCollector("routes", newRoutesCollector)
+}
+
 type routesCollector struct {
 	protocols         []string
 	countDesc         *prometheus.Desc

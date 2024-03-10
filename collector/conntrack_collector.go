@@ -10,6 +10,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+func init() {
+	registerCollector("conntrack", newConntrackCollector)
+}
+
 type conntrackCollector struct {
 	propslist        string
 	totalEntriesDesc *prometheus.Desc

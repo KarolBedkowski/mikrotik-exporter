@@ -10,6 +10,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+func init() {
+	registerCollector("poe", newPOECollector)
+}
+
 type poeCollector struct {
 	currentDesc *prometheus.Desc
 	powerDesc   *prometheus.Desc

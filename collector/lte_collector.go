@@ -11,6 +11,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+func init() {
+	registerCollector("lte", newLteCollector)
+}
+
 type lteCollector struct {
 	props        []string
 	propslist    string

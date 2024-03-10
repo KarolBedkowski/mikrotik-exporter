@@ -10,6 +10,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+func init() {
+	registerCollector("capsman", newCapsmanCollector)
+}
+
 type capsmanCollector struct {
 	proplist     string
 	descriptions map[string]*prometheus.Desc

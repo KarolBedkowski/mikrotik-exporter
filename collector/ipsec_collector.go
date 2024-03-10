@@ -10,6 +10,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+func init() {
+	registerCollector("ipsec", newIpsecCollector)
+}
+
 type ipsecCollector struct {
 	props        []string
 	propslist    string

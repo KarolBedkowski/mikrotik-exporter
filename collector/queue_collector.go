@@ -10,6 +10,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+func init() {
+	registerCollector("queue", newQueueCollector)
+}
+
 type queueCollector struct {
 	monitorProps     []string
 	monitorPropslist string

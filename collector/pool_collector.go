@@ -8,6 +8,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+func init() {
+	registerCollector("pools", newPoolCollector)
+}
+
 type poolCollector struct {
 	usedCountDesc *prometheus.Desc
 }

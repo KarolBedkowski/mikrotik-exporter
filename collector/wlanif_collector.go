@@ -11,6 +11,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+func init() {
+	registerCollector("wlanif", newWlanIFCollector)
+}
+
 type wlanIFCollector struct {
 	props        []string
 	propslist    string

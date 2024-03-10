@@ -394,57 +394,6 @@ func challengeResponse(cha []byte, password string) string {
 	return fmt.Sprintf("00%x", h.Sum(nil))
 }
 
-func newROSCollector(name string) routerOSCollector {
-	switch name {
-	case "bgp":
-		return newBGPCollector()
-	case "routes":
-		return newRoutesCollector()
-	case "dhcpl":
-		return newDHCPLCollector()
-	case "dhcpv6":
-		return newDHCPv6Collector()
-	case "dhcp":
-		return newDHCPCollector()
-	case "firmware":
-		return newFirmwareCollector()
-	case "health":
-		return newhealthCollector()
-	case "poe":
-		return newPOECollector()
-	case "pools":
-		return newPoolCollector()
-	case "optics":
-		return newOpticsCollector()
-	case "w60g":
-		return neww60gInterfaceCollector()
-	case "wlansta":
-		return newWlanSTACollector()
-	case "capsman":
-		return newCapsmanCollector()
-	case "wlanif":
-		return newWlanIFCollector()
-	case "monitor":
-		return newMonitorCollector()
-	case "ipsec":
-		return newIpsecCollector()
-	case "conntrack":
-		return newConntrackCollector()
-	case "lte":
-		return newLteCollector()
-	case "netwatch":
-		return newNetwatchCollector()
-	case "queue":
-		return newQueueCollector()
-	case "interface":
-		return newInterfaceCollector()
-	case "resource":
-		return newResourceCollector()
-	}
-
-	return nil
-}
-
 func newCollectors(cfg *config.Config) map[string]routerOSCollector {
 	collectors := make(map[string]routerOSCollector)
 
@@ -467,12 +416,8 @@ func newCollectors(cfg *config.Config) map[string]routerOSCollector {
 	}
 
 	for k := range uniqueNames {
-		if c := newROSCollector(k); c != nil {
-			log.WithFields(log.Fields{"collector": k}).Debug("new collector")
-			collectors[k] = c
-		} else {
-			panic("unknown collector " + k)
-		}
+		collectors[k] = instanateCollector(k)
+		log.WithFields(log.Fields{"collector": k}).Debug("new collector")
 	}
 
 	return collectors

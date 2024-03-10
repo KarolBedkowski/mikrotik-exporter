@@ -7,6 +7,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+func init() {
+	registerCollector("dhcp", newDHCPCollector)
+}
+
 type dhcpCollector struct {
 	leasesActiveCountDesc *prometheus.Desc
 }
