@@ -14,17 +14,17 @@ type healthCollector struct {
 }
 
 func newhealthCollector() routerOSCollector {
-	c := &healthCollector{}
-	c.init()
-	return c
-}
-
-func (c *healthCollector) init() {
 	labelNames := []string{"name", "address"}
-	c.descriptions = make(map[string]*prometheus.Desc)
+
+	c := &healthCollector{
+		descriptions: make(map[string]*prometheus.Desc),
+	}
+
 	c.descriptions["voltage"] = descriptionForPropertyNameHelpText("health", "voltage", labelNames, "Input voltage to the RouterOS board, in volts")
 	c.descriptions["temperature"] = descriptionForPropertyNameHelpText("health", "temperature", labelNames, "Temperature of RouterOS board, in degrees Celsius")
 	c.descriptions["cpu-temperature"] = descriptionForPropertyNameHelpText("health", "cpu-temperature", labelNames, "Temperature of RouterOS CPU, in degrees Celsius")
+
+	return c
 }
 
 func (c *healthCollector) describe(ch chan<- *prometheus.Desc) {

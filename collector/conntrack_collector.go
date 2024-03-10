@@ -11,7 +11,7 @@ import (
 )
 
 type conntrackCollector struct {
-	props            string
+	propslist        string
 	totalEntriesDesc *prometheus.Desc
 	maxEntriesDesc   *prometheus.Desc
 }
@@ -21,7 +21,7 @@ func newConntrackCollector() routerOSCollector {
 
 	labelNames := []string{"name", "address"}
 	return &conntrackCollector{
-		props:            strings.Join([]string{"total-entries", "max-entries"}, ","),
+		propslist:        strings.Join([]string{"total-entries", "max-entries"}, ","),
 		totalEntriesDesc: description(prefix, "entries", "Number of tracked connections", labelNames),
 		maxEntriesDesc:   description(prefix, "max_entries", "Conntrack table capacity", labelNames),
 	}
@@ -33,16 +33,18 @@ func (c *conntrackCollector) describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *conntrackCollector) collect(ctx *collectorContext) error {
-	reply, err := ctx.client.Run("/ip/firewall/connection/tracking/print", "=.proplist="+c.props)
+	reply, err := ctx.client.Run("/ip/firewall/connection/tracking/print", "=.proplist="+c.propslist)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"device": ctx.device.Name,
 			"error":  err,
 		}).Error("error fetching conntrack table metrics")
+
 		return err
 	}
 
-	for _, re := range reply.Re {
+	if len(reply.Re) > 0 {
+		re := reply.Re[0]
 		c.collectMetricForProperty("total-entries", c.totalEntriesDesc, re, ctx)
 		c.collectMetricForProperty("max-entries", c.maxEntriesDesc, re, ctx)
 	}
@@ -63,6 +65,7 @@ func (c *conntrackCollector) collectMetricForProperty(property string, desc *pro
 			"value":    re.Map[property],
 			"error":    err,
 		}).Error("error parsing conntrack metric value")
+
 		return
 	}
 

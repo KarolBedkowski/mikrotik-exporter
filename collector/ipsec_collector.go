@@ -4,30 +4,32 @@ import (
 	"strconv"
 	"strings"
 
+	"mikrotik-exporter/routeros/proto"
+
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
-	"mikrotik-exporter/routeros/proto"
 )
 
 type ipsecCollector struct {
 	props        []string
+	propslist    string
 	descriptions map[string]*prometheus.Desc
 }
 
 func newIpsecCollector() routerOSCollector {
-	c := &ipsecCollector{}
-	c.init()
-	return c
-}
+	c := &ipsecCollector{
+		descriptions: make(map[string]*prometheus.Desc),
+	}
 
-func (c *ipsecCollector) init() {
 	c.props = []string{"src-address", "dst-address", "ph2-state", "invalid", "active", "comment"}
-
+	c.propslist = strings.Join(c.props, ",")
 	labelNames := []string{"devicename", "srcdst", "comment"}
-	c.descriptions = make(map[string]*prometheus.Desc)
+
 	for _, p := range c.props[1:] {
 		c.descriptions[p] = descriptionForPropertyName("ipsec", p, labelNames)
 	}
+
+	return c
 }
 
 func (c *ipsecCollector) describe(ch chan<- *prometheus.Desc) {
@@ -50,12 +52,13 @@ func (c *ipsecCollector) collect(ctx *collectorContext) error {
 }
 
 func (c *ipsecCollector) fetch(ctx *collectorContext) ([]*proto.Sentence, error) {
-	reply, err := ctx.client.Run("/ip/ipsec/policy/print", "?disabled=false", "?dynamic=false", "=.proplist="+strings.Join(c.props, ","))
+	reply, err := ctx.client.Run("/ip/ipsec/policy/print", "?disabled=false", "?dynamic=false", "=.proplist="+c.propslist)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"device": ctx.device.Name,
 			"error":  err,
 		}).Error("error fetching interface metrics")
+
 		return nil, err
 	}
 
@@ -76,23 +79,20 @@ func (c *ipsecCollector) collectMetricForProperty(property, srcdst, comment stri
 	if value := re.Map[property]; value != "" {
 		var v float64
 		var err error
-		v, err = strconv.ParseFloat(value, 64)
 
 		switch property {
 		case "ph2-state":
 			if value == "established" {
-				v, err = 1, nil
+				v = 1
 			} else {
-				v, err = 0, nil
+				v = 0
 			}
 		case "active", "invalid":
-			if value == "true" {
-				v, err = 1, nil
-			} else {
-				v, err = 0, nil
-			}
+			v = parseBool(value)
 		case "comment":
 			return
+		default:
+			v, err = strconv.ParseFloat(value, 64)
 		}
 
 		if err != nil {
@@ -103,8 +103,10 @@ func (c *ipsecCollector) collectMetricForProperty(property, srcdst, comment stri
 				"value":    value,
 				"error":    err,
 			}).Error("error parsing ipsec metric value")
+
 			return
 		}
+
 		ctx.ch <- prometheus.MustNewConstMetric(desc, prometheus.CounterValue, v, ctx.device.Name, srcdst, comment)
 	}
 }

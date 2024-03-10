@@ -12,16 +12,13 @@ type poolCollector struct {
 	usedCountDesc *prometheus.Desc
 }
 
-func (c *poolCollector) init() {
+func newPoolCollector() routerOSCollector {
 	const prefix = "ip_pool"
 
 	labelNames := []string{"name", "address", "ip_version", "pool"}
-	c.usedCountDesc = description(prefix, "pool_used", "number of used IP/prefixes in a pool", labelNames)
-}
-
-func newPoolCollector() routerOSCollector {
-	c := &poolCollector{}
-	c.init()
+	c := &poolCollector{
+		usedCountDesc: description(prefix, "pool_used", "number of used IP/prefixes in a pool", labelNames),
+	}
 	return c
 }
 
@@ -40,8 +37,7 @@ func (c *poolCollector) collectForIPVersion(ipVersion, topic string, ctx *collec
 	}
 
 	for _, n := range names {
-		err := c.collectForPool(ipVersion, topic, n, ctx)
-		if err != nil {
+		if err := c.collectForPool(ipVersion, topic, n, ctx); err != nil {
 			return err
 		}
 	}
@@ -56,6 +52,7 @@ func (c *poolCollector) fetchPoolNames(ipVersion, topic string, ctx *collectorCo
 			"device": ctx.device.Name,
 			"error":  err,
 		}).Error("error fetching pool names")
+
 		return nil, err
 	}
 
@@ -76,6 +73,7 @@ func (c *poolCollector) collectForPool(ipVersion, topic, pool string, ctx *colle
 			"device":     ctx.device.Name,
 			"error":      err,
 		}).Error("error fetching pool counts")
+
 		return err
 	}
 
@@ -91,6 +89,7 @@ func (c *poolCollector) collectForPool(ipVersion, topic, pool string, ctx *colle
 			"device":     ctx.device.Name,
 			"error":      err,
 		}).Error("error parsing pool counts")
+
 		return err
 	}
 

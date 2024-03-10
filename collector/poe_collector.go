@@ -45,6 +45,7 @@ func (c *poeCollector) collect(ctx *collectorContext) error {
 			"device": ctx.device.Name,
 			"error":  err,
 		}).Error("error fetching interface poe metrics")
+
 		return err
 	}
 
@@ -68,6 +69,7 @@ func (c *poeCollector) collectPOEMetricsForInterfaces(ifaces []string, ctx *coll
 			"device": ctx.device.Name,
 			"error":  err,
 		}).Error("error fetching interface poe monitor metrics")
+
 		return err
 	}
 
@@ -95,6 +97,7 @@ func (c *poeCollector) collectMetricsForInterface(name string, se *proto.Sentenc
 				"property":  prop,
 				"error":     err,
 			}).Error("error parsing interface poe monitor metric")
+
 			return
 		}
 

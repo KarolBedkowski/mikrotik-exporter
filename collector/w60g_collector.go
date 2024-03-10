@@ -41,6 +41,7 @@ func (c *w60gInterfaceCollector) collect(ctx *collectorContext) error {
 			"device": ctx.device.Name,
 			"error":  err,
 		}).Error("error fetching w60g interface metrics")
+
 		return err
 	}
 
@@ -67,15 +68,14 @@ func (c *w60gInterfaceCollector) collectw60gMetricsForInterfaces(ifaces []string
 			"device": ctx.device.Name,
 			"error":  err,
 		}).Error("error fetching w60g interface monitor metrics")
+
 		return err
 	}
-	for _, se := range reply.Re {
-		name, ok := se.Map["name"]
-		if !ok {
-			continue
-		}
 
-		c.collectMetricsForw60gInterface(name, se, ctx)
+	for _, se := range reply.Re {
+		if name, ok := se.Map["name"]; ok {
+			c.collectMetricsForw60gInterface(name, se, ctx)
+		}
 	}
 
 	return nil
@@ -84,12 +84,10 @@ func (c *w60gInterfaceCollector) collectw60gMetricsForInterfaces(ifaces []string
 func (c *w60gInterfaceCollector) collectMetricsForw60gInterface(name string, se *proto.Sentence, ctx *collectorContext) {
 	for _, prop := range c.props {
 		v, ok := se.Map[prop]
-		if !ok {
+		if !ok || v == "" {
 			continue
 		}
-		if v == "" {
-			continue
-		}
+
 		value, err := strconv.ParseFloat(v, 64)
 		if err != nil {
 			log.WithFields(log.Fields{
@@ -98,6 +96,7 @@ func (c *w60gInterfaceCollector) collectMetricsForw60gInterface(name string, se 
 				"property":  prop,
 				"error":     err,
 			}).Error("error parsing w60g interface monitor metric")
+
 			return
 		}
 

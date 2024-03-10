@@ -11,19 +11,17 @@ import (
 )
 
 type dhcpLeaseCollector struct {
-	props        string
+	propslist    string
 	descriptions *prometheus.Desc
-}
-
-func (c *dhcpLeaseCollector) init() {
-	c.props = strings.Join([]string{"active-mac-address", "server", "status", "active-address", "host-name"}, ",")
-	labelNames := []string{"name", "address", "activemacaddress", "server", "status", "activeaddress", "hostname"}
-	c.descriptions = description("dhcp", "leases_metrics", "number of metrics", labelNames)
 }
 
 func newDHCPLCollector() routerOSCollector {
 	c := &dhcpLeaseCollector{}
-	c.init()
+
+	c.propslist = strings.Join([]string{"active-mac-address", "server", "status", "active-address", "host-name"}, ",")
+	labelNames := []string{"name", "address", "activemacaddress", "server", "status", "activeaddress", "hostname"}
+	c.descriptions = description("dhcp", "leases_metrics", "number of metrics", labelNames)
+
 	return c
 }
 
@@ -45,7 +43,7 @@ func (c *dhcpLeaseCollector) collect(ctx *collectorContext) error {
 }
 
 func (c *dhcpLeaseCollector) fetch(ctx *collectorContext) ([]*proto.Sentence, error) {
-	reply, err := ctx.client.Run("/ip/dhcp-server/lease/print", "?status=bound", "=.proplist="+c.props)
+	reply, err := ctx.client.Run("/ip/dhcp-server/lease/print", "?status=bound", "=.proplist="+c.propslist)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"device": ctx.device.Name,
@@ -60,25 +58,22 @@ func (c *dhcpLeaseCollector) fetch(ctx *collectorContext) ([]*proto.Sentence, er
 }
 
 func (c *dhcpLeaseCollector) collectMetric(ctx *collectorContext, re *proto.Sentence) {
-	v := 1.0
-
-	activemacaddress := re.Map["active-mac-address"]
-	server := re.Map["server"]
-	status := re.Map["status"]
-	activeaddress := re.Map["active-address"]
 	// QuoteToASCII because of broken DHCP clients
 	hostname := strconv.QuoteToASCII(re.Map["host-name"])
 
-	metric, err := prometheus.NewConstMetric(c.descriptions, prometheus.GaugeValue, v,
+	metric, err := prometheus.NewConstMetric(c.descriptions, prometheus.GaugeValue, 1.0,
 		ctx.device.Name, ctx.device.Address,
-		activemacaddress, server, status, activeaddress, hostname)
+		re.Map["active-mac-address"], re.Map["server"], re.Map["status"], re.Map["active-address"],
+		hostname)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"device": ctx.device.Name,
 			"error":  err,
 			"reply":  re,
 		}).Error("error parsing dhcp lease")
+
 		return
 	}
+
 	ctx.ch <- metric
 }

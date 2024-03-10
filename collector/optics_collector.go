@@ -4,9 +4,10 @@ import (
 	"strconv"
 	"strings"
 
+	"mikrotik-exporter/routeros/proto"
+
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
-	"mikrotik-exporter/routeros/proto"
 )
 
 type opticsCollector struct {
@@ -53,6 +54,7 @@ func (c *opticsCollector) collect(ctx *collectorContext) error {
 			"device": ctx.device.Name,
 			"error":  err,
 		}).Error("error fetching interface metrics")
+
 		return err
 	}
 
@@ -81,6 +83,7 @@ func (c *opticsCollector) collectOpticalMetricsForInterfaces(ifaces []string, ct
 			"device": ctx.device.Name,
 			"error":  err,
 		}).Error("error fetching interface monitor metrics")
+
 		return err
 	}
 

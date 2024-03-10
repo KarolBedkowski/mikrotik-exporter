@@ -15,17 +15,15 @@ type routesCollector struct {
 }
 
 func newRoutesCollector() routerOSCollector {
-	c := &routesCollector{}
-	c.init()
-	return c
-}
-
-func (c *routesCollector) init() {
 	const prefix = "routes"
 	labelNames := []string{"name", "address", "ip_version"}
+
+	c := &routesCollector{}
 	c.countDesc = description("", prefix, "number of routes in RIB", labelNames)
 	c.countProtocolDesc = description(prefix, "protocol", "number of routes per protocol in RIB", append(labelNames, "protocol"))
 	c.protocols = []string{"bgp", "static", "ospf", "dynamic", "connect", "rip"}
+
+	return c
 }
 
 func (c *routesCollector) describe(ch chan<- *prometheus.Desc) {

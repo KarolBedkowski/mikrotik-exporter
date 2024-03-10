@@ -17,24 +17,22 @@ type bgpCollector struct {
 }
 
 func newBGPCollector() routerOSCollector {
-	c := &bgpCollector{}
-	c.init()
-	return c
-}
-
-func (c *bgpCollector) init() {
-	c.props = []string{"name", "remote-as", "state", "prefix-count", "updates-sent", "updates-received", "withdrawn-sent", "withdrawn-received"}
-	c.proplist = strings.Join(c.props, ",")
-
 	const prefix = "bgp"
 	labelNames := []string{"name", "address", "session", "asn"}
 
-	c.descriptions = make(map[string]*prometheus.Desc)
+	c := &bgpCollector{
+		descriptions: make(map[string]*prometheus.Desc),
+	}
+
+	c.props = []string{"name", "remote-as", "state", "prefix-count", "updates-sent", "updates-received", "withdrawn-sent", "withdrawn-received"}
+	c.proplist = strings.Join(c.props, ",")
 	c.descriptions["state"] = description(prefix, "up", "BGP session is established (up = 1)", labelNames)
 
 	for _, p := range c.props[3:] {
 		c.descriptions[p] = descriptionForPropertyName(prefix, p, labelNames)
 	}
+
+	return c
 }
 
 func (c *bgpCollector) describe(ch chan<- *prometheus.Desc) {

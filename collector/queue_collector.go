@@ -1,7 +1,6 @@
 package collector
 
 import (
-	"math"
 	"strconv"
 	"strings"
 
@@ -22,34 +21,34 @@ type queueCollector struct {
 }
 
 func newQueueCollector() routerOSCollector {
-	c := &queueCollector{}
-	c.init()
-	return c
-}
+	c := &queueCollector{
+		descriptions: make(map[string]*prometheus.Desc),
+	}
 
-func (c *queueCollector) init() {
 	c.monitorProps = []string{"queued-packets", "queued-bytes"}
 	c.monitorPropslist = strings.Join(c.simpleQueueProps, ",")
 
 	labelNames := []string{"name", "address"}
-	c.descriptions = make(map[string]*prometheus.Desc)
 	for _, p := range c.monitorProps {
 		c.descriptions[p] = descriptionForPropertyName("queue", p, labelNames)
 	}
 
 	c.simpleQueueProps = []string{
 		"name", "queue", "comment",
-		"disabled", "bytes", "packets",
-		"queued-bytes", "queued-packets",
+		"disabled",
+		"bytes", "packets", "queued-bytes", "queued-packets",
 	}
 	c.simpleQueuePropslist = strings.Join(c.simpleQueueProps, ",")
+
 	labelNames = []string{"name", "address", "simple_queue_name", "queue", "comment"}
-	c.descriptions = make(map[string]*prometheus.Desc)
 	c.descriptions["disabled"] = descriptionForPropertyName("simple_queue", "disabled", labelNames)
+
 	for _, p := range c.simpleQueueProps[4:] {
 		c.descriptions["tx_"+p] = descriptionForPropertyName("simple_queue", "tx_"+p+"_total", labelNames)
 		c.descriptions["rx_"+p] = descriptionForPropertyName("simple_queue", "rx_"+p+"_total", labelNames)
 	}
+
+	return c
 }
 
 func (c *queueCollector) describe(ch chan<- *prometheus.Desc) {
@@ -87,6 +86,7 @@ func (c *queueCollector) collectQueue(ctx *collectorContext) error {
 			"device": ctx.device.Name,
 			"error":  err,
 		}).Error("error fetching queue statistics")
+
 		return err
 	}
 
@@ -106,6 +106,7 @@ func (c *queueCollector) collectMetricForProperty(property string, re *proto.Sen
 	if re.Map[property] == "" {
 		return
 	}
+
 	v, err := strconv.ParseFloat(re.Map[property], 64)
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -113,6 +114,7 @@ func (c *queueCollector) collectMetricForProperty(property string, re *proto.Sen
 			"device":   ctx.device.Name,
 			"error":    err,
 		}).Error("error parsing queue metric value")
+
 		return
 	}
 
@@ -126,6 +128,7 @@ func (c *queueCollector) fetchSimpleQueue(ctx *collectorContext) ([]*proto.Sente
 			"device": ctx.device.Name,
 			"error":  err,
 		}).Error("error fetching simple queue metrics")
+
 		return nil, err
 	}
 
@@ -146,24 +149,13 @@ func (c *queueCollector) collectForSimpleQqueue(re *proto.Sentence, ctx *collect
 			switch p {
 			case "disabled":
 				vtype = prometheus.GaugeValue
-				if value == "true" {
-					v = 1
-				} else {
-					v = 0
-				}
-			case "bytes":
+				v = parseBool(value)
+			case "bytes", "packets":
 				c.collectMetricForTXRXCounters(p, re.Map["name"], re.Map["queue"], re.Map["comment"], re, ctx)
 				continue
-			case "packets":
+			case "queued-packets", "queued-bytes":
 				c.collectMetricForTXRXCounters(p, re.Map["name"], re.Map["queue"], re.Map["comment"], re, ctx)
 				continue
-			case "queued-packets":
-				c.collectMetricForTXRXCounters("queued-packets", re.Map["name"], re.Map["queue"], re.Map["comment"], re, ctx)
-				continue
-			case "queued-bytes":
-				c.collectMetricForTXRXCounters("queued-bytes", re.Map["name"], re.Map["queue"], re.Map["comment"], re, ctx)
-				continue
-
 			default:
 				v, err = strconv.ParseFloat(value, 64)
 				if err != nil {
@@ -185,7 +177,7 @@ func (c *queueCollector) collectForSimpleQqueue(re *proto.Sentence, ctx *collect
 }
 
 func (c *queueCollector) collectMetricForTXRXCounters(property, name, queue, comment string, re *proto.Sentence, ctx *collectorContext) {
-	tx, rx, err := splitToFloats(re.Map[property])
+	tx, rx, err := splitStringToFloats(re.Map[property], "/")
 	if err != nil {
 		log.WithFields(log.Fields{
 			"device":   ctx.device.Name,
@@ -195,38 +187,9 @@ func (c *queueCollector) collectMetricForTXRXCounters(property, name, queue, com
 		}).Error("error parsing queue metric value")
 		return
 	}
+
 	desc_tx := c.descriptions["tx_"+property]
 	desc_rx := c.descriptions["rx_"+property]
 	ctx.ch <- prometheus.MustNewConstMetric(desc_tx, prometheus.CounterValue, tx, ctx.device.Name, ctx.device.Address, name, queue, comment)
 	ctx.ch <- prometheus.MustNewConstMetric(desc_rx, prometheus.CounterValue, rx, ctx.device.Name, ctx.device.Address, name, queue, comment)
-}
-
-func splitToFloats(metric string) (float64, float64, error) {
-	if metric == "" {
-		return 0, 0, nil
-	}
-
-	strs := strings.Split(metric, "/")
-	if len(strs) != 2 {
-		return 0, 0, nil
-	}
-
-	var m1, m2 float64
-	var err error
-
-	if strs[0] != "" {
-		m1, err = strconv.ParseFloat(strs[0], 64)
-		if err != nil {
-			return math.NaN(), math.NaN(), err
-		}
-	}
-
-	if strs[1] != "" {
-		m2, err = strconv.ParseFloat(strs[1], 64)
-		if err != nil {
-			return math.NaN(), math.NaN(), err
-		}
-	}
-
-	return m1, m2, nil
 }

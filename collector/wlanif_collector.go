@@ -19,16 +19,12 @@ type wlanIFCollector struct {
 }
 
 func newWlanIFCollector() routerOSCollector {
-	c := &wlanIFCollector{}
-	c.init()
+	c := &wlanIFCollector{
+		descriptions: make(map[string]*prometheus.Desc),
+	}
 
-	return c
-}
-
-func (c *wlanIFCollector) init() {
 	c.props = []string{"registered-clients", "noise-floor", "overall-tx-ccq"}
 	c.propslist = strings.Join(append(c.props, "channel"), ",")
-	c.descriptions = make(map[string]*prometheus.Desc)
 	c.frequency = description("wlan_interface", "frequency",
 		"WiFi frequency", []string{"name", "address", "interface", "freqidx"})
 
@@ -37,6 +33,8 @@ func (c *wlanIFCollector) init() {
 	for _, p := range c.props {
 		c.descriptions[p] = descriptionForPropertyName("wlan_interface", p, labelNames)
 	}
+
+	return c
 }
 
 func (c *wlanIFCollector) describe(ch chan<- *prometheus.Desc) {
@@ -122,13 +120,14 @@ func (c *wlanIFCollector) collectMetricForProperty(property, iface string, re *p
 			"device":    ctx.device.Name,
 			"error":     err,
 		}).Error("error parsing interface metric value")
+
 		return
 	}
 
 	desc := c.descriptions[property]
-	channel := re.Map["channel"]
-
-	ctx.ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, v, ctx.device.Name, ctx.device.Address, iface, channel)
+	ctx.ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, v,
+		ctx.device.Name, ctx.device.Address,
+		iface, re.Map["channel"])
 }
 
 func (c *wlanIFCollector) collectMetricForFreq(iface string, re *proto.Sentence, ctx *collectorContext) {

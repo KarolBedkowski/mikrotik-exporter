@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -52,6 +51,7 @@ type deviceCollector struct {
 	device     config.Device
 	collectors []string
 	cl         *routeros.Client
+	isSrv      bool
 }
 
 type collector struct {
@@ -93,8 +93,9 @@ func NewCollector(cfg *config.Config, opts ...Option) (prometheus.Collector, err
 		if err != nil {
 			panic(err)
 		}
+
 		featNames := feat.FeatureNames()
-		dc := &deviceCollector{d, featNames, nil}
+		dc := &deviceCollector{d, featNames, nil, (config.SrvRecord{}) != d.Srv}
 		dcs = append(dcs, dc)
 
 		log.WithFields(log.Fields{"device": &dc}).Debug("new device")
@@ -123,6 +124,45 @@ func (c *collector) Describe(ch chan<- *prometheus.Desc) {
 	}
 }
 
+func (c *collector) srvToDevice(dc *deviceCollector) []*deviceCollector {
+	var realDevices []*deviceCollector
+	dev := dc.device
+	conf, _ := dns.ClientConfigFromFile("/etc/resolv.conf")
+	dnsServer := net.JoinHostPort(conf.Servers[0], strconv.Itoa(dnsPort))
+	if (config.DnsServer{}) != dev.Srv.Dns {
+		dnsServer = net.JoinHostPort(dev.Srv.Dns.Address, strconv.Itoa(dev.Srv.Dns.Port))
+		log.WithFields(log.Fields{
+			"DnsServer": dnsServer,
+		}).Info("Custom DNS config detected")
+	}
+
+	dnsMsg := new(dns.Msg)
+	dnsMsg.RecursionDesired = true
+	dnsMsg.SetQuestion(dns.Fqdn(dev.Srv.Record), dns.TypeSRV)
+
+	dnsCli := new(dns.Client)
+	r, _, err := dnsCli.Exchange(dnsMsg, dnsServer)
+	if err != nil {
+		panic(err)
+	}
+
+	for _, k := range r.Answer {
+		if s, ok := k.(*dns.SRV); ok {
+			d := config.Device{
+				Name:     strings.TrimRight(s.Target, "."),
+				Address:  strings.TrimRight(s.Target, "."),
+				User:     dev.User,
+				Password: dev.Password,
+			}
+			ndc := &deviceCollector{d, dc.collectors, nil, true}
+			_ = c.getIdentity(ndc)
+			realDevices = append(realDevices, ndc)
+		}
+	}
+
+	return realDevices
+}
+
 // Collect implements the prometheus.Collector interface.
 func (c *collector) Collect(ch chan<- prometheus.Metric) {
 	wg := sync.WaitGroup{}
@@ -130,41 +170,12 @@ func (c *collector) Collect(ch chan<- prometheus.Metric) {
 	var realDevices []*deviceCollector
 
 	for _, dc := range c.devices {
-		dev := dc.device
-		if (config.SrvRecord{}) != dev.Srv {
+		if dc.isSrv {
 			log.WithFields(log.Fields{
-				"SRV": dev.Srv.Record,
+				"SRV": dc.device.Srv.Record,
 			}).Info("SRV configuration detected")
-			conf, _ := dns.ClientConfigFromFile("/etc/resolv.conf")
-			dnsServer := net.JoinHostPort(conf.Servers[0], strconv.Itoa(dnsPort))
-			if (config.DnsServer{}) != dev.Srv.Dns {
-				dnsServer = net.JoinHostPort(dev.Srv.Dns.Address, strconv.Itoa(dev.Srv.Dns.Port))
-				log.WithFields(log.Fields{
-					"DnsServer": dnsServer,
-				}).Info("Custom DNS config detected")
-			}
-			dnsMsg := new(dns.Msg)
-			dnsCli := new(dns.Client)
 
-			dnsMsg.RecursionDesired = true
-			dnsMsg.SetQuestion(dns.Fqdn(dev.Srv.Record), dns.TypeSRV)
-			r, _, err := dnsCli.Exchange(dnsMsg, dnsServer)
-			if err != nil {
-				os.Exit(1)
-			}
-
-			for _, k := range r.Answer {
-				if s, ok := k.(*dns.SRV); ok {
-					d := config.Device{}
-					d.Name = strings.TrimRight(s.Target, ".")
-					d.Address = strings.TrimRight(s.Target, ".")
-					d.User = dev.User
-					d.Password = dev.Password
-					ndc := &deviceCollector{d, dc.collectors, nil}
-					_ = c.getIdentity(ndc)
-					realDevices = append(realDevices, ndc)
-				}
-			}
+			realDevices = append(realDevices, c.srvToDevice(dc)...)
 		} else {
 			realDevices = append(realDevices, dc)
 		}
@@ -189,6 +200,7 @@ func (c *collector) getIdentity(d *deviceCollector) error {
 			"device": d.device.Name,
 			"error":  err,
 		}).Error("error dialing device fetching identity")
+
 		return err
 	}
 
@@ -200,11 +212,14 @@ func (c *collector) getIdentity(d *deviceCollector) error {
 			"device": d.device.Name,
 			"error":  err,
 		}).Error("error fetching ethernet interfaces")
+
 		return err
 	}
-	for _, id := range reply.Re {
-		d.device.Name = id.Map["name"]
+
+	if len(reply.Re) > 0 {
+		d.device.Name = reply.Re[0].Map["name"]
 	}
+
 	return nil
 }
 
@@ -231,15 +246,15 @@ func (c *collector) collectForDevice(d *deviceCollector, ch chan<- prometheus.Me
 }
 
 func (c *collector) connectAndCollect(d *deviceCollector, ch chan<- prometheus.Metric) error {
-	name := d.device.Name
 	cl, err := c.getConnection(d)
 	if err != nil {
 		log.WithFields(log.Fields{
-			"device": name,
+			"device": d.device.Name,
 			"error":  err,
 		}).Error("error dialing device")
 		return err
 	}
+
 	defer c.closeConnection(d)
 
 	var result *multierror.Error
@@ -248,47 +263,50 @@ func (c *collector) connectAndCollect(d *deviceCollector, ch chan<- prometheus.M
 		co := c.collectors[coName]
 		ctx := &collectorContext{ch, &d.device, cl}
 		log.WithFields(log.Fields{"device": d.device.Name, "collector": fmt.Sprintf("%#v", co)}).Debug("collect")
+
 		if err = co.collect(ctx); err != nil {
-			result = multierror.Append(result, err)
+			result = multierror.Append(result, fmt.Errorf("collecting by %s error: %s", coName, err))
 		}
 	}
 
 	return result.ErrorOrNil()
 }
 
-func (c *collector) getConnection(d *deviceCollector) (*routeros.Client, error) {
+func (c *collector) getConnection(dc *deviceCollector) (*routeros.Client, error) {
 	c.connLock.Lock()
 	defer c.connLock.Unlock()
 
 	// try do get connection from cache
-	if d.cl != nil {
+	if dc.cl != nil {
 		// check is connection alive
-		if reply, err := d.cl.Run("/system/identity/print"); err == nil && len(reply.Re) > 0 {
-			return d.cl, nil
+		if reply, err := dc.cl.Run("/system/identity/print"); err == nil && len(reply.Re) > 0 {
+			return dc.cl, nil
 		}
-		d.cl.Close()
-		d.cl = nil
 
-		log.WithFields(log.Fields{"device": d.device.Name}).Info("reconnecting")
+		// check failed, reconnect
+		dc.cl.Close()
+		dc.cl = nil
+
+		log.WithFields(log.Fields{"device": dc.device.Name}).Info("reconnecting")
 	}
 
-	client, err := c.connect(&d.device)
+	client, err := c.connect(&dc.device)
 	if err == nil {
-		d.cl = client
+		dc.cl = client
 	}
 
 	return client, err
 }
 
-func (c *collector) closeConnection(d *deviceCollector) {
+func (c *collector) closeConnection(dc *deviceCollector) {
 	c.connLock.Lock()
 	defer c.connLock.Unlock()
 
 	// close connection for srv-defined targets
-	if (config.SrvRecord{}) != d.device.Srv {
-		if d.cl != nil {
-			d.cl.Close()
-			d.cl = nil
+	if dc.isSrv {
+		if dc.cl != nil {
+			dc.cl.Close()
+			dc.cl = nil
 		}
 	}
 }
@@ -302,45 +320,48 @@ func (c *collector) connect(d *config.Device) (*routeros.Client, error) {
 		if (d.Port) == "" {
 			d.Port = apiPort
 		}
+
 		conn, err = net.DialTimeout("tcp", d.Address+":"+d.Port, c.timeout)
 		if err != nil {
 			return nil, err
 		}
 		//		return routeros.DialTimeout(d.Address+apiPort, d.User, d.Password, c.timeout)
+
 	} else {
 		tlsCfg := &tls.Config{
 			InsecureSkipVerify: c.insecureTLS,
 		}
+
 		if (d.Port) == "" {
 			d.Port = apiPortTLS
 		}
-		conn, err = tls.DialWithDialer(&net.Dialer{
-			Timeout: c.timeout,
-		},
-			"tcp", d.Address+":"+d.Port, tlsCfg)
+
+		conn, err = tls.DialWithDialer(&net.Dialer{Timeout: c.timeout}, "tcp", d.Address+":"+d.Port, tlsCfg)
 		if err != nil {
 			return nil, err
 		}
 	}
+
 	log.WithField("device", d.Name).Debug("done dialing")
 
 	client, err := routeros.NewClient(conn)
 	if err != nil {
 		return nil, err
 	}
-	log.WithField("device", d.Name).Debug("got client")
 
-	log.WithField("device", d.Name).Debug("trying to login")
+	log.WithField("device", d.Name).Debug("got client, trying to login")
 	r, err := client.Run("/login", "=name="+d.User, "=password="+d.Password)
 	if err != nil {
 		return nil, err
 	}
+
 	ret, ok := r.Done.Map["ret"]
 	if !ok {
 		// Login method post-6.43 one stage, cleartext and no challenge
 		if r.Done != nil {
 			return client, nil
 		}
+
 		return nil, errors.New("RouterOS: /login: no ret (challenge) received")
 	}
 
@@ -350,10 +371,10 @@ func (c *collector) connect(d *config.Device) (*routeros.Client, error) {
 		return nil, fmt.Errorf("RouterOS: /login: invalid ret (challenge) hex string received: %s", err)
 	}
 
-	_, err = client.Run("/login", "=name="+d.User, "=response="+challengeResponse(b, d.Password))
-	if err != nil {
+	if _, err = client.Run("/login", "=name="+d.User, "=response="+challengeResponse(b, d.Password)); err != nil {
 		return nil, err
 	}
+
 	log.WithField("device", d.Name).Debug("done wth login")
 
 	return client, nil
@@ -369,6 +390,7 @@ func challengeResponse(cha []byte, password string) string {
 	h.Write([]byte{0})
 	_, _ = io.WriteString(h, password)
 	h.Write(cha)
+
 	return fmt.Sprintf("00%x", h.Sum(nil))
 }
 
@@ -430,6 +452,7 @@ func newCollectors(cfg *config.Config) map[string]routerOSCollector {
 	for _, name := range cfg.Features.FeatureNames() {
 		uniqueNames[name] = struct{}{}
 	}
+
 	for _, dev := range cfg.Devices {
 		if len(dev.Profile) > 0 {
 			features, err := cfg.DeviceFeatures(dev.Name)

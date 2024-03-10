@@ -34,11 +34,6 @@ func newResourceCollector() routerOSCollector {
 		descriptions: make(map[string]*prometheus.Desc),
 	}
 
-	c.init()
-	return c
-}
-
-func (c *resourceCollector) init() {
 	c.props = []string{
 		"free-memory", "total-memory", "cpu-load", "free-hdd-space", "total-hdd-space", "cpu-frequency", "bad-blocks",
 		"uptime", "cpu-count",
@@ -48,10 +43,13 @@ func (c *resourceCollector) init() {
 	for _, p := range c.props[:len(c.props)-4] {
 		c.descriptions[p] = descriptionForPropertyName("system", p, labelNames)
 	}
+
 	c.descriptions["cpu-count"] = descriptionForPropertyName("system", "cpu", labelNames)
 	c.descriptions["uptime"] = descriptionForPropertyName("system", "uptime_total", labelNames)
 	c.versions = description("system", "routeros", "Board and system version",
 		[]string{"name", "address", "board_name", "version"})
+
+	return c
 }
 
 func (c *resourceCollector) describe(ch chan<- *prometheus.Desc) {

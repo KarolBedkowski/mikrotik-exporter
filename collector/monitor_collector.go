@@ -11,22 +11,23 @@ import (
 
 type monitorCollector struct {
 	props        []string // props from monitor, can add other ether props later if needed
+	propslist    string
 	descriptions map[string]*prometheus.Desc
 }
 
 func newMonitorCollector() routerOSCollector {
-	c := &monitorCollector{}
-	c.init()
-	return c
-}
+	c := &monitorCollector{
+		descriptions: make(map[string]*prometheus.Desc),
+		props:        []string{"status", "rate", "full-duplex"},
+	}
+	c.propslist = strings.Join(c.props, ",")
 
-func (c *monitorCollector) init() {
-	c.props = []string{"status", "rate", "full-duplex"}
 	labelNames := []string{"name", "address", "interface"}
-	c.descriptions = make(map[string]*prometheus.Desc)
 	for _, p := range c.props {
 		c.descriptions[p] = descriptionForPropertyName("monitor", p, labelNames)
 	}
+
+	return c
 }
 
 func (c *monitorCollector) describe(ch chan<- *prometheus.Desc) {
@@ -42,6 +43,7 @@ func (c *monitorCollector) collect(ctx *collectorContext) error {
 			"device": ctx.device.Name,
 			"error":  err,
 		}).Error("error fetching ethernet interfaces")
+
 		return err
 	}
 
@@ -57,12 +59,13 @@ func (c *monitorCollector) collectForMonitor(eths []string, ctx *collectorContex
 	reply, err := ctx.client.Run("/interface/ethernet/monitor",
 		"=numbers="+strings.Join(eths, ","),
 		"=once=",
-		"=.proplist=name,"+strings.Join(c.props, ","))
+		"=.proplist=name,"+c.propslist)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"device": ctx.device.Name,
 			"error":  err,
 		}).Error("error fetching ethernet monitor info")
+
 		return err
 	}
 
@@ -81,7 +84,6 @@ func (c *monitorCollector) collectMetricsForEth(name string, se *proto.Sentence,
 		}
 
 		value := float64(c.valueForProp(prop, v))
-
 		ctx.ch <- prometheus.MustNewConstMetric(c.descriptions[prop], prometheus.GaugeValue, value, ctx.device.Name, ctx.device.Address, name)
 	}
 }
@@ -92,6 +94,7 @@ func (c *monitorCollector) valueForProp(name, value string) int {
 		if value == "link-ok" {
 			return 1
 		}
+
 		return 0
 	case "rate":
 		switch value {
@@ -104,11 +107,13 @@ func (c *monitorCollector) valueForProp(name, value string) int {
 		case "10Gbps":
 			return 10000
 		}
+
 		return 0
 	case "full-duplex":
 		if value == "true" {
 			return 1
 		}
+
 		return 0
 	default:
 		return 0

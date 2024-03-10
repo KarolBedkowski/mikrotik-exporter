@@ -11,16 +11,14 @@ type dhcpCollector struct {
 	leasesActiveCountDesc *prometheus.Desc
 }
 
-func (c *dhcpCollector) init() {
-	const prefix = "dhcp"
-
-	labelNames := []string{"name", "address", "server"}
-	c.leasesActiveCountDesc = description(prefix, "leases_active", "number of active leases per DHCP server", labelNames)
-}
-
 func newDHCPCollector() routerOSCollector {
-	c := &dhcpCollector{}
-	c.init()
+	const prefix = "dhcp"
+	labelNames := []string{"name", "address", "server"}
+
+	c := &dhcpCollector{
+		leasesActiveCountDesc: description(prefix, "leases_active", "number of active leases per DHCP server", labelNames),
+	}
+
 	return c
 }
 
@@ -50,6 +48,7 @@ func (c *dhcpCollector) fetchDHCPServerNames(ctx *collectorContext) ([]string, e
 			"device": ctx.device.Name,
 			"error":  err,
 		}).Error("error fetching DHCP server names")
+
 		return nil, err
 	}
 

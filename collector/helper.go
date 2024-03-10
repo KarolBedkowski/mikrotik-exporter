@@ -48,19 +48,31 @@ func description(prefix, name, helpText string, labelNames []string) *prometheus
 	)
 }
 
-func splitStringToFloats(metric string) (float64, float64, error) {
-	strs := strings.Split(metric, ",")
+func splitStringToFloats(metric string, sep ...string) (float64, float64, error) {
+	if len(metric) == 0 {
+		return 0, 0, nil
+	}
+
+	separator := ","
+	if len(sep) > 0 {
+		separator = sep[0]
+	}
+
+	strs := strings.Split(metric, separator)
 	if len(strs) == 0 {
 		return 0, 0, nil
 	}
+
 	m1, err := strconv.ParseFloat(strs[0], 64)
 	if err != nil {
 		return math.NaN(), math.NaN(), err
 	}
+
 	m2, err := strconv.ParseFloat(strs[1], 64)
 	if err != nil {
 		return math.NaN(), math.NaN(), err
 	}
+
 	return m1, m2, nil
 }
 
@@ -82,11 +94,22 @@ func parseDuration(duration string) (float64, error) {
 						"value":    match,
 						"error":    err,
 					}).Error("error parsing duration field value")
+
 					return float64(0), err
 				}
+
 				u += time.Duration(v) * durationParts[i-1]
 			}
 		}
 	}
+
 	return u.Seconds(), nil
+}
+
+func parseBool(value string) float64 {
+	if value == "true" {
+		return 1.0
+	}
+
+	return 0.0
 }

@@ -13,16 +13,13 @@ type dhcpv6Collector struct {
 }
 
 func newDHCPv6Collector() routerOSCollector {
-	c := &dhcpv6Collector{}
-	c.init()
-	return c
-}
-
-func (c *dhcpv6Collector) init() {
 	const prefix = "dhcpv6"
-
 	labelNames := []string{"name", "address", "server"}
-	c.bindingCountDesc = description(prefix, "binding", "number of active bindings per DHCPv6 server", labelNames)
+
+	c := &dhcpv6Collector{
+		bindingCountDesc: description(prefix, "binding", "number of active bindings per DHCPv6 server", labelNames),
+	}
+	return c
 }
 
 func (c *dhcpv6Collector) describe(ch chan<- *prometheus.Desc) {
@@ -52,6 +49,7 @@ func (c *dhcpv6Collector) fetchDHCPServerNames(ctx *collectorContext) ([]string,
 			"device": ctx.device.Name,
 			"error":  err,
 		}).Error("error fetching DHCPv6 server names")
+
 		return nil, err
 	}
 
@@ -71,6 +69,7 @@ func (c *dhcpv6Collector) colllectForDHCPServer(ctx *collectorContext, dhcpServe
 			"device":        ctx.device.Name,
 			"error":         err,
 		}).Error("error fetching DHCPv6 binding counts")
+
 		return err
 	}
 
@@ -81,9 +80,12 @@ func (c *dhcpv6Collector) colllectForDHCPServer(ctx *collectorContext, dhcpServe
 			"device":        ctx.device.Name,
 			"error":         err,
 		}).Error("error parsing DHCPv6 binding counts")
+
 		return err
 	}
 
-	ctx.ch <- prometheus.MustNewConstMetric(c.bindingCountDesc, prometheus.GaugeValue, v, ctx.device.Name, ctx.device.Address, dhcpServer)
+	ctx.ch <- prometheus.MustNewConstMetric(c.bindingCountDesc, prometheus.GaugeValue, v,
+		ctx.device.Name, ctx.device.Address, dhcpServer)
+
 	return nil
 }

@@ -17,24 +17,23 @@ type interfaceCollector struct {
 }
 
 func newInterfaceCollector() routerOSCollector {
-	c := &interfaceCollector{}
-	c.init()
-	return c
-}
-
-func (c *interfaceCollector) init() {
 	labelsProps := []string{"name", "type", "disabled", "comment", "slave"}
-	c.props = []string{"actual-mtu", "running", "rx-byte", "tx-byte", "rx-packet", "tx-packet", "rx-error", "tx-error", "rx-drop", "tx-drop", "link-downs"}
-	c.propslist = strings.Join(append(labelsProps, c.props...), ",")
-
 	labelNames := []string{"name", "address", "interface", "type", "disabled", "comment", "running", "slave"}
 
-	c.descriptions = make(map[string]*prometheus.Desc)
+	c := &interfaceCollector{
+		descriptions: make(map[string]*prometheus.Desc),
+	}
+
+	c.props = []string{"actual-mtu", "running", "rx-byte", "tx-byte", "rx-packet", "tx-packet", "rx-error", "tx-error", "rx-drop", "tx-drop", "link-downs"}
+	c.propslist = strings.Join(append(labelsProps, c.props...), ",")
 	c.descriptions["actual-mtu"] = descriptionForPropertyName("interface", "actual_mtu", labelNames)
 	c.descriptions["running"] = descriptionForPropertyName("interface", "running", labelNames)
+
 	for _, p := range c.props[2:] {
 		c.descriptions[p] = descriptionForPropertyName("interface", p+"_total", labelNames)
 	}
+
+	return c
 }
 
 func (c *interfaceCollector) describe(ch chan<- *prometheus.Desc) {
@@ -86,11 +85,7 @@ func (c *interfaceCollector) collectMetricForProperty(property string, re *proto
 		switch property {
 		case "running":
 			vtype = prometheus.GaugeValue
-			if value == "true" {
-				v = 1
-			} else {
-				v = 0
-			}
+			v = parseBool(value)
 		case "actual-mtu":
 			vtype = prometheus.GaugeValue
 			fallthrough
@@ -104,6 +99,7 @@ func (c *interfaceCollector) collectMetricForProperty(property string, re *proto
 					"value":     value,
 					"error":     err,
 				}).Error("error parsing interface metric value")
+
 				return
 			}
 		}

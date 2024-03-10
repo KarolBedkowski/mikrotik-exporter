@@ -16,16 +16,14 @@ type netwatchCollector struct {
 }
 
 func newNetwatchCollector() routerOSCollector {
-	c := &netwatchCollector{}
-	c.init()
-	return c
-}
-
-func (c *netwatchCollector) init() {
-	c.propslist = strings.Join([]string{"host", "comment", "status"}, ",")
+	c := &netwatchCollector{
+		descriptions: make(map[string]*prometheus.Desc),
+		propslist:    strings.Join([]string{"host", "comment", "status"}, ","),
+	}
 	labelNames := []string{"name", "address", "host", "comment", "status"}
-	c.descriptions = make(map[string]*prometheus.Desc)
 	c.descriptions["status"] = descriptionForPropertyName("netwatch", "status", labelNames)
+
+	return c
 }
 
 func (c *netwatchCollector) describe(ch chan<- *prometheus.Desc) {
@@ -41,7 +39,7 @@ func (c *netwatchCollector) collect(ctx *collectorContext) error {
 	}
 
 	for _, re := range stats {
-		c.collectForStat(re, ctx)
+		c.collectMetricForProperty("status", re.Map["host"], re.Map["comment"], re, ctx)
 	}
 
 	return nil
@@ -54,16 +52,11 @@ func (c *netwatchCollector) fetch(ctx *collectorContext) ([]*proto.Sentence, err
 			"device": ctx.device.Name,
 			"error":  err,
 		}).Error("error fetching netwatch metrics")
+
 		return nil, err
 	}
 
 	return reply.Re, nil
-}
-
-func (c *netwatchCollector) collectForStat(re *proto.Sentence, ctx *collectorContext) {
-	host := re.Map["host"]
-	comment := re.Map["comment"]
-	c.collectMetricForProperty("status", host, comment, re, ctx)
 }
 
 func (c *netwatchCollector) collectMetricForProperty(property, host, comment string, re *proto.Sentence, ctx *collectorContext) {

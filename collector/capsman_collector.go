@@ -19,19 +19,15 @@ type capsmanCollector struct {
 }
 
 func newCapsmanCollector() routerOSCollector {
-	c := &capsmanCollector{}
-	c.init()
-	return c
-}
+	c := &capsmanCollector{
+		descriptions: make(map[string]*prometheus.Desc, 7),
+	}
 
-func (c *capsmanCollector) init() {
-	//"rx-signal", "tx-signal",
 	props := []string{"interface", "mac-address", "ssid", "uptime", "tx-signal", "rx-signal", "packets", "bytes"}
 	c.proplist = strings.Join(props, ",")
 
 	labelNames := []string{"name", "address", "interface", "mac_address", "ssid"}
 
-	c.descriptions = make(map[string]*prometheus.Desc, 7)
 	c.descriptions["uptime"] = descriptionForPropertyName("capsman_station", "uptime", labelNames)
 	c.descriptions["tx-signal"] = descriptionForPropertyName("capsman_station", "tx-signal", labelNames)
 	c.descriptions["rx-signal"] = descriptionForPropertyName("capsman_station", "rx-signal", labelNames)
@@ -44,12 +40,15 @@ func (c *capsmanCollector) init() {
 	c.radioProplist = strings.Join(radioProps, ",")
 	labelNames = []string{"name", "address", "interface", "radio_mac", "remote_cap_identity", "remote_cap_name"}
 	c.radiosProvisionedDesc = description("capsman", "radio_provisioned", "Status of provision remote radios", labelNames)
+
+	return c
 }
 
 func (c *capsmanCollector) describe(ch chan<- *prometheus.Desc) {
 	for _, d := range c.descriptions {
 		ch <- d
 	}
+
 	ch <- c.radiosProvisionedDesc
 }
 
@@ -64,6 +63,7 @@ func (c *capsmanCollector) collect(ctx *collectorContext) error {
 	}
 
 	err = c.collectRadiosProvisioned(ctx)
+
 	return err
 }
 
@@ -74,6 +74,7 @@ func (c *capsmanCollector) fetch(ctx *collectorContext) ([]*proto.Sentence, erro
 			"device": ctx.device.Name,
 			"error":  err,
 		}).Error("error fetching wlan station metrics")
+
 		return nil, err
 	}
 
@@ -158,18 +159,10 @@ func (c *capsmanCollector) collectRadiosProvisioned(ctx *collectorContext) error
 	}
 
 	for _, re := range reply.Re {
-		iface := re.Map["interface"]
-		rmac := re.Map["radio-mac"]
-		rcIdent := re.Map["remote-cap-identity"]
-		rcName := re.Map["remote-cap-name"]
-		v := 0.0
-		if re.Map["provisioned"] == "true" {
-			v = 1.0
-		}
-
+		v := parseBool(re.Map["provisioned"])
 		ctx.ch <- prometheus.MustNewConstMetric(c.radiosProvisionedDesc,
 			prometheus.GaugeValue, v, ctx.device.Name, ctx.device.Address,
-			iface, rmac, rcIdent, rcName)
+			re.Map["interface"], re.Map["radio-mac"], re.Map["remote-cap-identity"], re.Map["remote-cap-name"])
 	}
 
 	return nil

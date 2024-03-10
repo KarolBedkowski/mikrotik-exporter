@@ -12,14 +12,12 @@ type firmwareCollector struct {
 }
 
 func newFirmwareCollector() routerOSCollector {
-	c := &firmwareCollector{}
-	c.init()
-	return c
-}
-
-func (c *firmwareCollector) init() {
 	labelNames := []string{"devicename", "name", "disabled", "version", "build_time"}
-	c.description = description("system", "package", "system packages version", labelNames)
+	c := &firmwareCollector{
+		description: description("system", "package", "system packages version", labelNames),
+	}
+
+	return c
 }
 
 func (c *firmwareCollector) describe(ch chan<- *prometheus.Desc) {
@@ -33,6 +31,7 @@ func (c *firmwareCollector) collect(ctx *collectorContext) error {
 			"device": ctx.device.Name,
 			"error":  err,
 		})
+
 		return err
 	}
 

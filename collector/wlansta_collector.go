@@ -16,16 +16,12 @@ type wlanSTACollector struct {
 }
 
 func newWlanSTACollector() routerOSCollector {
-	c := &wlanSTACollector{}
-	c.init()
-	return c
-}
+	c := &wlanSTACollector{
+		descriptions: make(map[string]*prometheus.Desc),
+	}
 
-func (c *wlanSTACollector) init() {
 	props := []string{"interface", "mac-address", "signal-to-noise", "signal-strength", "packets", "bytes", "frames"}
-
 	c.propslist = strings.Join(props, ",")
-	c.descriptions = make(map[string]*prometheus.Desc)
 
 	labelNames := []string{"name", "address", "interface", "mac_address"}
 
@@ -36,6 +32,8 @@ func (c *wlanSTACollector) init() {
 		c.descriptions["tx_"+p] = descriptionForPropertyName("wlan_station", "tx_"+p, labelNames)
 		c.descriptions["rx_"+p] = descriptionForPropertyName("wlan_station", "rx_"+p, labelNames)
 	}
+
+	return c
 }
 
 func (c *wlanSTACollector) describe(ch chan<- *prometheus.Desc) {
@@ -64,6 +62,7 @@ func (c *wlanSTACollector) fetch(ctx *collectorContext) ([]*proto.Sentence, erro
 			"device": ctx.device.Name,
 			"error":  err,
 		}).Error("error fetching wlan station metrics")
+
 		return nil, err
 	}
 
