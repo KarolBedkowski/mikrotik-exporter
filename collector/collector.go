@@ -352,6 +352,8 @@ func (c *collector) connect(d *config.Device) (*routeros.Client, error) {
 	log.WithField("device", d.Name).Debug("got client, trying to login")
 	r, err := client.Run("/login", "=name="+d.User, "=password="+d.Password)
 	if err != nil {
+		client.Close()
+
 		return nil, err
 	}
 
@@ -362,27 +364,26 @@ func (c *collector) connect(d *config.Device) (*routeros.Client, error) {
 			return client, nil
 		}
 
+		client.Close()
+
 		return nil, errors.New("RouterOS: /login: no ret (challenge) received")
 	}
 
 	// Login method pre-6.43 two stages, challenge
 	b, err := hex.DecodeString(ret)
 	if err != nil {
+		client.Close()
 		return nil, fmt.Errorf("RouterOS: /login: invalid ret (challenge) hex string received: %s", err)
 	}
 
 	if _, err = client.Run("/login", "=name="+d.User, "=response="+challengeResponse(b, d.Password)); err != nil {
+		client.Close()
 		return nil, err
 	}
 
 	log.WithField("device", d.Name).Debug("done wth login")
 
 	return client, nil
-
-	//tlsCfg := &tls.Config{
-	//	InsecureSkipVerify: c.insecureTLS,
-	//}
-	//	return routeros.DialTLSTimeout(d.Address+apiPortTLS, d.User, d.Password, tlsCfg, c.timeout)
 }
 
 func challengeResponse(cha []byte, password string) string {
