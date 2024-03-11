@@ -181,6 +181,11 @@ func (c *queueCollector) collectForSimpleQqueue(re *proto.Sentence, ctx *collect
 }
 
 func (c *queueCollector) collectMetricForTXRXCounters(property, name, queue, comment string, re *proto.Sentence, ctx *collectorContext) {
+	val := re.Map[property]
+	if val == "" {
+		return
+	}
+
 	tx, rx, err := splitStringToFloats(re.Map[property], "/")
 	if err != nil {
 		log.WithFields(log.Fields{

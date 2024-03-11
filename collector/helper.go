@@ -49,8 +49,8 @@ func description(prefix, name, helpText string, labelNames []string) *prometheus
 }
 
 func splitStringToFloats(metric string, sep ...string) (float64, float64, error) {
-	if len(metric) == 0 {
-		return 0, 0, nil
+	if metric == "" {
+		return math.NaN(), math.NaN(), fmt.Errorf("empty value")
 	}
 
 	separator := ","
