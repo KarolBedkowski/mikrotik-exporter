@@ -131,9 +131,7 @@ func (c *collector) srvToDevice(dc *deviceCollector) []*deviceCollector {
 	dnsServer := net.JoinHostPort(conf.Servers[0], strconv.Itoa(dnsPort))
 	if (config.DnsServer{}) != dev.Srv.Dns {
 		dnsServer = net.JoinHostPort(dev.Srv.Dns.Address, strconv.Itoa(dev.Srv.Dns.Port))
-		log.WithFields(log.Fields{
-			"DnsServer": dnsServer,
-		}).Info("Custom DNS config detected")
+		log.WithFields(log.Fields{"DnsServer": dnsServer}).Info("Custom DNS config detected")
 	}
 
 	dnsMsg := new(dns.Msg)
@@ -171,10 +169,7 @@ func (c *collector) Collect(ch chan<- prometheus.Metric) {
 
 	for _, dc := range c.devices {
 		if dc.isSrv {
-			log.WithFields(log.Fields{
-				"SRV": dc.device.Srv.Record,
-			}).Info("SRV configuration detected")
-
+			log.WithFields(log.Fields{"SRV": dc.device.Srv.Record}).Info("SRV configuration detected")
 			realDevices = append(realDevices, c.srvToDevice(dc)...)
 		} else {
 			realDevices = append(realDevices, dc)
@@ -211,7 +206,7 @@ func (c *collector) getIdentity(d *deviceCollector) error {
 		log.WithFields(log.Fields{
 			"device": d.device.Name,
 			"error":  err,
-		}).Error("error fetching ethernet interfaces")
+		}).Error("error fetching identity")
 
 		return err
 	}
@@ -224,18 +219,17 @@ func (c *collector) getIdentity(d *deviceCollector) error {
 }
 
 func (c *collector) collectForDevice(d *deviceCollector, ch chan<- prometheus.Metric) {
-	begin := time.Now()
 	name := d.device.Name
+	log.WithFields(log.Fields{"device": name}).Debug("start collect for device")
 
-	log.WithFields(log.Fields{"device": d.device.Name}).Debug("start collect for device")
-
+	begin := time.Now()
 	err := c.connectAndCollect(d, ch)
-
 	duration := time.Since(begin)
-	var success float64
+
+	var success float64 = 0
+
 	if err != nil {
 		log.Errorf("ERROR: %s collector failed after %fs: %s", name, duration.Seconds(), err)
-		success = 0
 	} else {
 		log.Debugf("OK: %s collector succeeded after %fs.", name, duration.Seconds())
 		success = 1
@@ -262,7 +256,10 @@ func (c *collector) connectAndCollect(d *deviceCollector, ch chan<- prometheus.M
 	for _, coName := range d.collectors {
 		co := c.collectors[coName]
 		ctx := &collectorContext{ch, &d.device, cl}
-		log.WithFields(log.Fields{"device": d.device.Name, "collector": fmt.Sprintf("%#v", co)}).Debug("collect")
+		log.WithFields(log.Fields{
+			"device":    d.device.Name,
+			"collector": fmt.Sprintf("%#v", co),
+		}).Debug("collect")
 
 		if err = co.collect(ctx); err != nil {
 			result = multierror.Append(result, fmt.Errorf("collecting by %s error: %s", coName, err))
@@ -322,11 +319,6 @@ func (c *collector) connect(d *config.Device) (*routeros.Client, error) {
 		}
 
 		conn, err = net.DialTimeout("tcp", d.Address+":"+d.Port, c.timeout)
-		if err != nil {
-			return nil, err
-		}
-		//		return routeros.DialTimeout(d.Address+apiPort, d.User, d.Password, c.timeout)
-
 	} else {
 		tlsCfg := &tls.Config{
 			InsecureSkipVerify: c.insecureTLS,
@@ -336,10 +328,12 @@ func (c *collector) connect(d *config.Device) (*routeros.Client, error) {
 			d.Port = apiPortTLS
 		}
 
-		conn, err = tls.DialWithDialer(&net.Dialer{Timeout: c.timeout}, "tcp", d.Address+":"+d.Port, tlsCfg)
-		if err != nil {
-			return nil, err
-		}
+		conn, err = tls.DialWithDialer(&net.Dialer{Timeout: c.timeout},
+			"tcp", d.Address+":"+d.Port, tlsCfg)
+	}
+
+	if err != nil {
+		return nil, err
 	}
 
 	log.WithField("device", d.Name).Debug("done dialing")
