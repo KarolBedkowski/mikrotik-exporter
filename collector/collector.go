@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"mikrotik-exporter/config"
-	"mikrotik-exporter/routeros"
+	"github.com/KarolBedkowski/routeros-go-client"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/miekg/dns"

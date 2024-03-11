@@ -4,7 +4,7 @@ import (
 	"mikrotik-exporter/config"
 
 	"github.com/prometheus/client_golang/prometheus"
-	routeros "mikrotik-exporter/routeros"
+	routeros "github.com/KarolBedkowski/routeros-go-client"
 )
 
 type collectorContext struct {

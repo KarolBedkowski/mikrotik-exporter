@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"mikrotik-exporter/routeros/proto"
+	"github.com/KarolBedkowski/routeros-go-client/proto"
 
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
