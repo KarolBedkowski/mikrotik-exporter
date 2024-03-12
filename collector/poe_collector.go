@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -26,6 +27,7 @@ func newPOECollector() routerOSCollector {
 
 	labelNames := []string{"name", "address", "interface"}
 	props := []string{"poe-out-current", "poe-out-voltage", "poe-out-power"}
+
 	return &poeCollector{
 		currentDesc: description(prefix, "current", "current in mA", labelNames),
 		powerDesc:   description(prefix, "wattage", "Power in W", labelNames),
@@ -49,10 +51,11 @@ func (c *poeCollector) collect(ctx *collectorContext) error {
 			"error":  err,
 		}).Error("error fetching interface poe metrics")
 
-		return err
+		return fmt.Errorf("get ethernet poe error: %w", err)
 	}
 
 	ifaces := make([]string, 0)
+
 	for _, iface := range reply.Re {
 		n := iface.Map["name"]
 		ifaces = append(ifaces, n)
@@ -66,14 +69,15 @@ func (c *poeCollector) collect(ctx *collectorContext) error {
 }
 
 func (c *poeCollector) collectPOEMetricsForInterfaces(ifaces []string, ctx *collectorContext) error {
-	reply, err := ctx.client.Run("/interface/ethernet/poe/monitor", "=numbers="+strings.Join(ifaces, ","), "=once=", "=.proplist="+c.propslist)
+	reply, err := ctx.client.Run("/interface/ethernet/poe/monitor",
+		"=numbers="+strings.Join(ifaces, ","), "=once=", "=.proplist="+c.propslist)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"device": ctx.device.Name,
 			"error":  err,
 		}).Error("error fetching interface poe monitor metrics")
 
-		return err
+		return fmt.Errorf("get poe monitor error: %w", err)
 	}
 
 	for _, se := range reply.Re {
@@ -104,7 +108,8 @@ func (c *poeCollector) collectMetricsForInterface(name string, se *proto.Sentenc
 			return
 		}
 
-		ctx.ch <- prometheus.MustNewConstMetric(c.descForKey(prop), prometheus.GaugeValue, value, ctx.device.Name, ctx.device.Address, name)
+		ctx.ch <- prometheus.MustNewConstMetric(c.descForKey(prop), prometheus.GaugeValue,
+			value, ctx.device.Name, ctx.device.Address, name)
 	}
 }
 

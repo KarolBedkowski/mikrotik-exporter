@@ -66,7 +66,7 @@ func (c *lteCollector) fetchInterfaceNames(ctx *collectorContext) ([]string, err
 			"error":  err,
 		}).Error("error fetching lte interface names")
 
-		return nil, err
+		return nil, fmt.Errorf("get lte error: %w", err)
 	}
 
 	names := []string{}
@@ -78,7 +78,7 @@ func (c *lteCollector) fetchInterfaceNames(ctx *collectorContext) ([]string, err
 }
 
 func (c *lteCollector) collectForInterface(iface string, ctx *collectorContext) error {
-	reply, err := ctx.client.Run("/interface/lte/info", fmt.Sprintf("=number=%s", iface), "=once=", "=.proplist="+c.propslist)
+	reply, err := ctx.client.Run("/interface/lte/info", "=number="+iface, "=once=", "=.proplist="+c.propslist)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"interface": iface,
@@ -86,7 +86,7 @@ func (c *lteCollector) collectForInterface(iface string, ctx *collectorContext) 
 			"error":     err,
 		}).Error("error fetching interface statistics")
 
-		return err
+		return fmt.Errorf("get lte info error: %w", err)
 	}
 
 	if len(reply.Re) == 0 {
@@ -102,25 +102,27 @@ func (c *lteCollector) collectForInterface(iface string, ctx *collectorContext) 
 	return nil
 }
 
-func (c *lteCollector) collectMetricForProperty(property, iface string, re *proto.Sentence, ctx *collectorContext) {
+func (c *lteCollector) collectMetricForProperty(property, iface string,
+	reply *proto.Sentence, ctx *collectorContext,
+) {
 	desc := c.descriptions[property]
-	current_cellid := re.Map["current-cellid"]
+	currentCellID := reply.Map["current-cellid"]
 	// get only band and its width, drop earfcn and phy-cellid info
-	primaryband := re.Map["primary-band"]
+	primaryband := reply.Map["primary-band"]
 	if primaryband != "" {
 		primaryband = strings.Fields(primaryband)[0]
 	}
 
-	caband := re.Map["ca-band"]
+	caband := reply.Map["ca-band"]
 	if caband != "" {
 		caband = strings.Fields(caband)[0]
 	}
 
-	if re.Map[property] == "" {
+	if reply.Map[property] == "" {
 		return
 	}
 
-	v, err := strconv.ParseFloat(re.Map[property], 64)
+	v, err := strconv.ParseFloat(reply.Map[property], 64)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"property":  property,
@@ -134,5 +136,5 @@ func (c *lteCollector) collectMetricForProperty(property, iface string, re *prot
 
 	ctx.ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, v,
 		ctx.device.Name, ctx.device.Address,
-		iface, current_cellid, primaryband, caband)
+		iface, currentCellID, primaryband, caband)
 }

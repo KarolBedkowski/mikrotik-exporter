@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/KarolBedkowski/routeros-go-client/proto"
@@ -23,9 +24,12 @@ func newhealthCollector() routerOSCollector {
 		descriptions: make(map[string]*prometheus.Desc),
 	}
 
-	c.descriptions["voltage"] = descriptionForPropertyNameHelpText("health", "voltage", labelNames, "Input voltage to the RouterOS board, in volts")
-	c.descriptions["temperature"] = descriptionForPropertyNameHelpText("health", "temperature", labelNames, "Temperature of RouterOS board, in degrees Celsius")
-	c.descriptions["cpu-temperature"] = descriptionForPropertyNameHelpText("health", "cpu-temperature", labelNames, "Temperature of RouterOS CPU, in degrees Celsius")
+	c.descriptions["voltage"] = descriptionForPropertyNameHelpText(
+		"health", "voltage", labelNames, "Input voltage to the RouterOS board, in volts")
+	c.descriptions["temperature"] = descriptionForPropertyNameHelpText(
+		"health", "temperature", labelNames, "Temperature of RouterOS board, in degrees Celsius")
+	c.descriptions["cpu-temperature"] = descriptionForPropertyNameHelpText(
+		"health", "cpu-temperature", labelNames, "Temperature of RouterOS CPU, in degrees Celsius")
 
 	return c
 }
@@ -61,7 +65,7 @@ func (c *healthCollector) fetch(ctx *collectorContext) ([]*proto.Sentence, error
 			"error":  err,
 		}).Error("error fetching system health metrics")
 
-		return nil, err
+		return nil, fmt.Errorf("get health error: %w", err)
 	}
 
 	return reply.Re, nil
@@ -74,8 +78,10 @@ func (c *healthCollector) collectForStat(re *proto.Sentence, ctx *collectorConte
 }
 
 func (c *healthCollector) collectMetricForProperty(property string, re *proto.Sentence, ctx *collectorContext) {
-	var v float64
-	var err error
+	var (
+		v   float64
+		err error
+	)
 
 	name := property
 	value := re.Map[property]
@@ -95,6 +101,7 @@ func (c *healthCollector) collectMetricForProperty(property string, re *proto.Se
 			"value":    value,
 			"error":    err,
 		}).Error("error parsing system health metric value")
+
 		return
 	}
 

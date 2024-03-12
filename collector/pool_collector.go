@@ -23,6 +23,7 @@ func newPoolCollector() routerOSCollector {
 	c := &poolCollector{
 		usedCountDesc: description(prefix, "pool_used", "number of used IP/prefixes in a pool", labelNames),
 	}
+
 	return c
 }
 
@@ -50,14 +51,14 @@ func (c *poolCollector) collectForIPVersion(ipVersion, topic string, ctx *collec
 }
 
 func (c *poolCollector) fetchPoolNames(ipVersion, topic string, ctx *collectorContext) ([]string, error) {
-	reply, err := ctx.client.Run(fmt.Sprintf("/%s/pool/print", topic), "=.proplist=name")
+	reply, err := ctx.client.Run("/"+topic+"/pool/print", "=.proplist=name")
 	if err != nil {
 		log.WithFields(log.Fields{
 			"device": ctx.device.Name,
 			"error":  err,
 		}).Error("error fetching pool names")
 
-		return nil, err
+		return nil, fmt.Errorf("get pool %s error: %w", topic, err)
 	}
 
 	names := make([]string, 0, len(reply.Re))
@@ -69,7 +70,7 @@ func (c *poolCollector) fetchPoolNames(ipVersion, topic string, ctx *collectorCo
 }
 
 func (c *poolCollector) collectForPool(ipVersion, topic, pool string, ctx *collectorContext) error {
-	reply, err := ctx.client.Run(fmt.Sprintf("/%s/pool/used/print", topic), fmt.Sprintf("?pool=%s", pool), "=count-only=")
+	reply, err := ctx.client.Run("/"+topic+"/pool/used/print", "?pool="+pool, "=count-only=")
 	if err != nil {
 		log.WithFields(log.Fields{
 			"pool":       pool,
@@ -78,14 +79,16 @@ func (c *poolCollector) collectForPool(ipVersion, topic, pool string, ctx *colle
 			"error":      err,
 		}).Error("error fetching pool counts")
 
-		return err
+		return fmt.Errorf("get used pool %s/%s error: %w", topic, pool, err)
 	}
 
 	if reply.Done.Map["ret"] == "" {
 		return nil
 	}
 
-	v, err := strconv.ParseFloat(reply.Done.Map["ret"], 32)
+	replyValue := reply.Done.Map["ret"]
+
+	metricValue, err := strconv.ParseFloat(replyValue, 32)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"pool":       pool,
@@ -94,9 +97,11 @@ func (c *poolCollector) collectForPool(ipVersion, topic, pool string, ctx *colle
 			"error":      err,
 		}).Error("error parsing pool counts")
 
-		return err
+		return fmt.Errorf("parse pool %s used %v error: %w", pool, replyValue, err)
 	}
 
-	ctx.ch <- prometheus.MustNewConstMetric(c.usedCountDesc, prometheus.GaugeValue, v, ctx.device.Name, ctx.device.Address, ipVersion, pool)
+	ctx.ch <- prometheus.MustNewConstMetric(c.usedCountDesc, prometheus.GaugeValue,
+		metricValue, ctx.device.Name, ctx.device.Address, ipVersion, pool)
+
 	return nil
 }

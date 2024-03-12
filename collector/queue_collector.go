@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -24,34 +25,34 @@ type queueCollector struct {
 }
 
 func newQueueCollector() routerOSCollector {
-	c := &queueCollector{
+	collector := &queueCollector{
 		descriptions: make(map[string]*prometheus.Desc),
 	}
 
-	c.monitorProps = []string{"queued-packets", "queued-bytes"}
-	c.monitorPropslist = strings.Join(c.simpleQueueProps, ",")
+	collector.monitorProps = []string{"queued-packets", "queued-bytes"}
+	collector.monitorPropslist = strings.Join(collector.simpleQueueProps, ",")
 
 	labelNames := []string{"name", "address"}
-	for _, p := range c.monitorProps {
-		c.descriptions[p] = descriptionForPropertyName("queue", p, labelNames)
+	for _, p := range collector.monitorProps {
+		collector.descriptions[p] = descriptionForPropertyName("queue", p, labelNames)
 	}
 
-	c.simpleQueueProps = []string{
+	collector.simpleQueueProps = []string{
 		"name", "queue", "comment",
 		"disabled",
 		"bytes", "packets", "queued-bytes", "queued-packets",
 	}
-	c.simpleQueuePropslist = strings.Join(c.simpleQueueProps, ",")
+	collector.simpleQueuePropslist = strings.Join(collector.simpleQueueProps, ",")
 
 	labelNames = []string{"name", "address", "simple_queue_name", "queue", "comment"}
-	c.descriptions["disabled"] = descriptionForPropertyName("simple_queue", "disabled", labelNames)
+	collector.descriptions["disabled"] = descriptionForPropertyName("simple_queue", "disabled", labelNames)
 
-	for _, p := range c.simpleQueueProps[4:] {
-		c.descriptions["tx_"+p] = descriptionForPropertyName("simple_queue", "tx_"+p+"_total", labelNames)
-		c.descriptions["rx_"+p] = descriptionForPropertyName("simple_queue", "rx_"+p+"_total", labelNames)
+	for _, p := range collector.simpleQueueProps[4:] {
+		collector.descriptions["tx_"+p] = descriptionForPropertyName("simple_queue", "tx_"+p+"_total", labelNames)
+		collector.descriptions["rx_"+p] = descriptionForPropertyName("simple_queue", "rx_"+p+"_total", labelNames)
 	}
 
-	return c
+	return collector
 }
 
 func (c *queueCollector) describe(ch chan<- *prometheus.Desc) {
@@ -90,7 +91,7 @@ func (c *queueCollector) collectQueue(ctx *collectorContext) error {
 			"error":  err,
 		}).Error("error fetching queue statistics")
 
-		return err
+		return fmt.Errorf("get queue monitor error: %w", err)
 	}
 
 	if len(reply.Re) == 0 {
@@ -106,6 +107,7 @@ func (c *queueCollector) collectQueue(ctx *collectorContext) error {
 
 func (c *queueCollector) collectMetricForProperty(property string, re *proto.Sentence, ctx *collectorContext) {
 	desc := c.descriptions[property]
+
 	if re.Map[property] == "" {
 		return
 	}
@@ -132,53 +134,59 @@ func (c *queueCollector) fetchSimpleQueue(ctx *collectorContext) ([]*proto.Sente
 			"error":  err,
 		}).Error("error fetching simple queue metrics")
 
-		return nil, err
+		return nil, fmt.Errorf("get simple queue error: %w", err)
 	}
 
 	return reply.Re, nil
 }
 
-func (c *queueCollector) collectForSimpleQqueue(re *proto.Sentence, ctx *collectorContext) {
-	for _, p := range c.simpleQueueProps[3:] {
-		desc := c.descriptions[p]
-		if value := re.Map[p]; value != "" {
+func (c *queueCollector) collectForSimpleQqueue(reply *proto.Sentence, ctx *collectorContext) {
+	for _, prop := range c.simpleQueueProps[3:] {
+		desc := c.descriptions[prop]
+
+		if value := reply.Map[prop]; value != "" {
 			var (
 				v     float64
-				vtype prometheus.ValueType
+				vtype = prometheus.CounterValue
 				err   error
 			)
-			vtype = prometheus.CounterValue
 
-			switch p {
+			switch prop {
 			case "disabled":
 				vtype = prometheus.GaugeValue
 				v = parseBool(value)
 			case "bytes", "packets":
-				c.collectMetricForTXRXCounters(p, re.Map["name"], re.Map["queue"], re.Map["comment"], re, ctx)
+				c.collectMetricForTXRXCounters(prop, reply.Map["name"], reply.Map["queue"], reply.Map["comment"], reply, ctx)
+
 				continue
 			case "queued-packets", "queued-bytes":
-				c.collectMetricForTXRXCounters(p, re.Map["name"], re.Map["queue"], re.Map["comment"], re, ctx)
+				c.collectMetricForTXRXCounters(prop, reply.Map["name"], reply.Map["queue"], reply.Map["comment"], reply, ctx)
+
 				continue
 			default:
 				v, err = strconv.ParseFloat(value, 64)
 				if err != nil {
 					log.WithFields(log.Fields{
 						"device":    ctx.device.Name,
-						"interface": re.Map["name"],
-						"property":  p,
+						"interface": reply.Map["name"],
+						"property":  prop,
 						"value":     value,
 						"error":     err,
 					}).Error("error parsing queue metric value")
+
 					continue
 				}
 			}
+
 			ctx.ch <- prometheus.MustNewConstMetric(desc, vtype, v, ctx.device.Name, ctx.device.Address,
-				re.Map["name"], re.Map["queue"], re.Map["comment"])
+				reply.Map["name"], reply.Map["queue"], reply.Map["comment"])
 		}
 	}
 }
 
-func (c *queueCollector) collectMetricForTXRXCounters(property, name, queue, comment string, re *proto.Sentence, ctx *collectorContext) {
+func (c *queueCollector) collectMetricForTXRXCounters(
+	property, name, queue, comment string, re *proto.Sentence, ctx *collectorContext,
+) {
 	val := re.Map[property]
 	if val == "" {
 		return
@@ -192,11 +200,15 @@ func (c *queueCollector) collectMetricForTXRXCounters(property, name, queue, com
 			"value":    re.Map[property],
 			"error":    err,
 		}).Error("error parsing queue metric value")
+
 		return
 	}
 
-	desc_tx := c.descriptions["tx_"+property]
-	desc_rx := c.descriptions["rx_"+property]
-	ctx.ch <- prometheus.MustNewConstMetric(desc_tx, prometheus.CounterValue, tx, ctx.device.Name, ctx.device.Address, name, queue, comment)
-	ctx.ch <- prometheus.MustNewConstMetric(desc_rx, prometheus.CounterValue, rx, ctx.device.Name, ctx.device.Address, name, queue, comment)
+	descTX := c.descriptions["tx_"+property]
+	ctx.ch <- prometheus.MustNewConstMetric(descTX, prometheus.CounterValue,
+		tx, ctx.device.Name, ctx.device.Address, name, queue, comment)
+
+	descRX := c.descriptions["rx_"+property]
+	ctx.ch <- prometheus.MustNewConstMetric(descRX, prometheus.CounterValue,
+		rx, ctx.device.Name, ctx.device.Address, name, queue, comment)
 }

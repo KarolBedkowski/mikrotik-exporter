@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -56,14 +57,19 @@ func (c *netwatchCollector) fetch(ctx *collectorContext) ([]*proto.Sentence, err
 			"error":  err,
 		}).Error("error fetching netwatch metrics")
 
-		return nil, err
+		return nil, fmt.Errorf("get netwatch error: %w", err)
 	}
 
 	return reply.Re, nil
 }
 
-func (c *netwatchCollector) collectMetricForProperty(property, host, comment string, re *proto.Sentence, ctx *collectorContext) {
+var ErrUnexpectedStatus = errors.New("unexpected netwatch status value")
+
+func (c *netwatchCollector) collectMetricForProperty(
+	property, host, comment string, re *proto.Sentence, ctx *collectorContext,
+) {
 	desc := c.descriptions[property]
+
 	if value := re.Map[property]; value != "" {
 		var upVal, downVal, unknownVal float64
 
@@ -80,12 +86,15 @@ func (c *netwatchCollector) collectMetricForProperty(property, host, comment str
 				"host":     host,
 				"property": property,
 				"value":    value,
-				"error":    fmt.Errorf("unexpected netwatch status value"),
+				"error":    ErrUnexpectedStatus,
 			}).Error("error parsing netwatch metric value")
 		}
 
-		ctx.ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, upVal, ctx.device.Name, ctx.device.Address, host, comment, "up")
-		ctx.ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, downVal, ctx.device.Name, ctx.device.Address, host, comment, "down")
-		ctx.ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, unknownVal, ctx.device.Name, ctx.device.Address, host, comment, "unknown")
+		ctx.ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue,
+			upVal, ctx.device.Name, ctx.device.Address, host, comment, "up")
+		ctx.ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue,
+			downVal, ctx.device.Name, ctx.device.Address, host, comment, "down")
+		ctx.ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue,
+			unknownVal, ctx.device.Name, ctx.device.Address, host, comment, "unknown")
 	}
 }

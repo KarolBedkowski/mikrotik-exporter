@@ -7,13 +7,14 @@ import (
 	"net/http"
 	"os"
 
+	"mikrotik-exporter/collector"
+	"mikrotik-exporter/config"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/collectors/version"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
-	"mikrotik-exporter/collector"
-	"mikrotik-exporter/config"
 )
 
 // single device can be defined via CLI flags, multiple via config file.

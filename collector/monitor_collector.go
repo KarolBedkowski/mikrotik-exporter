@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/KarolBedkowski/routeros-go-client/proto"
@@ -47,7 +48,7 @@ func (c *monitorCollector) collect(ctx *collectorContext) error {
 			"error":  err,
 		}).Error("error fetching ethernet interfaces")
 
-		return err
+		return fmt.Errorf("get ethernet error: %w", err)
 	}
 
 	eths := make([]string, len(reply.Re))
@@ -69,7 +70,7 @@ func (c *monitorCollector) collectForMonitor(eths []string, ctx *collectorContex
 			"error":  err,
 		}).Error("error fetching ethernet monitor info")
 
-		return err
+		return fmt.Errorf("get ethernet monitor error: %w", err)
 	}
 
 	for _, e := range reply.Re {
@@ -87,38 +88,49 @@ func (c *monitorCollector) collectMetricsForEth(name string, se *proto.Sentence,
 		}
 
 		value := float64(c.valueForProp(prop, v))
-		ctx.ch <- prometheus.MustNewConstMetric(c.descriptions[prop], prometheus.GaugeValue, value, ctx.device.Name, ctx.device.Address, name)
+		ctx.ch <- prometheus.MustNewConstMetric(c.descriptions[prop], prometheus.GaugeValue,
+			value, ctx.device.Name, ctx.device.Address, name)
 	}
 }
 
 func (c *monitorCollector) valueForProp(name, value string) int {
+	val := 0
+
 	switch name {
 	case "status":
 		if value == "link-ok" {
-			return 1
+			val = 1
 		}
 
-		return 0
 	case "rate":
 		switch value {
 		case "10Mbps":
-			return 10
+			val = 10
 		case "100Mbps":
-			return 100
+			val = 100
 		case "1Gbps":
-			return 1000
+			val = 1000
+		case "2.5Gbps":
+			val = 2500
+		case "5Gbps":
+			val = 5000
 		case "10Gbps":
-			return 10000
+			val = 10000
+		case "25Gbps":
+			val = 25000
+		case "40Gbps":
+			val = 40000
+		case "50Gbps":
+			val = 50000
+		case "100Gbps":
+			val = 100000
 		}
 
-		return 0
 	case "full-duplex":
 		if value == "true" {
-			return 1
+			val = 1
 		}
-
-		return 0
-	default:
-		return 0
 	}
+
+	return val
 }

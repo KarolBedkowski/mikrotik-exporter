@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -27,7 +28,10 @@ func newInterfaceCollector() routerOSCollector {
 		descriptions: make(map[string]*prometheus.Desc),
 	}
 
-	c.props = []string{"actual-mtu", "running", "rx-byte", "tx-byte", "rx-packet", "tx-packet", "rx-error", "tx-error", "rx-drop", "tx-drop", "link-downs"}
+	c.props = []string{
+		"actual-mtu", "running", "rx-byte", "tx-byte", "rx-packet", "tx-packet",
+		"rx-error", "tx-error", "rx-drop", "tx-drop", "link-downs",
+	}
 	c.propslist = strings.Join(append(labelsProps, c.props...), ",")
 	c.descriptions["actual-mtu"] = descriptionForPropertyName("interface", "actual_mtu", labelNames)
 	c.descriptions["running"] = descriptionForPropertyName("interface", "running", labelNames)
@@ -66,7 +70,7 @@ func (c *interfaceCollector) fetch(ctx *collectorContext) ([]*proto.Sentence, er
 			"error":  err,
 		}).Error("error fetching interface metrics")
 
-		return nil, err
+		return nil, fmt.Errorf("get interfaces detail error: %w", err)
 	}
 
 	return reply.Re, nil
@@ -78,12 +82,17 @@ func (c *interfaceCollector) collectForStat(re *proto.Sentence, ctx *collectorCo
 	}
 }
 
-func (c *interfaceCollector) collectMetricForProperty(property string, re *proto.Sentence, ctx *collectorContext) {
+func (c *interfaceCollector) collectMetricForProperty(
+	property string, reply *proto.Sentence, ctx *collectorContext,
+) {
 	desc := c.descriptions[property]
-	if value := re.Map[property]; value != "" {
-		var v float64
-		var vtype prometheus.ValueType = prometheus.CounterValue
-		var err error
+
+	if value := reply.Map[property]; value != "" {
+		var (
+			v     float64
+			vtype = prometheus.CounterValue
+			err   error
+		)
 
 		switch property {
 		case "running":
@@ -91,13 +100,14 @@ func (c *interfaceCollector) collectMetricForProperty(property string, re *proto
 			v = parseBool(value)
 		case "actual-mtu":
 			vtype = prometheus.GaugeValue
+
 			fallthrough
 		default:
 			v, err = strconv.ParseFloat(value, 64)
 			if err != nil {
 				log.WithFields(log.Fields{
 					"device":    ctx.device.Name,
-					"interface": re.Map["name"],
+					"interface": reply.Map["name"],
 					"property":  property,
 					"value":     value,
 					"error":     err,
@@ -108,6 +118,7 @@ func (c *interfaceCollector) collectMetricForProperty(property string, re *proto
 		}
 
 		ctx.ch <- prometheus.MustNewConstMetric(desc, vtype, v, ctx.device.Name, ctx.device.Address,
-			re.Map["name"], re.Map["type"], re.Map["disabled"], re.Map["comment"], re.Map["running"], re.Map["slave"])
+			reply.Map["name"], reply.Map["type"], reply.Map["disabled"], reply.Map["comment"],
+			reply.Map["running"], reply.Map["slave"])
 	}
 }

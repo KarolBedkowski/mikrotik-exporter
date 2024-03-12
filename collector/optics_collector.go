@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -28,6 +29,7 @@ func newOpticsCollector() routerOSCollector {
 	const prefix = "optics"
 
 	labelNames := []string{"name", "address", "interface"}
+
 	return &opticsCollector{
 		rxStatusDesc:    description(prefix, "rx_status", "RX status (1 = no loss)", labelNames),
 		txStatusDesc:    description(prefix, "tx_status", "TX status (1 = no faults)", labelNames),
@@ -36,7 +38,10 @@ func newOpticsCollector() routerOSCollector {
 		temperatureDesc: description(prefix, "temperature_celsius", "temperature in degree celsius", labelNames),
 		txBiasDesc:      description(prefix, "tx_bias_ma", "bias is milliamps", labelNames),
 		voltageDesc:     description(prefix, "voltage_volt", "volage in volt", labelNames),
-		props:           []string{"sfp-rx-loss", "sfp-tx-fault", "sfp-temperature", "sfp-supply-voltage", "sfp-tx-bias-current", "sfp-tx-power", "sfp-rx-power"},
+		props: []string{
+			"sfp-rx-loss", "sfp-tx-fault", "sfp-temperature", "sfp-supply-voltage",
+			"sfp-tx-bias-current", "sfp-tx-power", "sfp-rx-power",
+		},
 	}
 }
 
@@ -58,10 +63,11 @@ func (c *opticsCollector) collect(ctx *collectorContext) error {
 			"error":  err,
 		}).Error("error fetching interface metrics")
 
-		return err
+		return fmt.Errorf("get ethernet error: %w", err)
 	}
 
 	ifaces := make([]string, 0)
+
 	for _, iface := range reply.Re {
 		n := iface.Map["name"]
 		if strings.HasPrefix(n, "sfp") {
@@ -87,7 +93,7 @@ func (c *opticsCollector) collectOpticalMetricsForInterfaces(ifaces []string, ct
 			"error":  err,
 		}).Error("error fetching interface monitor metrics")
 
-		return err
+		return fmt.Errorf("get ethernet monitor error: %w", err)
 	}
 
 	for _, se := range reply.Re {
@@ -117,10 +123,12 @@ func (c *opticsCollector) collectMetricsForInterface(name string, se *proto.Sent
 				"property":  prop,
 				"error":     err,
 			}).Error("error parsing interface monitor metric")
+
 			return
 		}
 
-		ctx.ch <- prometheus.MustNewConstMetric(c.descForKey(prop), prometheus.GaugeValue, value, ctx.device.Name, ctx.device.Address, name)
+		ctx.ch <- prometheus.MustNewConstMetric(c.descForKey(prop), prometheus.GaugeValue,
+			value, ctx.device.Name, ctx.device.Address, name)
 	}
 }
 
@@ -134,7 +142,12 @@ func (c *opticsCollector) valueForKey(name, value string) (float64, error) {
 		return status, nil
 	}
 
-	return strconv.ParseFloat(value, 64)
+	val, err := strconv.ParseFloat(value, 64)
+	if err != nil {
+		return 0, fmt.Errorf("parse %s value %v error: %w", name, value, err)
+	}
+
+	return val, nil
 }
 
 func (c *opticsCollector) descForKey(name string) *prometheus.Desc {

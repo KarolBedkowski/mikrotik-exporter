@@ -18,11 +18,13 @@ type dhcpv6Collector struct {
 
 func newDHCPv6Collector() routerOSCollector {
 	const prefix = "dhcpv6"
+
 	labelNames := []string{"name", "address", "server"}
 
 	c := &dhcpv6Collector{
 		bindingCountDesc: description(prefix, "binding", "number of active bindings per DHCPv6 server", labelNames),
 	}
+
 	return c
 }
 
@@ -54,7 +56,7 @@ func (c *dhcpv6Collector) fetchDHCPServerNames(ctx *collectorContext) ([]string,
 			"error":  err,
 		}).Error("error fetching DHCPv6 server names")
 
-		return nil, err
+		return nil, fmt.Errorf("get dhcp-server error: %w", err)
 	}
 
 	names := []string{}
@@ -66,7 +68,7 @@ func (c *dhcpv6Collector) fetchDHCPServerNames(ctx *collectorContext) ([]string,
 }
 
 func (c *dhcpv6Collector) colllectForDHCPServer(ctx *collectorContext, dhcpServer string) error {
-	reply, err := ctx.client.Run("/ipv6/dhcp-server/binding/print", fmt.Sprintf("?server=%s", dhcpServer), "=count-only=")
+	reply, err := ctx.client.Run("/ipv6/dhcp-server/binding/print", "?server="+dhcpServer, "=count-only=")
 	if err != nil {
 		log.WithFields(log.Fields{
 			"dhcpv6_server": dhcpServer,
@@ -74,7 +76,7 @@ func (c *dhcpv6Collector) colllectForDHCPServer(ctx *collectorContext, dhcpServe
 			"error":         err,
 		}).Error("error fetching DHCPv6 binding counts")
 
-		return err
+		return fmt.Errorf("get bindings error: %w", err)
 	}
 
 	v, err := strconv.ParseFloat(reply.Done.Map["ret"], 32)
@@ -85,7 +87,7 @@ func (c *dhcpv6Collector) colllectForDHCPServer(ctx *collectorContext, dhcpServe
 			"error":         err,
 		}).Error("error parsing DHCPv6 binding counts")
 
-		return err
+		return fmt.Errorf("get bindings error: %w", err)
 	}
 
 	ctx.ch <- prometheus.MustNewConstMetric(c.bindingCountDesc, prometheus.GaugeValue, v,

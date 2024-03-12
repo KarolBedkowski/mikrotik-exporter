@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -23,6 +24,7 @@ func newConntrackCollector() routerOSCollector {
 	const prefix = "conntrack"
 
 	labelNames := []string{"name", "address"}
+
 	return &conntrackCollector{
 		propslist:        strings.Join([]string{"total-entries", "max-entries"}, ","),
 		totalEntriesDesc: description(prefix, "entries", "Number of tracked connections", labelNames),
@@ -43,7 +45,7 @@ func (c *conntrackCollector) collect(ctx *collectorContext) error {
 			"error":  err,
 		}).Error("error fetching conntrack table metrics")
 
-		return err
+		return fmt.Errorf("get tracking error: %w", err)
 	}
 
 	if len(reply.Re) > 0 {
@@ -55,7 +57,9 @@ func (c *conntrackCollector) collect(ctx *collectorContext) error {
 	return nil
 }
 
-func (c *conntrackCollector) collectMetricForProperty(property string, desc *prometheus.Desc, re *proto.Sentence, ctx *collectorContext) {
+func (c *conntrackCollector) collectMetricForProperty(
+	property string, desc *prometheus.Desc, re *proto.Sentence, ctx *collectorContext,
+) {
 	if re.Map[property] == "" {
 		return
 	}

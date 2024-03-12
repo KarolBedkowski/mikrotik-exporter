@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -54,7 +55,7 @@ func (c *dhcpLeaseCollector) fetch(ctx *collectorContext) ([]*proto.Sentence, er
 			"reply":  reply,
 		}).Error("error fetching DHCP leases metrics")
 
-		return nil, err
+		return nil, fmt.Errorf("get lease error: %w", err)
 	}
 
 	return reply.Re, nil

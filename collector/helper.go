@@ -1,7 +1,7 @@
 package collector
 
 import (
-	"fmt"
+	"errors"
 	"math"
 	"regexp"
 	"strconv"
@@ -19,18 +19,22 @@ var (
 
 func init() {
 	durationRegex = regexp.MustCompile(`(?:(\d*)w)?(?:(\d*)d)?(?:(\d*)h)?(?:(\d*)m)?(?:(\d*)s)?(?:(\d*)ms)?`)
-	durationParts = [6]time.Duration{time.Hour * 168, time.Hour * 24, time.Hour, time.Minute, time.Second, time.Millisecond}
+	durationParts = [6]time.Duration{
+		time.Hour * 168, time.Hour * 24, time.Hour, time.Minute, time.Second, time.Millisecond,
+	}
 }
 
 func metricStringCleanup(in string) string {
-	return strings.Replace(in, "-", "_", -1)
+	return strings.ReplaceAll(in, "-", "_")
 }
 
 func descriptionForPropertyName(prefix, property string, labelNames []string) *prometheus.Desc {
 	return descriptionForPropertyNameHelpText(prefix, property, labelNames, property)
 }
 
-func descriptionForPropertyNameHelpText(prefix, property string, labelNames []string, helpText string) *prometheus.Desc {
+func descriptionForPropertyNameHelpText(prefix, property string,
+	labelNames []string, helpText string,
+) *prometheus.Desc {
 	return prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, prefix, metricStringCleanup(property)),
 		helpText,
@@ -48,9 +52,11 @@ func description(prefix, name, helpText string, labelNames []string) *prometheus
 	)
 }
 
+var ErrEmptyValue = errors.New("empty value")
+
 func splitStringToFloats(metric string, sep ...string) (float64, float64, error) {
 	if metric == "" {
-		return math.NaN(), math.NaN(), fmt.Errorf("empty value")
+		return math.NaN(), math.NaN(), ErrEmptyValue
 	}
 
 	separator := ","
@@ -76,34 +82,36 @@ func splitStringToFloats(metric string, sep ...string) (float64, float64, error)
 	return m1, m2, nil
 }
 
+var ErrInvalidDuration = errors.New("invalid duration value sent to regex")
+
 func parseDuration(duration string) (float64, error) {
-	var u time.Duration
+	var totalDur time.Duration
 
 	reMatch := durationRegex.FindAllStringSubmatch(duration, -1)
 
 	// should get one and only one match back on the regex
 	if len(reMatch) != 1 {
-		return 0, fmt.Errorf("invalid duration value sent to regex")
-	} else {
-		for i, match := range reMatch[0] {
-			if match != "" && i != 0 {
-				v, err := strconv.Atoi(match)
-				if err != nil {
-					log.WithFields(log.Fields{
-						"duration": duration,
-						"value":    match,
-						"error":    err,
-					}).Error("error parsing duration field value")
+		return 0, ErrInvalidDuration
+	}
 
-					return float64(0), err
-				}
+	for i, match := range reMatch[0][1:] {
+		if match != "" {
+			v, err := strconv.Atoi(match)
+			if err != nil {
+				log.WithFields(log.Fields{
+					"duration": duration,
+					"value":    match,
+					"error":    err,
+				}).Error("error parsing duration field value")
 
-				u += time.Duration(v) * durationParts[i-1]
+				return float64(0), err
 			}
+
+			totalDur += time.Duration(v) * durationParts[i]
 		}
 	}
 
-	return u.Seconds(), nil
+	return totalDur.Seconds(), nil
 }
 
 func parseBool(value string) float64 {

@@ -20,6 +20,7 @@ func TestParseUptime(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
+
 		if seconds != uptime.v {
 			t.Errorf("seconds : %f != v : %f\n", seconds, uptime.v)
 		}

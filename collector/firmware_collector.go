@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -36,7 +37,7 @@ func (c *firmwareCollector) collect(ctx *collectorContext) error {
 			"error":  err,
 		})
 
-		return err
+		return fmt.Errorf("get package error: %w", err)
 	}
 
 	pkgs := reply.Re

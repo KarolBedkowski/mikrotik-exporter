@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -62,7 +63,7 @@ func (c *ipsecCollector) fetch(ctx *collectorContext) ([]*proto.Sentence, error)
 			"error":  err,
 		}).Error("error fetching interface metrics")
 
-		return nil, err
+		return nil, fmt.Errorf("get policy error: %w", err)
 	}
 
 	return reply.Re, nil
@@ -77,25 +78,30 @@ func (c *ipsecCollector) collectForStat(re *proto.Sentence, ctx *collectorContex
 	}
 }
 
-func (c *ipsecCollector) collectMetricForProperty(property, srcdst, comment string, re *proto.Sentence, ctx *collectorContext) {
+func (c *ipsecCollector) collectMetricForProperty(property, srcdst, comment string,
+	re *proto.Sentence, ctx *collectorContext,
+) {
 	desc := c.descriptions[property]
+
 	if value := re.Map[property]; value != "" {
-		var v float64
-		var err error
+		var (
+			mValue float64
+			err    error
+		)
 
 		switch property {
 		case "ph2-state":
 			if value == "established" {
-				v = 1
+				mValue = 1
 			} else {
-				v = 0
+				mValue = 0
 			}
 		case "active", "invalid":
-			v = parseBool(value)
+			mValue = parseBool(value)
 		case "comment":
 			return
 		default:
-			v, err = strconv.ParseFloat(value, 64)
+			mValue, err = strconv.ParseFloat(value, 64)
 		}
 
 		if err != nil {
@@ -110,6 +116,6 @@ func (c *ipsecCollector) collectMetricForProperty(property, srcdst, comment stri
 			return
 		}
 
-		ctx.ch <- prometheus.MustNewConstMetric(desc, prometheus.CounterValue, v, ctx.device.Name, srcdst, comment)
+		ctx.ch <- prometheus.MustNewConstMetric(desc, prometheus.CounterValue, mValue, ctx.device.Name, srcdst, comment)
 	}
 }

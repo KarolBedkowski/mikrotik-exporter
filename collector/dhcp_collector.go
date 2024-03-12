@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -17,6 +18,7 @@ type dhcpCollector struct {
 
 func newDHCPCollector() routerOSCollector {
 	const prefix = "dhcp"
+
 	labelNames := []string{"name", "address", "server"}
 
 	c := &dhcpCollector{
@@ -53,7 +55,7 @@ func (c *dhcpCollector) fetchDHCPServerNames(ctx *collectorContext) ([]string, e
 			"error":  err,
 		}).Error("error fetching DHCP server names")
 
-		return nil, err
+		return nil, fmt.Errorf("get dhcp-server error: %w", err)
 	}
 
 	names := []string{}
@@ -73,7 +75,7 @@ func (c *dhcpCollector) colllectForDHCPServer(ctx *collectorContext, dhcpServer 
 			"error":       err,
 		}).Error("error fetching DHCP lease counts")
 
-		return err
+		return fmt.Errorf("get lease error: %w", err)
 	}
 
 	if reply.Done.Map["ret"] == "" {
@@ -87,9 +89,13 @@ func (c *dhcpCollector) colllectForDHCPServer(ctx *collectorContext, dhcpServer 
 			"device":      ctx.device.Name,
 			"error":       err,
 		}).Error("error parsing DHCP lease counts")
-		return err
+
+		return fmt.Errorf("parse lease result error: %w", err)
 	}
 
-	ctx.ch <- prometheus.MustNewConstMetric(c.leasesActiveCountDesc, prometheus.GaugeValue, v, ctx.device.Name, ctx.device.Address, dhcpServer)
+	ctx.ch <- prometheus.MustNewConstMetric(
+		c.leasesActiveCountDesc, prometheus.GaugeValue, v,
+		ctx.device.Name, ctx.device.Address, dhcpServer)
+
 	return nil
 }
