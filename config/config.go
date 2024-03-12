@@ -87,6 +87,7 @@ type SrvRecord struct {
 	Record string    `yaml:"record"`
 	Dns    DnsServer `yaml:"dns,omitempty"`
 }
+
 type DnsServer struct {
 	Address string `yaml:"address"`
 	Port    int    `yaml:"port"`
@@ -96,22 +97,22 @@ type DnsServer struct {
 func Load(r io.Reader) (*Config, error) {
 	b, err := io.ReadAll(r)
 	if err != nil {
+		return nil, fmt.Errorf("read error: %w", err)
+	}
+
+	cfg := &Config{}
+
+	if err := yaml.Unmarshal(b, cfg); err != nil {
+		return nil, fmt.Errorf("unmarshal error: %w", err)
+	}
+
+	if err := cfg.Features.validate(); err != nil {
 		return nil, err
 	}
 
-	c := &Config{}
-
-	if err := yaml.Unmarshal(b, c); err != nil {
-		return nil, err
-	}
-
-	if err := c.Features.validate(); err != nil {
-		return nil, err
-	}
-
-	for name, features := range c.Profiles {
+	for name, features := range cfg.Profiles {
 		if err := features.validate(); err != nil {
-			return nil, fmt.Errorf("invalid profile %s: %s", name, err)
+			return nil, fmt.Errorf("invalid profile %s: %w", name, err)
 		}
 
 		// always enabled
@@ -119,7 +120,7 @@ func Load(r io.Reader) (*Config, error) {
 		features["resource"] = true
 	}
 
-	return c, nil
+	return cfg, nil
 }
 
 func (c *Config) DeviceFeatures(deviceName string) (Features, error) {
