@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/KarolBedkowski/routeros-go-client/proto"
-
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 )
@@ -48,7 +47,7 @@ func newResourceCollector() routerOSCollector {
 
 	c.descriptions["cpu-count"] = descriptionForPropertyName("system", "cpu", labelNames)
 	c.descriptions["uptime"] = descriptionForPropertyName("system", "uptime_total", labelNames)
-	c.versions = description("system", "routeros", "Board and system version",
+	c.versions = description("system", "routers", "Board and system version",
 		[]string{"name", "address", "board_name", "version"})
 
 	return c

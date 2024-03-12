@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"io"
+	"slices"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
@@ -35,14 +36,7 @@ func isValidFeature(name string) bool {
 		"interface",
 	}
 
-	name = strings.ToLower(name)
-	for _, n := range validNames {
-		if n == name {
-			return true
-		}
-	}
-
-	return false
+	return slices.Contains(validNames, strings.ToLower(name))
 }
 
 type Features map[string]bool
@@ -71,14 +65,14 @@ func (f Features) FeatureNames() []string {
 	return res
 }
 
-// Config represents the configuration for the exporter
+// Config represents the configuration for the exporter.
 type Config struct {
 	Devices  []Device            `yaml:"devices"`
 	Features Features            `yaml:"features,omitempty"`
 	Profiles map[string]Features `yaml:"profiles,omitempty"`
 }
 
-// Device represents a target device
+// Device represents a target device.
 type Device struct {
 	Name     string    `yaml:"name"`
 	Address  string    `yaml:"address,omitempty"`
@@ -98,7 +92,7 @@ type DnsServer struct {
 	Port    int    `yaml:"port"`
 }
 
-// Load reads YAML from reader and unmashals in Config
+// Load reads YAML from reader and unmashals in Config.
 func Load(r io.Reader) (*Config, error) {
 	b, err := io.ReadAll(r)
 	if err != nil {

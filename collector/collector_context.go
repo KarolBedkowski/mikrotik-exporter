@@ -3,8 +3,8 @@ package collector
 import (
 	"mikrotik-exporter/config"
 
-	"github.com/prometheus/client_golang/prometheus"
 	routeros "github.com/KarolBedkowski/routeros-go-client"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 type collectorContext struct {

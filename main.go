@@ -12,7 +12,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/collectors/version"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
-
 	"mikrotik-exporter/collector"
 	"mikrotik-exporter/config"
 )

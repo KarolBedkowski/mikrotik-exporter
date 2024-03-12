@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/KarolBedkowski/routeros-go-client/proto"
-
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 )
@@ -175,7 +174,6 @@ func (c *queueCollector) collectForSimpleQqueue(re *proto.Sentence, ctx *collect
 			}
 			ctx.ch <- prometheus.MustNewConstMetric(desc, vtype, v, ctx.device.Name, ctx.device.Address,
 				re.Map["name"], re.Map["queue"], re.Map["comment"])
-
 		}
 	}
 }

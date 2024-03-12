@@ -13,13 +13,12 @@ import (
 	"sync"
 	"time"
 
-	"mikrotik-exporter/config"
 	"github.com/KarolBedkowski/routeros-go-client"
-
 	"github.com/hashicorp/go-multierror"
 	"github.com/miekg/dns"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
+	"mikrotik-exporter/config"
 )
 
 const (
@@ -28,7 +27,7 @@ const (
 	apiPortTLS = "8729"
 	dnsPort    = 53
 
-	// DefaultTimeout defines the default timeout when connecting to a router
+	// DefaultTimeout defines the default timeout when connecting to a router.
 	DefaultTimeout = 5 * time.Second
 )
 
@@ -63,14 +62,14 @@ type collector struct {
 	connLock    sync.Mutex
 }
 
-// WithTimeout sets timeout for connecting to router
+// WithTimeout sets timeout for connecting to router.
 func WithTimeout(d time.Duration) Option {
 	return func(c *collector) {
 		c.timeout = d
 	}
 }
 
-// WithTLS enables TLS
+// WithTLS enables TLS.
 func WithTLS(insecure bool) Option {
 	return func(c *collector) {
 		c.enableTLS = true
@@ -78,10 +77,10 @@ func WithTLS(insecure bool) Option {
 	}
 }
 
-// Option applies options to collector
+// Option applies options to collector.
 type Option func(*collector)
 
-// NewCollector creates a collector instance
+// NewCollector creates a collector instance.
 func NewCollector(cfg *config.Config, opts ...Option) (prometheus.Collector, error) {
 	log.WithFields(log.Fields{
 		"numDevices": len(cfg.Devices),
@@ -152,6 +151,7 @@ func (c *collector) srvToDevice(dc *deviceCollector) []*deviceCollector {
 				User:     dev.User,
 				Password: dev.Password,
 			}
+
 			ndc := &deviceCollector{d, dc.collectors, nil, true}
 			_ = c.getIdentity(ndc)
 			realDevices = append(realDevices, ndc)
