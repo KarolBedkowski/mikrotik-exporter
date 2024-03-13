@@ -79,8 +79,8 @@ func (c *healthCollector) collectForStat(re *proto.Sentence, ctx *collectorConte
 
 func (c *healthCollector) collectMetricForProperty(property string, re *proto.Sentence, ctx *collectorContext) {
 	var (
-		v   float64
-		err error
+		metricValue float64
+		err         error
 	)
 
 	name := property
@@ -93,7 +93,7 @@ func (c *healthCollector) collectMetricForProperty(property string, re *proto.Se
 		}
 	}
 
-	v, err = strconv.ParseFloat(value, 64)
+	metricValue, err = strconv.ParseFloat(value, 64)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"device":   ctx.device.Name,
@@ -106,5 +106,5 @@ func (c *healthCollector) collectMetricForProperty(property string, re *proto.Se
 	}
 
 	desc := c.descriptions[name]
-	ctx.ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, v, ctx.device.Name, ctx.device.Address)
+	ctx.ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, metricValue, ctx.device.Name, ctx.device.Address)
 }

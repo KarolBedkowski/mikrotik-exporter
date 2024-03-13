@@ -54,8 +54,10 @@ func (c *poolCollector) fetchPoolNames(ipVersion, topic string, ctx *collectorCo
 	reply, err := ctx.client.Run("/"+topic+"/pool/print", "=.proplist=name")
 	if err != nil {
 		log.WithFields(log.Fields{
-			"device": ctx.device.Name,
-			"error":  err,
+			"device":     ctx.device.Name,
+			"ip_version": ipVersion,
+			"topic":      topic,
+			"error":      err,
 		}).Error("error fetching pool names")
 
 		return nil, fmt.Errorf("get pool %s error: %w", topic, err)
@@ -74,6 +76,7 @@ func (c *poolCollector) collectForPool(ipVersion, topic, pool string, ctx *colle
 	if err != nil {
 		log.WithFields(log.Fields{
 			"pool":       pool,
+			"topic":      topic,
 			"ip_version": ipVersion,
 			"device":     ctx.device.Name,
 			"error":      err,

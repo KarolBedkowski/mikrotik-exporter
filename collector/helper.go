@@ -94,7 +94,7 @@ func parseDuration(duration string) (float64, error) {
 		return 0, ErrInvalidDuration
 	}
 
-	for i, match := range reMatch[0][1:] {
+	for idx, match := range reMatch[0][1:] {
 		if match != "" {
 			v, err := strconv.Atoi(match)
 			if err != nil {
@@ -107,7 +107,7 @@ func parseDuration(duration string) (float64, error) {
 				return float64(0), err
 			}
 
-			totalDur += time.Duration(v) * durationParts[i]
+			totalDur += time.Duration(v) * durationParts[idx]
 		}
 	}
 

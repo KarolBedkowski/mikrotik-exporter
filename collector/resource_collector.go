@@ -105,20 +105,20 @@ func (c *resourceCollector) collectForStat(re *proto.Sentence, ctx *collectorCon
 
 func (c *resourceCollector) collectMetricForProperty(property string, reply *proto.Sentence, ctx *collectorContext) {
 	var (
-		v     float64
-		vtype = prometheus.GaugeValue
-		err   error
+		metricValue float64
+		vtype       = prometheus.GaugeValue
+		err         error
 	)
 
 	if property == "uptime" {
-		v, err = parseUptime(reply.Map[property])
+		metricValue, err = parseUptime(reply.Map[property])
 		vtype = prometheus.CounterValue
 	} else {
 		if reply.Map[property] == "" {
 			return
 		}
 
-		v, err = strconv.ParseFloat(reply.Map[property], 64)
+		metricValue, err = strconv.ParseFloat(reply.Map[property], 64)
 	}
 
 	if err != nil {
@@ -133,7 +133,7 @@ func (c *resourceCollector) collectMetricForProperty(property string, reply *pro
 	}
 
 	desc := c.descriptions[property]
-	ctx.ch <- prometheus.MustNewConstMetric(desc, vtype, v, ctx.device.Name, ctx.device.Address)
+	ctx.ch <- prometheus.MustNewConstMetric(desc, vtype, metricValue, ctx.device.Name, ctx.device.Address)
 }
 
 var ErrInvalidUptime = errors.New("invalid uptime value sent to regex")
@@ -149,7 +149,7 @@ func parseUptime(uptime string) (float64, error) {
 		return 0, ErrInvalidUptime
 	}
 
-	for i, match := range reMatch[0][1:] {
+	for idx, match := range reMatch[0][1:] {
 		if match != "" {
 			v, err := strconv.Atoi(match)
 			if err != nil {
@@ -162,7 +162,7 @@ func parseUptime(uptime string) (float64, error) {
 				return float64(0), err
 			}
 
-			totalUptime += time.Duration(v) * uptimeParts[i]
+			totalUptime += time.Duration(v) * uptimeParts[idx]
 		}
 	}
 

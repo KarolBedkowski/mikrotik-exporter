@@ -24,23 +24,23 @@ func newInterfaceCollector() routerOSCollector {
 	labelsProps := []string{"name", "type", "disabled", "comment", "slave"}
 	labelNames := []string{"name", "address", "interface", "type", "disabled", "comment", "running", "slave"}
 
-	c := &interfaceCollector{
+	collector := &interfaceCollector{
 		descriptions: make(map[string]*prometheus.Desc),
 	}
 
-	c.props = []string{
+	collector.props = []string{
 		"actual-mtu", "running", "rx-byte", "tx-byte", "rx-packet", "tx-packet",
 		"rx-error", "tx-error", "rx-drop", "tx-drop", "link-downs",
 	}
-	c.propslist = strings.Join(append(labelsProps, c.props...), ",")
-	c.descriptions["actual-mtu"] = descriptionForPropertyName("interface", "actual_mtu", labelNames)
-	c.descriptions["running"] = descriptionForPropertyName("interface", "running", labelNames)
+	collector.propslist = strings.Join(append(labelsProps, collector.props...), ",")
+	collector.descriptions["actual-mtu"] = descriptionForPropertyName("interface", "actual_mtu", labelNames)
+	collector.descriptions["running"] = descriptionForPropertyName("interface", "running", labelNames)
 
-	for _, p := range c.props[2:] {
-		c.descriptions[p] = descriptionForPropertyName("interface", p+"_total", labelNames)
+	for _, p := range collector.props[2:] {
+		collector.descriptions[p] = descriptionForPropertyName("interface", p+"_total", labelNames)
 	}
 
-	return c
+	return collector
 }
 
 func (c *interfaceCollector) describe(ch chan<- *prometheus.Desc) {
@@ -89,21 +89,21 @@ func (c *interfaceCollector) collectMetricForProperty(
 
 	if value := reply.Map[property]; value != "" {
 		var (
-			v     float64
-			vtype = prometheus.CounterValue
-			err   error
+			metricValue float64
+			vtype       = prometheus.CounterValue
+			err         error
 		)
 
 		switch property {
 		case "running":
 			vtype = prometheus.GaugeValue
-			v = parseBool(value)
+			metricValue = parseBool(value)
 		case "actual-mtu":
 			vtype = prometheus.GaugeValue
 
 			fallthrough
 		default:
-			v, err = strconv.ParseFloat(value, 64)
+			metricValue, err = strconv.ParseFloat(value, 64)
 			if err != nil {
 				log.WithFields(log.Fields{
 					"device":    ctx.device.Name,
@@ -117,7 +117,7 @@ func (c *interfaceCollector) collectMetricForProperty(
 			}
 		}
 
-		ctx.ch <- prometheus.MustNewConstMetric(desc, vtype, v, ctx.device.Name, ctx.device.Address,
+		ctx.ch <- prometheus.MustNewConstMetric(desc, vtype, metricValue, ctx.device.Name, ctx.device.Address,
 			reply.Map["name"], reply.Map["type"], reply.Map["disabled"], reply.Map["comment"],
 			reply.Map["running"], reply.Map["slave"])
 	}

@@ -245,26 +245,26 @@ func (c *collector) collectForDevice(d *deviceCollector, ch chan<- prometheus.Me
 	ch <- prometheus.MustNewConstMetric(scrapeSuccessDesc, prometheus.GaugeValue, success, name)
 }
 
-func (c *collector) connectAndCollect(d *deviceCollector, ch chan<- prometheus.Metric) error {
-	client, err := c.getConnection(d)
+func (c *collector) connectAndCollect(devCollector *deviceCollector, ch chan<- prometheus.Metric) error {
+	client, err := c.getConnection(devCollector)
 	if err != nil {
 		log.WithFields(log.Fields{
-			"device": d.device.Name,
+			"device": devCollector.device.Name,
 			"error":  err,
 		}).Error("error dialing device")
 
 		return err
 	}
 
-	defer c.closeConnection(d)
+	defer c.closeConnection(devCollector)
 
 	var result *multierror.Error
 
-	for _, coName := range d.collectors {
+	for _, coName := range devCollector.collectors {
 		co := c.collectors[coName]
-		ctx := &collectorContext{ch, &d.device, client}
+		ctx := &collectorContext{ch, &devCollector.device, client}
 		log.WithFields(log.Fields{
-			"device":    d.device.Name,
+			"device":    devCollector.device.Name,
 			"collector": fmt.Sprintf("%#v", co),
 		}).Debug("collect")
 
@@ -273,7 +273,11 @@ func (c *collector) connectAndCollect(d *deviceCollector, ch chan<- prometheus.M
 		}
 	}
 
-	return result.ErrorOrNil()
+	if err := result.ErrorOrNil(); err != nil {
+		return fmt.Errorf("collect error: %w", err)
+	}
+
+	return nil
 }
 
 func (c *collector) getConnection(devCol *deviceCollector) (*routeros.Client, error) {
@@ -315,29 +319,40 @@ func (c *collector) closeConnection(dc *deviceCollector) {
 	}
 }
 
-func (c *collector) dial(d *config.Device) (net.Conn, error) {
+func (c *collector) dial(device *config.Device) (net.Conn, error) {
 	if !c.enableTLS {
-		if (d.Port) == "" {
-			d.Port = apiPort
+		if (device.Port) == "" {
+			device.Port = apiPort
 		}
 
-		return net.DialTimeout("tcp", d.Address+":"+d.Port, c.timeout)
+		con, err := net.DialTimeout("tcp", device.Address+":"+device.Port, c.timeout)
+		if err != nil {
+			return nil, fmt.Errorf("dial error: %w", err)
+		}
+
+		return con, nil
 	}
 
 	tlsCfg := &tls.Config{
 		InsecureSkipVerify: c.insecureTLS,
 	}
 
-	if (d.Port) == "" {
-		d.Port = apiPortTLS
+	if (device.Port) == "" {
+		device.Port = apiPortTLS
 	}
 
-	return tls.DialWithDialer(&net.Dialer{Timeout: c.timeout},
-		"tcp", d.Address+":"+d.Port, tlsCfg)
+	con, err := tls.DialWithDialer(&net.Dialer{Timeout: c.timeout}, "tcp", device.Address+":"+device.Port, tlsCfg)
+	if err != nil {
+		return nil, fmt.Errorf("dial with dialler error: %w", err)
+	}
+
+	return con, nil
 }
 
-func (c *collector) login(d *config.Device, client *routeros.Client) error {
-	r, err := client.Run("/login", "=name="+d.User, "=password="+d.Password)
+var ErrLoginNoRet = errors.New("RouterOS: /login: no ret (challenge) received")
+
+func (c *collector) login(device *config.Device, client *routeros.Client) error {
+	r, err := client.Run("/login", "=name="+device.User, "=password="+device.Password)
 	if err != nil {
 		return fmt.Errorf("run login error: %w", err)
 	}
@@ -349,7 +364,7 @@ func (c *collector) login(d *config.Device, client *routeros.Client) error {
 			return nil
 		}
 
-		return errors.New("RouterOS: /login: no ret (challenge) received")
+		return ErrLoginNoRet
 	}
 
 	// Login method pre-6.43 two stages, challenge
@@ -358,7 +373,8 @@ func (c *collector) login(d *config.Device, client *routeros.Client) error {
 		return fmt.Errorf("RouterOS: /login: invalid ret (challenge) hex string received: %w", err)
 	}
 
-	if _, err = client.Run("/login", "=name="+d.User, "=response="+challengeResponse(b, d.Password)); err != nil {
+	if _, err = client.Run("/login", "=name="+device.User,
+		"=response="+challengeResponse(b, device.Password)); err != nil {
 		return fmt.Errorf("logins send response error: %w", err)
 	}
 

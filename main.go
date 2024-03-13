@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"flag"
 	"fmt"
 	"net/http"
@@ -91,11 +92,18 @@ func loadConfig() (*config.Config, error) {
 func loadConfigFromFile() (*config.Config, error) {
 	b, err := os.ReadFile(*configFile)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("read file error: %w", err)
 	}
 
-	return config.Load(bytes.NewReader(b))
+	cfg, err := config.Load(bytes.NewReader(b))
+	if err != nil {
+		return nil, fmt.Errorf("load config error: %w", err)
+	}
+
+	return cfg, nil
 }
+
+var ErrMissingParam = errors.New("missing required param for single device configuration")
 
 func loadConfigFromFlags() (*config.Config, error) {
 	// Attempt to read credentials from env if not already defined
@@ -108,7 +116,7 @@ func loadConfigFromFlags() (*config.Config, error) {
 	}
 
 	if *device == "" || *address == "" || *user == "" || *password == "" {
-		return nil, fmt.Errorf("missing required param for single device configuration")
+		return nil, ErrMissingParam
 	}
 
 	return &config.Config{
@@ -132,11 +140,11 @@ func startServer() {
 
 	http.Handle(*metricsPath, h)
 
-	http.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("ok"))
 	})
 
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(`<html>
 			<head><title>Mikrotik Exporter</title></head>
 			<body>
@@ -153,9 +161,9 @@ func startServer() {
 func createMetricsHandler() (http.Handler, error) {
 	opts := collectorOptions()
 
-	nc, err := collector.NewCollector(cfg, opts...)
+	collector, err := collector.NewCollector(cfg, opts...)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create collector error: %w", err)
 	}
 
 	promhttp.Handler()
@@ -164,12 +172,12 @@ func createMetricsHandler() (http.Handler, error) {
 
 	err = registry.Register(collectors.NewGoCollector())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("register gocollector error: %w", err)
 	}
 
-	err = registry.Register(nc)
+	err = registry.Register(collector)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("register collector error: %w", err)
 	}
 
 	return promhttp.HandlerFor(registry,

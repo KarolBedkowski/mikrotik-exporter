@@ -20,11 +20,13 @@ type routesCollector struct {
 
 func newRoutesCollector() routerOSCollector {
 	const prefix = "routes"
+
 	labelNames := []string{"name", "address", "ip_version"}
 
 	c := &routesCollector{}
 	c.countDesc = description("", prefix, "number of routes in RIB", labelNames)
-	c.countProtocolDesc = description(prefix, "protocol", "number of routes per protocol in RIB", append(labelNames, "protocol"))
+	c.countProtocolDesc = description(prefix, "protocol", "number of routes per protocol in RIB",
+		append(labelNames, "protocol"))
 	c.protocols = []string{"bgp", "static", "ospf", "dynamic", "connect", "rip"}
 
 	return c
@@ -58,7 +60,7 @@ func (c *routesCollector) colllectForIPVersion(ipVersion, topic string, ctx *col
 }
 
 func (c *routesCollector) colllectCount(ipVersion, topic string, ctx *collectorContext) error {
-	reply, err := ctx.client.Run(fmt.Sprintf("/%s/route/print", topic), "?disabled=false", "=count-only=")
+	reply, err := ctx.client.Run("/"+topic+"/route/print", "?disabled=false", "=count-only=")
 	if err != nil {
 		log.WithFields(log.Fields{
 			"ip_version": ipVersion,
@@ -67,14 +69,16 @@ func (c *routesCollector) colllectCount(ipVersion, topic string, ctx *collectorC
 			"error":      err,
 		}).Error("error fetching routes metrics")
 
-		return err
+		return fmt.Errorf("read route error: %w", err)
 	}
 
 	if reply.Done.Map["ret"] == "" {
 		return nil
 	}
 
-	v, err := strconv.ParseFloat(reply.Done.Map["ret"], 32)
+	ret := reply.Done.Map["ret"]
+
+	v, err := strconv.ParseFloat(ret, 32)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"ip_version": ipVersion,
@@ -82,15 +86,17 @@ func (c *routesCollector) colllectCount(ipVersion, topic string, ctx *collectorC
 			"error":      err,
 		}).Error("error parsing routes metrics")
 
-		return err
+		return fmt.Errorf("parse %v to float error: %w", ret, err)
 	}
 
-	ctx.ch <- prometheus.MustNewConstMetric(c.countDesc, prometheus.GaugeValue, v, ctx.device.Name, ctx.device.Address, ipVersion)
+	ctx.ch <- prometheus.MustNewConstMetric(c.countDesc, prometheus.GaugeValue,
+		v, ctx.device.Name, ctx.device.Address, ipVersion)
+
 	return nil
 }
 
 func (c *routesCollector) colllectCountProtcol(ipVersion, topic, protocol string, ctx *collectorContext) error {
-	reply, err := ctx.client.Run(fmt.Sprintf("/%s/route/print", topic), "?disabled=false", "?"+protocol, "=count-only=")
+	reply, err := ctx.client.Run("/"+topic+"/route/print", "?disabled=false", "?"+protocol, "=count-only=")
 	if err != nil {
 		log.WithFields(log.Fields{
 			"ip_version": ipVersion,
@@ -99,14 +105,16 @@ func (c *routesCollector) colllectCountProtcol(ipVersion, topic, protocol string
 			"error":      err,
 		}).Error("error fetching routes metrics")
 
-		return err
+		return fmt.Errorf("read route %s error: %w", topic, err)
 	}
 
 	if reply.Done.Map["ret"] == "" {
 		return nil
 	}
 
-	v, err := strconv.ParseFloat(reply.Done.Map["ret"], 32)
+	ret := reply.Done.Map["ret"]
+
+	metricValue, err := strconv.ParseFloat(ret, 32)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"ip_version": ipVersion,
@@ -115,9 +123,11 @@ func (c *routesCollector) colllectCountProtcol(ipVersion, topic, protocol string
 			"error":      err,
 		}).Error("error parsing routes metrics")
 
-		return err
+		return fmt.Errorf("parse %v to float error: %w", ret, err)
 	}
 
-	ctx.ch <- prometheus.MustNewConstMetric(c.countProtocolDesc, prometheus.GaugeValue, v, ctx.device.Name, ctx.device.Address, ipVersion, protocol)
+	ctx.ch <- prometheus.MustNewConstMetric(c.countProtocolDesc, prometheus.GaugeValue,
+		metricValue, ctx.device.Name, ctx.device.Address, ipVersion, protocol)
+
 	return nil
 }

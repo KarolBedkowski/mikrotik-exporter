@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -21,21 +22,25 @@ type bgpCollector struct {
 
 func newBGPCollector() routerOSCollector {
 	const prefix = "bgp"
+
 	labelNames := []string{"name", "address", "session", "asn"}
 
-	c := &bgpCollector{
+	collector := &bgpCollector{
 		descriptions: make(map[string]*prometheus.Desc),
 	}
 
-	c.props = []string{"name", "remote-as", "state", "prefix-count", "updates-sent", "updates-received", "withdrawn-sent", "withdrawn-received"}
-	c.proplist = strings.Join(c.props, ",")
-	c.descriptions["state"] = description(prefix, "up", "BGP session is established (up = 1)", labelNames)
+	collector.props = []string{
+		"name", "remote-as", "state", "prefix-count",
+		"updates-sent", "updates-received", "withdrawn-sent", "withdrawn-received",
+	}
+	collector.proplist = strings.Join(collector.props, ",")
+	collector.descriptions["state"] = description(prefix, "up", "BGP session is established (up = 1)", labelNames)
 
-	for _, p := range c.props[3:] {
-		c.descriptions[p] = descriptionForPropertyName(prefix, p, labelNames)
+	for _, p := range collector.props[3:] {
+		collector.descriptions[p] = descriptionForPropertyName(prefix, p, labelNames)
 	}
 
-	return c
+	return collector
 }
 
 func (c *bgpCollector) describe(ch chan<- *prometheus.Desc) {
@@ -64,7 +69,8 @@ func (c *bgpCollector) fetch(ctx *collectorContext) ([]*proto.Sentence, error) {
 			"device": ctx.device.Name,
 			"error":  err,
 		}).Error("error fetching bgp metrics")
-		return nil, err
+
+		return nil, fmt.Errorf("get bgp peer error: %w", err)
 	}
 
 	return reply.Re, nil
@@ -79,21 +85,28 @@ func (c *bgpCollector) collectForStat(re *proto.Sentence, ctx *collectorContext)
 	}
 }
 
-func (c *bgpCollector) collectMetricForProperty(property, session, asn string, re *proto.Sentence, ctx *collectorContext) {
+func (c *bgpCollector) collectMetricForProperty(
+	property, session, asn string, re *proto.Sentence, ctx *collectorContext,
+) {
 	desc := c.descriptions[property]
-	v, err := c.parseValueForProperty(property, re.Map[property])
+
+	propertyVal := re.Map[property]
+
+	value, err := c.parseValueForProperty(property, propertyVal)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"device":   ctx.device.Name,
 			"session":  session,
 			"property": property,
-			"value":    re.Map[property],
+			"value":    propertyVal,
 			"error":    err,
 		}).Error("error parsing bgp metric value")
+
 		return
 	}
 
-	ctx.ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, v, ctx.device.Name, ctx.device.Address, session, asn)
+	ctx.ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue,
+		value, ctx.device.Name, ctx.device.Address, session, asn)
 }
 
 func (c *bgpCollector) parseValueForProperty(property, value string) (float64, error) {
@@ -109,5 +122,10 @@ func (c *bgpCollector) parseValueForProperty(property, value string) (float64, e
 		return 0, nil
 	}
 
-	return strconv.ParseFloat(value, 64)
+	val, err := strconv.ParseFloat(value, 64)
+	if err != nil {
+		return 0, fmt.Errorf("parse value %v error: %w", value, err)
+	}
+
+	return val, nil
 }

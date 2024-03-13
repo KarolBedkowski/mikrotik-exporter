@@ -146,15 +146,15 @@ func (c *queueCollector) collectForSimpleQqueue(reply *proto.Sentence, ctx *coll
 
 		if value := reply.Map[prop]; value != "" {
 			var (
-				v     float64
-				vtype = prometheus.CounterValue
-				err   error
+				metricValue float64
+				vtype       = prometheus.CounterValue
+				err         error
 			)
 
 			switch prop {
 			case "disabled":
 				vtype = prometheus.GaugeValue
-				v = parseBool(value)
+				metricValue = parseBool(value)
 			case "bytes", "packets":
 				c.collectMetricForTXRXCounters(prop, reply.Map["name"], reply.Map["queue"], reply.Map["comment"], reply, ctx)
 
@@ -164,7 +164,7 @@ func (c *queueCollector) collectForSimpleQqueue(reply *proto.Sentence, ctx *coll
 
 				continue
 			default:
-				v, err = strconv.ParseFloat(value, 64)
+				metricValue, err = strconv.ParseFloat(value, 64)
 				if err != nil {
 					log.WithFields(log.Fields{
 						"device":    ctx.device.Name,
@@ -178,7 +178,7 @@ func (c *queueCollector) collectForSimpleQqueue(reply *proto.Sentence, ctx *coll
 				}
 			}
 
-			ctx.ch <- prometheus.MustNewConstMetric(desc, vtype, v, ctx.device.Name, ctx.device.Address,
+			ctx.ch <- prometheus.MustNewConstMetric(desc, vtype, metricValue, ctx.device.Name, ctx.device.Address,
 				reply.Map["name"], reply.Map["queue"], reply.Map["comment"])
 		}
 	}

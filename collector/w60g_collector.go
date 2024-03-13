@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -45,10 +46,11 @@ func (c *w60gInterfaceCollector) collect(ctx *collectorContext) error {
 			"error":  err,
 		}).Error("error fetching w60g interface metrics")
 
-		return err
+		return fmt.Errorf("read w60g error: %w", err)
 	}
 
 	ifaces := make([]string, 0)
+
 	for _, iface := range reply.Re {
 		n := iface.Map["name"]
 		ifaces = append(ifaces, n)
@@ -72,7 +74,7 @@ func (c *w60gInterfaceCollector) collectw60gMetricsForInterfaces(ifaces []string
 			"error":  err,
 		}).Error("error fetching w60g interface monitor metrics")
 
-		return err
+		return fmt.Errorf("read w60g monitor error: %w", err)
 	}
 
 	for _, se := range reply.Re {
@@ -84,7 +86,9 @@ func (c *w60gInterfaceCollector) collectw60gMetricsForInterfaces(ifaces []string
 	return nil
 }
 
-func (c *w60gInterfaceCollector) collectMetricsForw60gInterface(name string, se *proto.Sentence, ctx *collectorContext) {
+func (c *w60gInterfaceCollector) collectMetricsForw60gInterface(
+	name string, se *proto.Sentence, ctx *collectorContext,
+) {
 	for _, prop := range c.props {
 		v, ok := se.Map[prop]
 		if !ok || v == "" {
@@ -103,15 +107,20 @@ func (c *w60gInterfaceCollector) collectMetricsForw60gInterface(name string, se 
 			return
 		}
 
-		ctx.ch <- prometheus.MustNewConstMetric(c.descForKey(prop), prometheus.GaugeValue, value, ctx.device.Name, ctx.device.Address, name)
+		ctx.ch <- prometheus.MustNewConstMetric(c.descForKey(prop), prometheus.GaugeValue,
+			value, ctx.device.Name, ctx.device.Address, name)
 	}
 }
 
 func neww60gInterfaceCollector() routerOSCollector {
 	const prefix = "w60ginterface"
 
-	props := []string{"signal", "rssi", "tx-mcs", "frequency", "tx-phy-rate", "tx-sector", "distance", "tx-packet-error-rate"}
+	props := []string{
+		"signal", "rssi", "tx-mcs", "frequency", "tx-phy-rate", "tx-sector",
+		"distance", "tx-packet-error-rate",
+	}
 	labelNames := []string{"name", "address", "interface"}
+
 	return &w60gInterfaceCollector{
 		frequencyDesc:         description(prefix, "frequency", "frequency of tx in MHz", labelNames),
 		txMCSDesc:             description(prefix, "txMCS", "TX MCS", labelNames),
