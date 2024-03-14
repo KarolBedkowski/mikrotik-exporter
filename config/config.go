@@ -85,10 +85,10 @@ type Device struct {
 
 type SrvRecord struct {
 	Record string    `yaml:"record"`
-	Dns    DnsServer `yaml:"dns,omitempty"`
+	DNS    DNSServer `yaml:"dns,omitempty"`
 }
 
-type DnsServer struct {
+type DNSServer struct {
 	Address string `yaml:"address"`
 	Port    int    `yaml:"port"`
 }

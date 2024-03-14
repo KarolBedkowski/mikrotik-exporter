@@ -130,9 +130,9 @@ func (c *collector) srvToDevice(devCol *deviceCollector) []*deviceCollector {
 	conf, _ := dns.ClientConfigFromFile("/etc/resolv.conf")
 	dnsServer := net.JoinHostPort(conf.Servers[0], strconv.Itoa(dnsPort))
 
-	if (config.DnsServer{}) != dev.Srv.Dns {
-		dnsServer = net.JoinHostPort(dev.Srv.Dns.Address, strconv.Itoa(dev.Srv.Dns.Port))
-		log.WithFields(log.Fields{"DnsServer": dnsServer}).Info("Custom DNS config detected")
+	if (config.DNSServer{}) != dev.Srv.DNS {
+		dnsServer = net.JoinHostPort(dev.Srv.DNS.Address, strconv.Itoa(dev.Srv.DNS.Port))
+		log.WithFields(log.Fields{"DNSServer": dnsServer}).Info("Custom DNS config detected")
 	}
 
 	dnsMsg := new(dns.Msg)
