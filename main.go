@@ -97,7 +97,7 @@ func loadConfigFromFile() (*config.Config, error) {
 
 	cfg, err := config.Load(bytes.NewReader(b))
 	if err != nil {
-		return nil, fmt.Errorf("load config error: %w", err)
+		return nil, fmt.Errorf("load error: %w", err)
 	}
 
 	return cfg, nil
@@ -155,7 +155,14 @@ func startServer() {
 	})
 
 	log.Info("Listening on ", *port)
-	log.Fatal(http.ListenAndServe(*port, nil))
+
+	serverTimeout := 2 * *timeout
+	srv := &http.Server{
+		Addr:         *port,
+		ReadTimeout:  serverTimeout,
+		WriteTimeout: serverTimeout,
+	}
+	log.Fatal(srv.ListenAndServe())
 }
 
 func createMetricsHandler() (http.Handler, error) {
