@@ -1,28 +1,17 @@
 package collector
 
 import (
-	"errors"
 	"fmt"
-	"regexp"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/KarolBedkowski/routeros-go-client/proto"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 )
 
-var (
-	uptimeRegex *regexp.Regexp
-	uptimeParts [5]time.Duration
-)
-
 func init() {
 	registerCollector("resource", newResourceCollector)
-
-	uptimeRegex = regexp.MustCompile(`(?:(\d*)w)?(?:(\d*)d)?(?:(\d*)h)?(?:(\d*)m)?(?:(\d*)s)?`)
-	uptimeParts = [5]time.Duration{time.Hour * 168, time.Hour * 24, time.Hour, time.Minute, time.Second}
 }
 
 type resourceCollector struct {
@@ -111,7 +100,7 @@ func (c *resourceCollector) collectMetricForProperty(property string, reply *pro
 	)
 
 	if property == "uptime" {
-		metricValue, err = parseUptime(reply.Map[property])
+		metricValue, err = parseDuration(reply.Map[property])
 		vtype = prometheus.CounterValue
 	} else {
 		if reply.Map[property] == "" {
@@ -134,37 +123,4 @@ func (c *resourceCollector) collectMetricForProperty(property string, reply *pro
 
 	desc := c.descriptions[property]
 	ctx.ch <- prometheus.MustNewConstMetric(desc, vtype, metricValue, ctx.device.Name, ctx.device.Address)
-}
-
-var ErrInvalidUptime = errors.New("invalid uptime value sent to regex")
-
-// TODO:  duplicated?
-func parseUptime(uptime string) (float64, error) {
-	var totalUptime time.Duration
-
-	reMatch := uptimeRegex.FindAllStringSubmatch(uptime, -1)
-
-	// should get one and only one match back on the regex
-	if len(reMatch) != 1 {
-		return 0, ErrInvalidUptime
-	}
-
-	for idx, match := range reMatch[0][1:] {
-		if match != "" {
-			v, err := strconv.Atoi(match)
-			if err != nil {
-				log.WithFields(log.Fields{
-					"uptime": uptime,
-					"value":  match,
-					"error":  err,
-				}).Error("error parsing uptime field value")
-
-				return float64(0), err
-			}
-
-			totalUptime += time.Duration(v) * uptimeParts[idx]
-		}
-	}
-
-	return totalUptime.Seconds(), nil
 }
