@@ -127,7 +127,7 @@ func Load(r io.Reader) (*Config, error) {
 func (c *Config) DeviceFeatures(deviceName string) (Features, error) {
 	for _, d := range c.Devices {
 		if d.Name == deviceName {
-			if len(d.Profile) == 0 {
+			if d.Profile == "" {
 				return c.Features, nil
 			}
 

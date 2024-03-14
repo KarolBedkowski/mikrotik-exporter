@@ -3,7 +3,6 @@ package collector
 import (
 	"fmt"
 	"strconv"
-	"strings"
 
 	"github.com/KarolBedkowski/routeros-go-client/proto"
 	"github.com/prometheus/client_golang/prometheus"
@@ -26,7 +25,7 @@ func newConntrackCollector() routerOSCollector {
 	labelNames := []string{"name", "address"}
 
 	return &conntrackCollector{
-		propslist:        strings.Join([]string{"total-entries", "max-entries"}, ","),
+		propslist:        "total-entries,max-entries",
 		totalEntriesDesc: description(prefix, "entries", "Number of tracked connections", labelNames),
 		maxEntriesDesc:   description(prefix, "max_entries", "Conntrack table capacity", labelNames),
 	}

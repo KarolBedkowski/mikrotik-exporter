@@ -427,7 +427,7 @@ func newCollectors(cfg *config.Config) map[string]routerOSCollector {
 	}
 
 	for _, dev := range cfg.Devices {
-		if len(dev.Profile) > 0 {
+		if dev.Profile != "" {
 			features, err := cfg.DeviceFeatures(dev.Name)
 			if err != nil {
 				panic(err)

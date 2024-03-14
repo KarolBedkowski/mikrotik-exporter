@@ -19,8 +19,8 @@ func TestShouldParse(t *testing.T) {
 		t.Fatalf("expected 6 devices, got %v", len(c.Devices))
 	}
 
-	assertDevice("test1", "192.168.1.1", "foo", "bar", c.Devices[0], t)
-	assertDevice("test2", "192.168.2.1", "test", "123", c.Devices[1], t)
+	assertDevice("test1", "192.168.1.1", "foo", "bar", &c.Devices[0], t)
+	assertDevice("test2", "192.168.2.1", "test", "123", &c.Devices[1], t)
 	assertFeature("BGP", c.Features, t)
 	assertFeature("Conntrack", c.Features, t)
 	assertFeature("DHCP", c.Features, t)
@@ -65,7 +65,7 @@ func loadTestFile(t *testing.T) []byte {
 	return b
 }
 
-func assertDevice(name, address, user, password string, c Device, t *testing.T) {
+func assertDevice(name, address, user, password string, c *Device, t *testing.T) {
 	if c.Name != name {
 		t.Fatalf("expected name %s, got %s", name, c.Name)
 	}
