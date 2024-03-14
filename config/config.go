@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"slices"
@@ -39,6 +40,17 @@ func isValidFeature(name string) bool {
 	return slices.Contains(validNames, strings.ToLower(name))
 }
 
+var (
+	ErrUnknownDevice  = errors.New("unknown device")
+	ErrUnknownProfile = errors.New("unknown profile")
+)
+
+type UnknownFeatureError string
+
+func (e UnknownFeatureError) Error() string {
+	return "unknown feature: " + string(e)
+}
+
 type Features map[string]bool
 
 func (f Features) validate() error {
@@ -46,7 +58,7 @@ func (f Features) validate() error {
 
 	for key := range f {
 		if !isValidFeature(key) {
-			result = multierror.Append(result, fmt.Errorf("invalid feature '%s'", key))
+			result = multierror.Append(result, UnknownFeatureError(key))
 		}
 	}
 
@@ -108,12 +120,12 @@ func Load(r io.Reader) (*Config, error) {
 	}
 
 	if err := cfg.Features.validate(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("validate features error: %w", err)
 	}
 
 	for name, features := range cfg.Profiles {
 		if err := features.validate(); err != nil {
-			return nil, fmt.Errorf("invalid profile %s: %w", name, err)
+			return nil, fmt.Errorf("invalid profile '%s': %w", name, err)
 		}
 
 		// always enabled
@@ -124,23 +136,22 @@ func Load(r io.Reader) (*Config, error) {
 	return cfg, nil
 }
 
-func (c *Config) DeviceFeatures(deviceName string) (Features, error) {
+func (c *Config) DeviceFeatures(deviceName string) (*Features, error) {
 	for _, d := range c.Devices {
 		if d.Name == deviceName {
 			if d.Profile == "" {
-				return c.Features, nil
+				return &c.Features, nil
 			}
 
 			if f, ok := c.Profiles[d.Profile]; ok {
-				return f, nil
+				return &f, nil
 			}
 
-			return c.Features, fmt.Errorf("unknown profile %s for device %s",
-				d.Profile, d.Name)
+			return nil, ErrUnknownProfile
 		}
 	}
 
-	return c.Features, fmt.Errorf("unknown device %s", deviceName)
+	return nil, ErrUnknownDevice
 }
 
 func (c *Config) FindDevice(deviceName string) (*Device, error) {
@@ -150,5 +161,5 @@ func (c *Config) FindDevice(deviceName string) (*Device, error) {
 		}
 	}
 
-	return nil, fmt.Errorf("unknown device %s", deviceName)
+	return nil, ErrUnknownDevice
 }

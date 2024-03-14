@@ -36,10 +36,10 @@ func TestShouldParse(t *testing.T) {
 	assertFeature("Queue", c.Features, t)
 
 	f, _ := c.DeviceFeatures("testProfileMinimal")
-	assertFeature("Firmware", f, t)
-	assertFeature("Health", f, t)
-	assertFeature("Monitor", f, t)
-	assertNotFeature("BGP", f, t)
+	assertFeature("Firmware", *f, t)
+	assertFeature("Health", *f, t)
+	assertFeature("Monitor", *f, t)
+	assertNotFeature("BGP", *f, t)
 
 	if dev, err := c.FindDevice("testDns"); err != nil {
 		t.Fatalf("could not find device: %v", err)
