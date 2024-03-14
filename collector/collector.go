@@ -1,7 +1,7 @@
 package collector
 
 import (
-	"crypto/md5"
+	"crypto/md5" // #nosec
 	"crypto/tls"
 	"encoding/hex"
 	"errors"
@@ -96,7 +96,7 @@ func NewCollector(cfg *config.Config, opts ...Option) (prometheus.Collector, err
 		}
 
 		featNames := feat.FeatureNames()
-		dc := &deviceCollector{d, featNames, nil, (config.SrvRecord{}) != d.Srv}
+		dc := &deviceCollector{d, featNames, nil, d.Srv != nil}
 		dcs = append(dcs, dc)
 
 		log.WithFields(log.Fields{"device": &dc}).Debug("new device")
@@ -130,7 +130,7 @@ func (c *collector) srvToDevice(devCol *deviceCollector) []*deviceCollector {
 	conf, _ := dns.ClientConfigFromFile("/etc/resolv.conf")
 	dnsServer := net.JoinHostPort(conf.Servers[0], strconv.Itoa(dnsPort))
 
-	if (config.DNSServer{}) != dev.Srv.DNS {
+	if dev.Srv.DNS != nil {
 		dnsServer = net.JoinHostPort(dev.Srv.DNS.Address, strconv.Itoa(dev.Srv.DNS.Port))
 		log.WithFields(log.Fields{"DNSServer": dnsServer}).Info("Custom DNS config detected")
 	}
@@ -334,7 +334,7 @@ func (c *collector) dial(device *config.Device) (net.Conn, error) {
 	}
 
 	tlsCfg := &tls.Config{
-		InsecureSkipVerify: c.insecureTLS,
+		InsecureSkipVerify: c.insecureTLS, // #nosec
 	}
 
 	if (device.Port) == "" {
@@ -410,7 +410,7 @@ func (c *collector) connect(dev *config.Device) (*routeros.Client, error) {
 }
 
 func challengeResponse(cha []byte, password string) string {
-	h := md5.New()
+	h := md5.New() // #nosec
 	h.Write([]byte{0})
 	_, _ = io.WriteString(h, password)
 	h.Write(cha)

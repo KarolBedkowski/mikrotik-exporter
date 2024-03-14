@@ -17,6 +17,16 @@ devices:
     user: test
     password: 123
     profile: basic
+  - name: testService
+    srv:
+      record: record1
+  - name: testDns
+    srv:
+      record: record2
+      dns:
+        address: dnsaddress
+        port: 1053
+
 
 features:
   bgp: true

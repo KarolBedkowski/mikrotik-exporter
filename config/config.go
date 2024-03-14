@@ -74,18 +74,19 @@ type Config struct {
 
 // Device represents a target device.
 type Device struct {
-	Name     string    `yaml:"name"`
-	Address  string    `yaml:"address,omitempty"`
-	Srv      SrvRecord `yaml:"srv,omitempty"`
-	User     string    `yaml:"user"`
-	Password string    `yaml:"password"`
-	Port     string    `yaml:"port"`
-	Profile  string    `yaml:"profile,omitempty"`
+	Name     string     `yaml:"name"`
+	Address  string     `yaml:"address,omitempty"`
+	Srv      *SrvRecord `yaml:"srv,omitempty"`
+	User     string     `yaml:"user"`
+	Password string     `yaml:"password"`
+	Port     string     `yaml:"port"`
+	Profile  string     `yaml:"profile,omitempty"`
 }
 
 type SrvRecord struct {
-	Record string    `yaml:"record"`
-	DNS    DNSServer `yaml:"dns,omitempty"`
+	Record string `yaml:"record"`
+	/// DNS is additional dns server used to resolved `Record`
+	DNS *DNSServer `yaml:"dns,omitempty"`
 }
 
 type DNSServer struct {
@@ -140,4 +141,14 @@ func (c *Config) DeviceFeatures(deviceName string) (Features, error) {
 	}
 
 	return c.Features, fmt.Errorf("unknown device %s", deviceName)
+}
+
+func (c *Config) FindDevice(deviceName string) (*Device, error) {
+	for _, d := range c.Devices {
+		if d.Name == deviceName {
+			return &d, nil
+		}
+	}
+
+	return nil, fmt.Errorf("unknown device %s", deviceName)
 }

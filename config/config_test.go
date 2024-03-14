@@ -15,8 +15,8 @@ func TestShouldParse(t *testing.T) {
 		t.Fatalf("could not parse: %v", err)
 	}
 
-	if len(c.Devices) != 4 {
-		t.Fatalf("expected 2 devices, got %v", len(c.Devices))
+	if len(c.Devices) != 6 {
+		t.Fatalf("expected 6 devices, got %v", len(c.Devices))
 	}
 
 	assertDevice("test1", "192.168.1.1", "foo", "bar", c.Devices[0], t)
@@ -40,6 +40,20 @@ func TestShouldParse(t *testing.T) {
 	assertFeature("Health", f, t)
 	assertFeature("Monitor", f, t)
 	assertNotFeature("BGP", f, t)
+
+	if dev, err := c.FindDevice("testDns"); err != nil {
+		t.Fatalf("could not find device: %v", err)
+	} else {
+		if dev.Srv.Record != "record2" {
+			t.Fatalf("expected `record2` service, got %#v", dev.Srv.Record)
+		}
+		if dev.Srv.DNS.Address != "dnsaddress" {
+			t.Fatalf("expected `dnsaddress` dns address, got %#v", dev.Srv.DNS)
+		}
+		if dev.Srv.DNS.Port != 1053 {
+			t.Fatalf("expected `1053` dns port, got %#v", dev.Srv.DNS)
+		}
+	}
 }
 
 func loadTestFile(t *testing.T) []byte {
