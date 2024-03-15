@@ -66,8 +66,7 @@ func (c *queueCollector) describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *queueCollector) collect(ctx *collectorContext) error {
-	err := c.collectQueue(ctx)
-	if err != nil {
+	if err := c.collectQueue(ctx); err != nil {
 		return err
 	}
 
@@ -98,21 +97,22 @@ func (c *queueCollector) collectQueue(ctx *collectorContext) error {
 		return nil
 	}
 
+	re := reply.Re[0]
+
 	for _, p := range c.monitorProps {
-		c.collectMetricForProperty(p, reply.Re[0], ctx)
+		c.collectMetricForProperty(p, re, ctx)
 	}
 
 	return nil
 }
 
 func (c *queueCollector) collectMetricForProperty(property string, re *proto.Sentence, ctx *collectorContext) {
-	desc := c.descriptions[property]
-
-	if re.Map[property] == "" {
+	val := re.Map[property]
+	if val == "" {
 		return
 	}
 
-	v, err := strconv.ParseFloat(re.Map[property], 64)
+	v, err := strconv.ParseFloat(val, 64)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"property": property,
@@ -123,6 +123,7 @@ func (c *queueCollector) collectMetricForProperty(property string, re *proto.Sen
 		return
 	}
 
+	desc := c.descriptions[property]
 	ctx.ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, v, ctx.device.Name, ctx.device.Address)
 }
 
@@ -141,63 +142,64 @@ func (c *queueCollector) fetchSimpleQueue(ctx *collectorContext) ([]*proto.Sente
 }
 
 func (c *queueCollector) collectForSimpleQqueue(reply *proto.Sentence, ctx *collectorContext) {
+	name := reply.Map["name"]
+	queue := reply.Map["queue"]
+	comment := reply.Map["comment"]
+
 	for _, prop := range c.simpleQueueProps[3:] {
-		desc := c.descriptions[prop]
-
-		if value := reply.Map[prop]; value != "" {
-			var (
-				metricValue float64
-				vtype       = prometheus.CounterValue
-				err         error
-			)
-
-			switch prop {
-			case "disabled":
-				vtype = prometheus.GaugeValue
-				metricValue = parseBool(value)
-			case "bytes", "packets":
-				c.collectMetricForTXRXCounters(prop, reply.Map["name"], reply.Map["queue"], reply.Map["comment"], reply, ctx)
-
-				continue
-			case "queued-packets", "queued-bytes":
-				c.collectMetricForTXRXCounters(prop, reply.Map["name"], reply.Map["queue"], reply.Map["comment"], reply, ctx)
-
-				continue
-			default:
-				metricValue, err = strconv.ParseFloat(value, 64)
-				if err != nil {
-					log.WithFields(log.Fields{
-						"device":    ctx.device.Name,
-						"interface": reply.Map["name"],
-						"property":  prop,
-						"value":     value,
-						"error":     err,
-					}).Error("error parsing queue metric value")
-
-					continue
-				}
-			}
-
-			ctx.ch <- prometheus.MustNewConstMetric(desc, vtype, metricValue, ctx.device.Name, ctx.device.Address,
-				reply.Map["name"], reply.Map["queue"], reply.Map["comment"])
+		value := reply.Map[prop]
+		if value == "" {
+			continue
 		}
+
+		var (
+			metricValue float64
+			vtype       = prometheus.CounterValue
+			err         error
+		)
+
+		switch prop {
+		case "disabled":
+			vtype = prometheus.GaugeValue
+			metricValue = parseBool(value)
+		case "bytes", "packets":
+			c.collectMetricForTXRXCounters(value, prop, name, queue, comment, ctx)
+
+			continue
+		case "queued-packets", "queued-bytes":
+			c.collectMetricForTXRXCounters(value, prop, name, queue, comment, ctx)
+
+			continue
+		default:
+			metricValue, err = strconv.ParseFloat(value, 64)
+			if err != nil {
+				log.WithFields(log.Fields{
+					"device":    ctx.device.Name,
+					"interface": reply.Map["name"],
+					"property":  prop,
+					"value":     value,
+					"error":     err,
+				}).Error("error parsing queue metric value")
+
+				continue
+			}
+		}
+
+		desc := c.descriptions[prop]
+		ctx.ch <- prometheus.MustNewConstMetric(desc, vtype, metricValue, ctx.device.Name, ctx.device.Address,
+			name, queue, comment)
 	}
 }
 
 func (c *queueCollector) collectMetricForTXRXCounters(
-	property, name, queue, comment string, re *proto.Sentence, ctx *collectorContext,
+	value, property, name, queue, comment string, ctx *collectorContext,
 ) {
-	val := re.Map[property]
-	if val == "" {
-		return
-	}
-
-	tx, rx, err := splitStringToFloats(re.Map[property], "/")
+	tx, rx, err := splitStringToFloats(value, "/")
 	if err != nil {
 		log.WithFields(log.Fields{
 			"device":   ctx.device.Name,
 			"property": property,
-			"value":    re.Map[property],
+			"value":    value,
 			"error":    err,
 		}).Error("error parsing queue metric value")
 

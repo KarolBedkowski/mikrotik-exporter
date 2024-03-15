@@ -14,30 +14,29 @@ func init() {
 }
 
 type monitorCollector struct {
-	props        []string // props from monitor, can add other ether props later if needed
-	propslist    string
-	descriptions map[string]*prometheus.Desc
+	propslist       string
+	ifaceStatusDesc *prometheus.Desc
+	ifaceRateDesc   *prometheus.Desc
+	ifaceDuplexDesc *prometheus.Desc
 }
 
 func newMonitorCollector() routerOSCollector {
-	c := &monitorCollector{
-		descriptions: make(map[string]*prometheus.Desc),
-		props:        []string{"status", "rate", "full-duplex"},
-	}
-	c.propslist = strings.Join(c.props, ",")
-
 	labelNames := []string{"name", "address", "interface"}
-	for _, p := range c.props {
-		c.descriptions[p] = descriptionForPropertyName("monitor", p, labelNames)
+
+	c := &monitorCollector{
+		propslist:       "status,rate,full-duplex",
+		ifaceStatusDesc: descriptionForPropertyName("monitor", "status", labelNames),
+		ifaceRateDesc:   descriptionForPropertyName("monitor", "rate", labelNames),
+		ifaceDuplexDesc: descriptionForPropertyName("monitor", "full-duplex", labelNames),
 	}
 
 	return c
 }
 
 func (c *monitorCollector) describe(ch chan<- *prometheus.Desc) {
-	for _, d := range c.descriptions {
-		ch <- d
-	}
+	ch <- c.ifaceStatusDesc
+	ch <- c.ifaceRateDesc
+	ch <- c.ifaceDuplexDesc
 }
 
 func (c *monitorCollector) collect(ctx *collectorContext) error {
@@ -74,63 +73,78 @@ func (c *monitorCollector) collectForMonitor(eths []string, ctx *collectorContex
 	}
 
 	for _, e := range reply.Re {
-		c.collectMetricsForEth(e.Map["name"], e, ctx)
+		name := e.Map["name"]
+		c.collectStatus(name, e, ctx)
+		c.collectRate(name, e, ctx)
+		c.collectDuplex(name, e, ctx)
 	}
 
 	return nil
 }
 
-func (c *monitorCollector) collectMetricsForEth(name string, se *proto.Sentence, ctx *collectorContext) {
-	for _, prop := range c.props {
-		v, ok := se.Map[prop]
-		if !ok {
-			continue
-		}
-
-		value := float64(c.valueForProp(prop, v))
-		ctx.ch <- prometheus.MustNewConstMetric(c.descriptions[prop], prometheus.GaugeValue,
-			value, ctx.device.Name, ctx.device.Address, name)
+func (c *monitorCollector) collectStatus(name string, se *proto.Sentence, ctx *collectorContext) {
+	v, ok := se.Map["status"]
+	if !ok {
+		return
 	}
+
+	value := 0.0
+
+	if v == "link-ok" {
+		value = 1.0
+	}
+
+	ctx.ch <- prometheus.MustNewConstMetric(c.ifaceStatusDesc, prometheus.GaugeValue,
+		value, ctx.device.Name, ctx.device.Address, name)
 }
 
-func (c *monitorCollector) valueForProp(name, value string) int {
-	val := 0
-
-	switch name {
-	case "status":
-		if value == "link-ok" {
-			val = 1
-		}
-
-	case "rate":
-		switch value {
-		case "10Mbps":
-			val = 10
-		case "100Mbps":
-			val = 100
-		case "1Gbps":
-			val = 1000
-		case "2.5Gbps":
-			val = 2500
-		case "5Gbps":
-			val = 5000
-		case "10Gbps":
-			val = 10000
-		case "25Gbps":
-			val = 25000
-		case "40Gbps":
-			val = 40000
-		case "50Gbps":
-			val = 50000
-		case "100Gbps":
-			val = 100000
-		}
-
-	case "full-duplex":
-		if value == "true" {
-			val = 1
-		}
+func (c *monitorCollector) collectRate(name string, se *proto.Sentence, ctx *collectorContext) {
+	v, ok := se.Map["rate"]
+	if !ok {
+		return
 	}
 
-	return val
+	value := 0
+
+	switch v {
+	case "10Mbps":
+		value = 10
+	case "100Mbps":
+		value = 100
+	case "1Gbps":
+		value = 1000
+	case "2.5Gbps":
+		value = 2500
+	case "5Gbps":
+		value = 5000
+	case "10Gbps":
+		value = 10000
+	case "25Gbps":
+		value = 25000
+	case "40Gbps":
+		value = 40000
+	case "50Gbps":
+		value = 50000
+	case "100Gbps":
+		value = 100000
+	}
+
+	ctx.ch <- prometheus.MustNewConstMetric(c.ifaceRateDesc, prometheus.GaugeValue,
+		float64(value), ctx.device.Name, ctx.device.Address, name)
+}
+
+func (c *monitorCollector) collectDuplex(name string, se *proto.Sentence, ctx *collectorContext) {
+	v, ok := se.Map["full-duplex"]
+	if !ok {
+		return
+	}
+
+	value := 0
+
+	if v == "true" {
+		value = 1.0
+	}
+
+	ctx.ch <- prometheus.MustNewConstMetric(c.ifaceDuplexDesc, prometheus.GaugeValue,
+		float64(value), ctx.device.Name, ctx.device.Address, name)
 }
