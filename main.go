@@ -17,6 +17,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/collectors/version"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/prometheus/exporter-toolkit/web"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -33,9 +34,10 @@ var (
 	deviceport  = flag.String("deviceport", "8728", "port for single device")
 	port        = flag.String("port", ":9436", "port number to listen on")
 	timeout     = flag.Uint("timeout", collector.DefaultTimeout, "timeout when connecting to devices")
-	tls         = flag.Bool("tls", false, "use tls to connect to routers")
+	tlsEnabled  = flag.Bool("tls", false, "use tls to connect to routers")
 	user        = flag.String("user", "", "user for authentication with single device")
 	ver         = flag.Bool("version", false, "find the version of binary")
+	webConfig   = flag.String("web-config", "", "web config file to load")
 
 	appVersion = "DEVELOPMENT"
 	shortSha   = "0xDEADBEEF"
@@ -157,7 +159,7 @@ func loadConfigFromFlags() (*config.Config, error) {
 				User:     *user,
 				Password: *password,
 				Port:     *deviceport,
-				TLS:      *tls,
+				TLS:      *tlsEnabled,
 				Insecure: true,
 				Timeout:  *timeout,
 			},
@@ -188,15 +190,15 @@ func startServer(cfg *config.Config) {
 			</html>`))
 	})
 
-	log.Info("Listening on ", *port)
-
 	serverTimeout := time.Duration(2**timeout) * time.Second
 	srv := &http.Server{
-		Addr:         *port,
 		ReadTimeout:  serverTimeout,
 		WriteTimeout: serverTimeout,
 	}
-	log.Fatal(srv.ListenAndServe())
+	log.Fatal(web.ListenAndServe(srv, &web.FlagConfig{
+		WebListenAddresses: &[]string{*port},
+		WebConfigFile:      webConfig,
+	}, loggerBridge{}))
 }
 
 func createMetricsHandler(cfg *config.Config) (http.Handler, error) {
@@ -233,4 +235,18 @@ func updateConfigFromFlags(cfg *config.Config) {
 			cfg.Features[feat] = true
 		}
 	})
+}
+
+type loggerBridge struct{}
+
+func (l loggerBridge) Log(keyvals ...interface{}) error {
+	fields := make(log.Fields, len(keyvals)/2)
+
+	for idx := 0; idx < len(keyvals); idx += 2 {
+		fields[fmt.Sprintf("%s", keyvals[idx])] = keyvals[idx+1]
+	}
+
+	log.WithFields(fields).Info("web")
+
+	return nil
 }
