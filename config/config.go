@@ -14,6 +14,7 @@ import (
 func isValidFeature(name string) bool {
 	validNames := []string{
 		"bgp",
+		"cloud",
 		"conntrack",
 		"dhcp",
 		"dhcpl",
