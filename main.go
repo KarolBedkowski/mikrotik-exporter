@@ -125,7 +125,7 @@ func loadConfigFromFile() (*config.Config, error) {
 		return nil, fmt.Errorf("read file error: %w", err)
 	}
 
-	cfg, err := config.Load(bytes.NewReader(b))
+	cfg, err := config.Load(bytes.NewReader(b), collector.AvailableCollectors())
 	if err != nil {
 		return nil, fmt.Errorf("load error: %w", err)
 	}

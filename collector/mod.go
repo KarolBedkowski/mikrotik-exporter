@@ -21,3 +21,13 @@ func instanateCollector(name string) routerOSCollector {
 
 	panic("unknown collector: " + name)
 }
+
+func AvailableCollectors() []string {
+	res := make([]string, 0, len(registeredCollectors))
+
+	for k := range registeredCollectors {
+		res = append(res, k)
+	}
+
+	return res
+}

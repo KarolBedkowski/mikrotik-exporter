@@ -11,36 +11,6 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
-func isValidFeature(name string) bool {
-	validNames := []string{
-		"bgp",
-		"cloud",
-		"conntrack",
-		"dhcp",
-		"dhcpl",
-		"dhcpv6",
-		"firmware",
-		"health",
-		"routes",
-		"poe",
-		"pools",
-		"optics",
-		"w60g",
-		"wlansta",
-		"capsman",
-		"wlanif",
-		"monitor",
-		"ipsec",
-		"lte",
-		"netwatch",
-		"queue",
-		"resource",
-		"interface",
-	}
-
-	return slices.Contains(validNames, strings.ToLower(name))
-}
-
 var (
 	ErrUnknownDevice  = errors.New("unknown device")
 	ErrUnknownProfile = errors.New("unknown profile")
@@ -54,11 +24,11 @@ func (e UnknownFeatureError) Error() string {
 
 type Features map[string]bool
 
-func (f Features) validate() error {
+func (f Features) validate(collectors []string) error {
 	var result *multierror.Error
 
 	for key := range f {
-		if !isValidFeature(key) {
+		if !slices.Contains(collectors, strings.ToLower(key)) {
 			result = multierror.Append(result, UnknownFeatureError(key))
 		}
 	}
@@ -112,7 +82,7 @@ type DNSServer struct {
 }
 
 // Load reads YAML from reader and unmashals in Config.
-func Load(r io.Reader) (*Config, error) {
+func Load(r io.Reader, collectors []string) (*Config, error) {
 	b, err := io.ReadAll(r)
 	if err != nil {
 		return nil, fmt.Errorf("read error: %w", err)
@@ -124,12 +94,12 @@ func Load(r io.Reader) (*Config, error) {
 		return nil, fmt.Errorf("unmarshal error: %w", err)
 	}
 
-	if err := cfg.Features.validate(); err != nil {
+	if err := cfg.Features.validate(collectors); err != nil {
 		return nil, fmt.Errorf("validate features error: %w", err)
 	}
 
 	for name, features := range cfg.Profiles {
-		if err := features.validate(); err != nil {
+		if err := features.validate(collectors); err != nil {
 			return nil, fmt.Errorf("invalid profile '%s': %w", name, err)
 		}
 
