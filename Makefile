@@ -23,3 +23,24 @@ dockerhub: deploy
 	docker push $(CIRCLE_PROJECT_USERNAME)/$(CIRCLE_PROJECT_REPONAME):$(VERSION)
 	docker build -f Dockerfile.arm64 -t $(CIRCLE_PROJECT_USERNAME)/$(CIRCLE_PROJECT_REPONAME)-linux-arm64:$(VERSION) .
 	docker push $(CIRCLE_PROJECT_USERNAME)/$(CIRCLE_PROJECT_REPONAME)-linux-arm64:$(VERSION)
+
+.PHONY: build_arm64
+build_arm64:
+	CGO_ENABLED=0 \
+	GOARCH=arm64 \
+	GOOS=linux \
+	go build -v -o mikrotik-exporter-linux-arm64  --ldflags "$(LDFLAGS)"
+
+.PHONY: run
+run:
+	go run . -config-file config.yml -log-level debug
+
+.PHONY: lint
+lint:
+	golangci-lint run --fix
+
+
+.PHONY: format
+format:
+	wsl -fix . || true
+	find . -name '*.go' -type f -exec gofumpt -w {} ';'
