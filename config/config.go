@@ -94,6 +94,10 @@ type Device struct {
 	Password string     `yaml:"password"`
 	Port     string     `yaml:"port"`
 	Profile  string     `yaml:"profile,omitempty"`
+
+	Timeout  uint `yaml:"timeout,omitempty"`
+	TLS      bool `yaml:"tls,omitempty"`
+	Insecure bool `yaml:"insecure,omitempty"`
 }
 
 type SrvRecord struct {

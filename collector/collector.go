@@ -29,7 +29,7 @@ const (
 	dnsPort    = 53
 
 	// DefaultTimeout defines the default timeout when connecting to a router.
-	DefaultTimeout = 5 * time.Second
+	DefaultTimeout = 5
 )
 
 var (
@@ -55,34 +55,13 @@ type deviceCollector struct {
 }
 
 type collector struct {
-	devices     []*deviceCollector
-	collectors  map[string]routerOSCollector
-	timeout     time.Duration
-	enableTLS   bool
-	insecureTLS bool
-	connLock    sync.Mutex
+	devices    []*deviceCollector
+	collectors map[string]routerOSCollector
+	connLock   sync.Mutex
 }
-
-// WithTimeout sets timeout for connecting to router.
-func WithTimeout(d time.Duration) Option {
-	return func(c *collector) {
-		c.timeout = d
-	}
-}
-
-// WithTLS enables TLS.
-func WithTLS(insecure bool) Option {
-	return func(c *collector) {
-		c.enableTLS = true
-		c.insecureTLS = insecure
-	}
-}
-
-// Option applies options to collector.
-type Option func(*collector)
 
 // NewCollector creates a collector instance.
-func NewCollector(cfg *config.Config, opts ...Option) (prometheus.Collector, error) {
+func NewCollector(cfg *config.Config) (prometheus.Collector, error) {
 	log.WithFields(log.Fields{
 		"numDevices": len(cfg.Devices),
 	}).Info("setting up collector for devices")
@@ -105,11 +84,6 @@ func NewCollector(cfg *config.Config, opts ...Option) (prometheus.Collector, err
 	c := &collector{
 		devices:    dcs,
 		collectors: newCollectors(cfg),
-		timeout:    DefaultTimeout,
-	}
-
-	for _, o := range opts {
-		o(c)
 	}
 
 	return c, nil
@@ -320,12 +294,12 @@ func (c *collector) closeConnection(dc *deviceCollector) {
 }
 
 func (c *collector) dial(device *config.Device) (net.Conn, error) {
-	if !c.enableTLS {
+	if !device.TLS {
 		if (device.Port) == "" {
 			device.Port = apiPort
 		}
 
-		con, err := net.DialTimeout("tcp", device.Address+":"+device.Port, c.timeout)
+		con, err := net.DialTimeout("tcp", device.Address+":"+device.Port, time.Duration(device.Timeout))
 		if err != nil {
 			return nil, fmt.Errorf("dial error: %w", err)
 		}
@@ -334,14 +308,16 @@ func (c *collector) dial(device *config.Device) (net.Conn, error) {
 	}
 
 	tlsCfg := &tls.Config{
-		InsecureSkipVerify: c.insecureTLS, // #nosec
+		InsecureSkipVerify: device.Insecure, // #nosec
 	}
 
 	if (device.Port) == "" {
 		device.Port = apiPortTLS
 	}
 
-	con, err := tls.DialWithDialer(&net.Dialer{Timeout: c.timeout}, "tcp", device.Address+":"+device.Port, tlsCfg)
+	con, err := tls.DialWithDialer(
+		&net.Dialer{Timeout: time.Duration(device.Timeout)},
+		"tcp", device.Address+":"+device.Port, tlsCfg)
 	if err != nil {
 		return nil, fmt.Errorf("dial with dialler error: %w", err)
 	}

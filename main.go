@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
+	"time"
 
 	"mikrotik-exporter/collector"
 	"mikrotik-exporter/config"
@@ -30,12 +32,10 @@ var (
 	password    = flag.String("password", "", "password for authentication for single device")
 	deviceport  = flag.String("deviceport", "8728", "port for single device")
 	port        = flag.String("port", ":9436", "port number to listen on")
-	timeout     = flag.Duration("timeout", collector.DefaultTimeout, "timeout when connecting to devices")
+	timeout     = flag.Uint("timeout", collector.DefaultTimeout, "timeout when connecting to devices")
 	tls         = flag.Bool("tls", false, "use tls to connect to routers")
 	user        = flag.String("user", "", "user for authentication with single device")
 	ver         = flag.Bool("version", false, "find the version of binary")
-
-	cfg *config.Config
 
 	appVersion = "DEVELOPMENT"
 	shortSha   = "0xDEADBEEF"
@@ -46,6 +46,28 @@ func init() {
 }
 
 func main() {
+	flag.Bool("with-bgp", false, "retrieves BGP routing infrormation")
+	flag.Bool("with-capsman", false, "retrieves capsman station metrics")
+	flag.Bool("with-cloud", false, "retrieves cloud routing infrormation")
+	flag.Bool("with-conntrack", false, "retrieves connection tracking metrics")
+	flag.Bool("with-dhcp", false, "retrieves DHCP server metrics")
+	flag.Bool("with-dhcpl", false, "retrieves DHCP server lease metrics")
+	flag.Bool("with-dhcpv6", false, "retrieves DHCPv6 server metrics")
+	flag.Bool("with-firmware", false, "retrieves firmware versions")
+	flag.Bool("with-health", false, "retrieves board Health metrics")
+	flag.Bool("with-ipsec", false, "retrieves ipsec metrics")
+	flag.Bool("with-lte", false, "retrieves lte metrics")
+	flag.Bool("with-monitor", false, "retrieves ethernet interface monitor info")
+	flag.Bool("with-netwatch", false, "retrieves netwatch metrics")
+	flag.Bool("with-optics", false, "retrieves optical diagnostic metrics")
+	flag.Bool("with-poe", false, "retrieves PoE metrics")
+	flag.Bool("with-pools", false, "retrieves IP(v6) pool metrics")
+	flag.Bool("with-queue", false, "retrieves queue metrics")
+	flag.Bool("with-routes", false, "retrieves routing table information")
+	flag.Bool("with-w60g", false, "retrieves w60g interface metrics")
+	flag.Bool("with-wlanif", false, "retrieves wlan interface metrics")
+	flag.Bool("with-wlansta", false, "retrieves connected wlan station metrics")
+
 	flag.Parse()
 
 	if *ver {
@@ -55,15 +77,9 @@ func main() {
 
 	configureLog()
 
-	c, err := loadConfig()
-	if err != nil {
-		log.Errorf("Could not load config: %v", err)
-		os.Exit(3)
-	}
+	cfg := loadConfig()
 
-	cfg = c
-
-	startServer()
+	startServer(cfg)
 }
 
 func configureLog() {
@@ -81,12 +97,26 @@ func configureLog() {
 	}
 }
 
-func loadConfig() (*config.Config, error) {
+func loadConfig() *config.Config {
+	var (
+		cfg *config.Config
+		err error
+	)
+
 	if *configFile != "" {
-		return loadConfigFromFile()
+		cfg, err = loadConfigFromFile()
+	} else {
+		cfg, err = loadConfigFromFlags()
 	}
 
-	return loadConfigFromFlags()
+	if err != nil {
+		log.Errorf("Could not load config: %v", err)
+		os.Exit(3)
+	}
+
+	updateConfigFromFlags(cfg)
+
+	return cfg
 }
 
 func loadConfigFromFile() (*config.Config, error) {
@@ -127,13 +157,17 @@ func loadConfigFromFlags() (*config.Config, error) {
 				User:     *user,
 				Password: *password,
 				Port:     *deviceport,
+				TLS:      *tls,
+				Insecure: true,
+				Timeout:  *timeout,
 			},
 		},
+		Features: make(config.Features),
 	}, nil
 }
 
-func startServer() {
-	h, err := createMetricsHandler()
+func startServer(cfg *config.Config) {
+	h, err := createMetricsHandler(cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -156,7 +190,7 @@ func startServer() {
 
 	log.Info("Listening on ", *port)
 
-	serverTimeout := 2 * *timeout
+	serverTimeout := time.Duration(2 * *timeout)
 	srv := &http.Server{
 		Addr:         *port,
 		ReadTimeout:  serverTimeout,
@@ -165,10 +199,8 @@ func startServer() {
 	log.Fatal(srv.ListenAndServe())
 }
 
-func createMetricsHandler() (http.Handler, error) {
-	opts := collectorOptions()
-
-	collector, err := collector.NewCollector(cfg, opts...)
+func createMetricsHandler(cfg *config.Config) (http.Handler, error) {
+	collector, err := collector.NewCollector(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("create collector error: %w", err)
 	}
@@ -194,16 +226,11 @@ func createMetricsHandler() (http.Handler, error) {
 		}), nil
 }
 
-func collectorOptions() []collector.Option {
-	opts := []collector.Option{}
-
-	if *timeout != collector.DefaultTimeout {
-		opts = append(opts, collector.WithTimeout(*timeout))
-	}
-
-	if *tls {
-		opts = append(opts, collector.WithTLS(*insecure))
-	}
-
-	return opts
+func updateConfigFromFlags(cfg *config.Config) {
+	flag.Visit(func(f *flag.Flag) {
+		if strings.HasPrefix(f.Name, "with-") {
+			feat := strings.TrimPrefix(f.Name, "with-")
+			cfg.Features[feat] = true
+		}
+	})
 }
