@@ -1,17 +1,10 @@
-# go run -ldflags "-X mikrotik-exporter/cmd.version=6.6.7-BETA -X mikrotik-exporter/cmd.shortSha=`git rev-parse HEAD`" main.go version
 
-VERSION=`cat VERSION`
-SHORTSHA=`git rev-parse --short HEAD`
+VERSION=`git describe --always`
 
 LDFLAGS=-X main.appVersion=$(VERSION)
-LDFLAGS+=-X main.shortSha=$(SHORTSHA)
 
 build:
 	go build -ldflags "$(LDFLAGS)" .
-
-utils:
-	go get github.com/mitchellh/gox
-	go get github.com/tcnksm/ghr
 
 .PHONY: build_arm64
 build_arm64:

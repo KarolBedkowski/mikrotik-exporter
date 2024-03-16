@@ -40,7 +40,6 @@ var (
 	webConfig   = flag.String("web-config", "", "web config file to load")
 
 	appVersion = "DEVELOPMENT"
-	shortSha   = "0xDEADBEEF"
 )
 
 func init() {
@@ -73,7 +72,7 @@ func main() {
 	flag.Parse()
 
 	if *ver {
-		fmt.Printf("\nVersion:   %s\nShort SHA: %s\n\n", appVersion, shortSha)
+		fmt.Printf("\nVersion:   %s\n\n", appVersion)
 		os.Exit(0)
 	}
 

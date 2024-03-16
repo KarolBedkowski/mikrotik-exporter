@@ -1,4 +1,4 @@
-Upstream: https://github.com/nshttpd/mikrotik-exporter
+This is fork of: https://github.com/nshttpd/mikrotik-exporter
 
 ## prometheus-mikrotik
 
