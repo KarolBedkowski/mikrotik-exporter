@@ -1,11 +1,8 @@
-This is fork of: https://github.com/nshttpd/mikrotik-exporter
-
 ## prometheus-mikrotik
 
 tl;dr - prometheus exporter for mikrotik devices
 
-This is still a work in progress .. consider `master` at the moment as a preview
-release.
+*This is fork of: https://github.com/nshttpd/mikrotik-exporter*
 
 #### Description
 
@@ -54,6 +51,8 @@ MIKROTIK_PASSWORD=changeme
 where `config-file` is the path to a config file in YAML format.
 
 ###### example config
+See examples/config.yml
+
 ```yaml
 devices:
   - name: my_router

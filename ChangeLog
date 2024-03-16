@@ -1,0 +1,33 @@
+v2.0.0 2024-03-16
+=================
+
+* fix: keep open connection to rb if device is not dynamic (srv-defined); this
+  prevent many login/logout logs
+* fix: change some metrics names to prometheus standards 
+* fix: do not stop reading metrics with one fail (i.e. not available in this
+  device)
+* feat: add possibility to configure profiles with collectors that can be run 
+  on specified targets
+* feat: tls and timeout is configurable per device
+* feat: add support for web-config (i.e. configure exporter tls and 
+  authentication) 
+* dev: refactor, clean code; update deps.
+
+Updated collectors 
+* dhcpl: remove unstable labels from metrics 
+* wlanif: collect statistics for disabled wifi interfaces
+* wlanif: collect interface frequency
+* capsman: collect provision status
+* system: add cpu-freq, bad-block, cpu-count metrics
+* resource: separate metrics for border name and version
+* ltr, queue, wlanif: handle empty api response 
+
+New collectors:
+* collector for queue/simplequeue
+* collector for cloud status
+
+
+v1.x
+====
+
+See upstream: https://github.com/nshttpd/mikrotik-exporter
