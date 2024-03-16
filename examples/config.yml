@@ -1,0 +1,78 @@
+devices:
+  - name: dev1
+    address: 192.168.0.1
+    # default for non-ssl
+    port: 8728
+    user: ro
+    password: ro
+    profile: router
+  - name: dev2
+    address: 192.168.0.2
+    # enable ssl
+    tls: true
+    # default for tls
+    port: 8729
+    # do not verify certificates
+    insecure: true
+    user: ro
+    password: ro
+    profile: basic
+  - name: dev3
+    address: dev3
+    user: ro
+    password: ro
+    # use default profile
+    # profile: basic
+
+# default features (profile)
+features:
+  bgp: true
+  cloud: true
+  conntrack: true
+  dhcp: true
+  dhcpl: true
+  dhcpv6: true
+  firmware: true
+  health: true
+  routes: true
+  poe: true
+  pools: true
+  optics: true
+  w60g: true
+  wlansta: true
+  capsman: true
+  wlanif: true
+  monitor: true
+  ipsec: true
+  lte: true
+  netwatch: true
+  queue: true
+  # always captured
+  resource: true
+  interface: true
+
+# custom profiles
+profiles:
+  router:
+    dhcp: true
+    dhcpl: true
+    routes: true
+    pools: true
+    capsman: true
+    conntrack: true
+    health: true
+    monitor: true
+    wlanif: true
+    netwatch: true
+    resource: true
+    queue: true
+    poe: true
+    cloud: true
+  basic:
+    resource: true
+    netwatch: true
+    wlanif: true
+    monitor: true
+    conntrack: true
+    health: true
+    cloud: true
