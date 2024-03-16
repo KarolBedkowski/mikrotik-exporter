@@ -3,6 +3,7 @@ VERSION=`git describe --always`
 
 LDFLAGS=-X main.appVersion=$(VERSION)
 
+.PHONY: build
 build:
 	go build -ldflags "$(LDFLAGS)" .
 
@@ -26,3 +27,8 @@ lint:
 format:
 	wsl -fix . || true
 	find . -name '*.go' -type f -exec gofumpt -w {} ';'
+
+
+.PHONY: test
+test:
+	go test ./...

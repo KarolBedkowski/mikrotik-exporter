@@ -10,7 +10,7 @@ import (
 func TestShouldParse(t *testing.T) {
 	b := loadTestFile(t)
 
-	c, err := Load(bytes.NewReader(b))
+	c, err := Load(bytes.NewReader(b), nil)
 	if err != nil {
 		t.Fatalf("could not parse: %v", err)
 	}

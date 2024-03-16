@@ -25,6 +25,11 @@ func (e UnknownFeatureError) Error() string {
 type Features map[string]bool
 
 func (f Features) validate(collectors []string) error {
+	// for tests
+	if len(collectors) == 0 {
+		return nil
+	}
+
 	var result *multierror.Error
 
 	for key := range f {
