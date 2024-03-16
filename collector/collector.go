@@ -294,12 +294,17 @@ func (c *collector) closeConnection(dc *deviceCollector) {
 }
 
 func (c *collector) dial(device *config.Device) (net.Conn, error) {
+	timeout := time.Duration(DefaultTimeout) * time.Second
+	if device.Timeout > 0 {
+		timeout = time.Duration(device.Timeout) * time.Second
+	}
+
 	if !device.TLS {
 		if (device.Port) == "" {
 			device.Port = apiPort
 		}
 
-		con, err := net.DialTimeout("tcp", device.Address+":"+device.Port, time.Duration(device.Timeout))
+		con, err := net.DialTimeout("tcp", device.Address+":"+device.Port, timeout)
 		if err != nil {
 			return nil, fmt.Errorf("dial error: %w", err)
 		}
@@ -316,7 +321,7 @@ func (c *collector) dial(device *config.Device) (net.Conn, error) {
 	}
 
 	con, err := tls.DialWithDialer(
-		&net.Dialer{Timeout: time.Duration(device.Timeout)},
+		&net.Dialer{Timeout: timeout},
 		"tcp", device.Address+":"+device.Port, tlsCfg)
 	if err != nil {
 		return nil, fmt.Errorf("dial with dialler error: %w", err)

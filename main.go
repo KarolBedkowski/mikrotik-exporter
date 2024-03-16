@@ -190,7 +190,7 @@ func startServer(cfg *config.Config) {
 
 	log.Info("Listening on ", *port)
 
-	serverTimeout := time.Duration(2 * *timeout)
+	serverTimeout := time.Duration(2**timeout) * time.Second
 	srv := &http.Server{
 		Addr:         *port,
 		ReadTimeout:  serverTimeout,
