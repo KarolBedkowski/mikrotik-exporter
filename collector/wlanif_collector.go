@@ -97,7 +97,7 @@ func (c *wlanIFCollector) collectForInterface(iface string, ctx *collectorContex
 	pcl := newPropertyCollector(re, ctx, iface, re.Map["channel"])
 	_ = pcl.collectGaugeValue(c.regClientsDesc, "registered-clients", nil)
 	_ = pcl.collectGaugeValue(c.noiseFloorDesc, "noise-floor", nil)
-	_ = pcl.collectGaugeValue(c.overaallTXCCQDesc, "overall-tx-ccq,channel", nil)
+	_ = pcl.collectGaugeValue(c.overaallTXCCQDesc, "overall-tx-ccq", nil)
 
 	c.collectMetricForFreq(iface, re, ctx)
 
