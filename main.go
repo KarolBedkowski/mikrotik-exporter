@@ -159,7 +159,7 @@ func loadConfigFromFlags() (*config.Config, error) {
 				Password: *password,
 				Port:     *deviceport,
 				TLS:      *tlsEnabled,
-				Insecure: true,
+				Insecure: *insecure,
 				Timeout:  *timeout,
 			},
 		},
