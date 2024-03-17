@@ -3,7 +3,6 @@ package collector
 import (
 	"fmt"
 	"strconv"
-	"strings"
 
 	"github.com/KarolBedkowski/routeros-go-client/proto"
 	"github.com/prometheus/client_golang/prometheus"
@@ -15,16 +14,14 @@ func init() {
 }
 
 type dhcpLeaseCollector struct {
-	propslist    string
 	descriptions *prometheus.Desc
 }
 
 func newDHCPLCollector() routerOSCollector {
-	c := &dhcpLeaseCollector{}
-
-	c.propslist = strings.Join([]string{"active-mac-address", "server", "status", "active-address", "host-name"}, ",")
 	labelNames := []string{"name", "address", "activemacaddress", "server", "status", "activeaddress", "hostname"}
-	c.descriptions = description("dhcp", "leases_metrics", "number of metrics", labelNames)
+	c := &dhcpLeaseCollector{
+		descriptions: description("dhcp", "leases_metrics", "number of metrics", labelNames),
+	}
 
 	return c
 }
@@ -47,7 +44,8 @@ func (c *dhcpLeaseCollector) collect(ctx *collectorContext) error {
 }
 
 func (c *dhcpLeaseCollector) fetch(ctx *collectorContext) ([]*proto.Sentence, error) {
-	reply, err := ctx.client.Run("/ip/dhcp-server/lease/print", "?status=bound", "=.proplist="+c.propslist)
+	reply, err := ctx.client.Run("/ip/dhcp-server/lease/print", "?status=bound",
+		"=.proplist=active-mac-address,server,status,active-address,host-name")
 	if err != nil {
 		log.WithFields(log.Fields{
 			"device": ctx.device.Name,

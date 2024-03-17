@@ -2,7 +2,6 @@ package collector
 
 import (
 	"fmt"
-	"strconv"
 
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
@@ -79,19 +78,8 @@ func (c *dhcpv6Collector) colllectForDHCPServer(ctx *collectorContext, dhcpServe
 		return fmt.Errorf("get bindings error: %w", err)
 	}
 
-	v, err := strconv.ParseFloat(reply.Done.Map["ret"], 32)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"dhcpv6_server": dhcpServer,
-			"device":        ctx.device.Name,
-			"error":         err,
-		}).Error("error parsing DHCPv6 binding counts")
-
-		return fmt.Errorf("get bindings error: %w", err)
-	}
-
-	ctx.ch <- prometheus.MustNewConstMetric(c.bindingCountDesc, prometheus.GaugeValue, v,
-		ctx.device.Name, ctx.device.Address, dhcpServer)
+	rcl := newRetCollector(reply, ctx, dhcpServer)
+	_ = rcl.collectGaugeValue(c.bindingCountDesc, nil)
 
 	return nil
 }

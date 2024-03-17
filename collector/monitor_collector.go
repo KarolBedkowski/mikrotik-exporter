@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/KarolBedkowski/routeros-go-client/proto"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 )
@@ -14,7 +13,6 @@ func init() {
 }
 
 type monitorCollector struct {
-	propslist       string
 	ifaceStatusDesc *prometheus.Desc
 	ifaceRateDesc   *prometheus.Desc
 	ifaceDuplexDesc *prometheus.Desc
@@ -24,7 +22,6 @@ func newMonitorCollector() routerOSCollector {
 	labelNames := []string{"name", "address", "interface"}
 
 	c := &monitorCollector{
-		propslist:       "status,rate,full-duplex",
 		ifaceStatusDesc: descriptionForPropertyName("monitor", "status", labelNames),
 		ifaceRateDesc:   descriptionForPropertyName("monitor", "rate", labelNames),
 		ifaceDuplexDesc: descriptionForPropertyName("monitor", "full-duplex", labelNames),
@@ -62,7 +59,7 @@ func (c *monitorCollector) collectForMonitor(eths []string, ctx *collectorContex
 	reply, err := ctx.client.Run("/interface/ethernet/monitor",
 		"=numbers="+strings.Join(eths, ","),
 		"=once=",
-		"=.proplist=name,"+c.propslist)
+		"=.proplist=name,status,rate,full-duplex")
 	if err != nil {
 		log.WithFields(log.Fields{
 			"device": ctx.device.Name,
@@ -74,36 +71,24 @@ func (c *monitorCollector) collectForMonitor(eths []string, ctx *collectorContex
 
 	for _, e := range reply.Re {
 		name := e.Map["name"]
-		c.collectStatus(name, e, ctx)
-		c.collectRate(name, e, ctx)
-		c.collectDuplex(name, e, ctx)
+		pcl := newPropertyCollector(e, ctx, name)
+		_ = pcl.collectGaugeValue(c.ifaceStatusDesc, "status", convertFromStatus)
+		_ = pcl.collectGaugeValue(c.ifaceRateDesc, "rate", convertFromRate)
+		_ = pcl.collectGaugeValue(c.ifaceDuplexDesc, "full-duplex", convertFromBool)
 	}
 
 	return nil
 }
 
-func (c *monitorCollector) collectStatus(name string, se *proto.Sentence, ctx *collectorContext) {
-	v, ok := se.Map["status"]
-	if !ok {
-		return
+func convertFromStatus(value string) (float64, error) {
+	if value == "link-ok" {
+		return 1.0, nil
 	}
 
-	value := 0.0
-
-	if v == "link-ok" {
-		value = 1.0
-	}
-
-	ctx.ch <- prometheus.MustNewConstMetric(c.ifaceStatusDesc, prometheus.GaugeValue,
-		value, ctx.device.Name, ctx.device.Address, name)
+	return 0.0, nil
 }
 
-func (c *monitorCollector) collectRate(name string, se *proto.Sentence, ctx *collectorContext) {
-	v, ok := se.Map["rate"]
-	if !ok {
-		return
-	}
-
+func convertFromRate(v string) (float64, error) {
 	value := 0
 
 	switch v {
@@ -129,22 +114,5 @@ func (c *monitorCollector) collectRate(name string, se *proto.Sentence, ctx *col
 		value = 100000
 	}
 
-	ctx.ch <- prometheus.MustNewConstMetric(c.ifaceRateDesc, prometheus.GaugeValue,
-		float64(value), ctx.device.Name, ctx.device.Address, name)
-}
-
-func (c *monitorCollector) collectDuplex(name string, se *proto.Sentence, ctx *collectorContext) {
-	v, ok := se.Map["full-duplex"]
-	if !ok {
-		return
-	}
-
-	value := 0
-
-	if v == "true" {
-		value = 1.0
-	}
-
-	ctx.ch <- prometheus.MustNewConstMetric(c.ifaceDuplexDesc, prometheus.GaugeValue,
-		float64(value), ctx.device.Name, ctx.device.Address, name)
+	return float64(value), nil
 }

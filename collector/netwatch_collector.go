@@ -14,14 +14,12 @@ func init() {
 }
 
 type netwatchCollector struct {
-	propslist  string
 	statusDesc *prometheus.Desc
 }
 
 func newNetwatchCollector() routerOSCollector {
 	labelNames := []string{"name", "address", "host", "comment", "status"}
 	c := &netwatchCollector{
-		propslist:  "host,comment,status",
 		statusDesc: descriptionForPropertyName("netwatch", "status", labelNames),
 	}
 
@@ -46,7 +44,8 @@ func (c *netwatchCollector) collect(ctx *collectorContext) error {
 }
 
 func (c *netwatchCollector) fetch(ctx *collectorContext) ([]*proto.Sentence, error) {
-	reply, err := ctx.client.Run("/tool/netwatch/print", "?disabled=false", "=.proplist="+c.propslist)
+	reply, err := ctx.client.Run("/tool/netwatch/print", "?disabled=false",
+		"=.proplist=host,comment,status")
 	if err != nil {
 		log.WithFields(log.Fields{
 			"device": ctx.device.Name,

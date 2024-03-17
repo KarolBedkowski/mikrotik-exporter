@@ -2,8 +2,6 @@ package collector
 
 import (
 	"fmt"
-	"strconv"
-	"strings"
 
 	"github.com/KarolBedkowski/routeros-go-client/proto"
 	"github.com/prometheus/client_golang/prometheus"
@@ -15,41 +13,48 @@ func init() {
 }
 
 type resourceCollector struct {
-	props        []string
-	descriptions map[string]*prometheus.Desc
-	versionDesc  *prometheus.Desc
+	versionDesc       *prometheus.Desc
+	freeMemoryDesc    *prometheus.Desc
+	totalMemoryDesc   *prometheus.Desc
+	cpuLoadDesc       *prometheus.Desc
+	freeHddSpaceDesc  *prometheus.Desc
+	totalHddSpaceDesc *prometheus.Desc
+	cpuFrequencyDesc  *prometheus.Desc
+	badBlocksDesc     *prometheus.Desc
+	uptimeDesc        *prometheus.Desc
+	cpuCountDesc      *prometheus.Desc
 }
 
 func newResourceCollector() routerOSCollector {
-	collector := &resourceCollector{
-		descriptions: make(map[string]*prometheus.Desc),
-	}
-
-	collector.props = []string{
-		"free-memory", "total-memory", "cpu-load", "free-hdd-space", "total-hdd-space", "cpu-frequency", "bad-blocks",
-		"uptime", "cpu-count",
-		"board-name", "version",
-	}
-
 	labelNames := []string{"name", "address"}
 
-	for _, p := range collector.props[:len(collector.props)-4] {
-		collector.descriptions[p] = descriptionForPropertyName("system", p, labelNames)
+	collector := &resourceCollector{
+		freeMemoryDesc:    descriptionForPropertyName("system", "free-memory", labelNames),
+		totalMemoryDesc:   descriptionForPropertyName("system", "total-memory", labelNames),
+		cpuLoadDesc:       descriptionForPropertyName("system", "cpu-load", labelNames),
+		freeHddSpaceDesc:  descriptionForPropertyName("system", "free-hdd-space", labelNames),
+		totalHddSpaceDesc: descriptionForPropertyName("system", "total-hdd-space", labelNames),
+		cpuFrequencyDesc:  descriptionForPropertyName("system", "cpu-frequency", labelNames),
+		badBlocksDesc:     descriptionForPropertyName("system", "bad-blocks", labelNames),
+		uptimeDesc:        descriptionForPropertyName("system", "uptime_total", labelNames),
+		cpuCountDesc:      descriptionForPropertyName("system", "cput", labelNames),
+		versionDesc: description("system", "routeros", "Board and system version",
+			[]string{"name", "address", "board_name", "version"}),
 	}
-
-	collector.descriptions["cpu-count"] = descriptionForPropertyName("system", "cpu", labelNames)
-	collector.descriptions["uptime"] = descriptionForPropertyName("system", "uptime_total", labelNames)
-	collector.versionDesc = description("system", "routeros", "Board and system version",
-		[]string{"name", "address", "board_name", "version"})
 
 	return collector
 }
 
 func (c *resourceCollector) describe(ch chan<- *prometheus.Desc) {
-	for _, d := range c.descriptions {
-		ch <- d
-	}
-
+	ch <- c.freeMemoryDesc
+	ch <- c.totalMemoryDesc
+	ch <- c.cpuLoadDesc
+	ch <- c.freeHddSpaceDesc
+	ch <- c.totalHddSpaceDesc
+	ch <- c.cpuFrequencyDesc
+	ch <- c.badBlocksDesc
+	ch <- c.uptimeDesc
+	ch <- c.cpuCountDesc
 	ch <- c.versionDesc
 }
 
@@ -67,7 +72,9 @@ func (c *resourceCollector) collect(ctx *collectorContext) error {
 }
 
 func (c *resourceCollector) fetch(ctx *collectorContext) ([]*proto.Sentence, error) {
-	reply, err := ctx.client.Run("/system/resource/print", "=.proplist="+strings.Join(c.props, ","))
+	reply, err := ctx.client.Run("/system/resource/print",
+		"=.proplist=free-memory,total-memory,cpu-load,free-hdd-space,total-hdd-space,"+
+			"cpu-frequency,bad-blocks,uptime,cpu-count,board-name,version")
 	if err != nil {
 		log.WithFields(log.Fields{
 			"device": ctx.device.Name,
@@ -80,48 +87,21 @@ func (c *resourceCollector) fetch(ctx *collectorContext) ([]*proto.Sentence, err
 	return reply.Re, nil
 }
 
-func (c *resourceCollector) collectForStat(re *proto.Sentence, ctx *collectorContext) {
-	boardname := re.Map["board-name"]
-	version := re.Map["version"]
+func (c *resourceCollector) collectForStat(reply *proto.Sentence, ctx *collectorContext) {
+	boardname := reply.Map["board-name"]
+	version := reply.Map["version"]
 
 	ctx.ch <- prometheus.MustNewConstMetric(c.versionDesc, prometheus.GaugeValue, 1,
 		ctx.device.Name, ctx.device.Address, boardname, version)
 
-	for _, p := range c.props[:9] {
-		c.collectMetricForProperty(p, re, ctx)
-	}
-}
-
-func (c *resourceCollector) collectMetricForProperty(property string, reply *proto.Sentence, ctx *collectorContext) {
-	value := reply.Map[property]
-	if value == "" {
-		return
-	}
-
-	var (
-		metricValue float64
-		vtype       = prometheus.GaugeValue
-		err         error
-	)
-
-	if property == "uptime" {
-		metricValue, err = parseDuration(value)
-		vtype = prometheus.CounterValue
-	} else {
-		metricValue, err = strconv.ParseFloat(value, 64)
-	}
-
-	if err != nil {
-		log.WithFields(log.Fields{
-			"device":   ctx.device.Name,
-			"property": property,
-			"value":    reply.Map[property],
-			"error":    err,
-		}).Error("error parsing system resource metric value")
-
-		return
-	}
-
-	desc := c.descriptions[property]
-	ctx.ch <- prometheus.MustNewConstMetric(desc, vtype, metricValue, ctx.device.Name, ctx.device.Address)
+	pcl := newPropertyCollector(reply, ctx)
+	_ = pcl.collectCounterValue(c.uptimeDesc, "uptime", parseDuration)
+	_ = pcl.collectGaugeValue(c.freeMemoryDesc, "free-memory", nil)
+	_ = pcl.collectGaugeValue(c.totalMemoryDesc, "total-memory", nil)
+	_ = pcl.collectGaugeValue(c.cpuLoadDesc, "cpu-load", nil)
+	_ = pcl.collectGaugeValue(c.freeHddSpaceDesc, "free-hdd-space", nil)
+	_ = pcl.collectGaugeValue(c.totalHddSpaceDesc, "total-hdd-space", nil)
+	_ = pcl.collectGaugeValue(c.cpuFrequencyDesc, "cpu-frequency", nil)
+	_ = pcl.collectGaugeValue(c.badBlocksDesc, "bad-blocks", nil)
+	_ = pcl.collectGaugeValue(c.cpuCountDesc, "cput", nil)
 }

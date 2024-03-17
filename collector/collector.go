@@ -236,11 +236,8 @@ func (c *collector) connectAndCollect(devCollector *deviceCollector, ch chan<- p
 
 	for _, coName := range devCollector.collectors {
 		co := c.collectors[coName]
-		ctx := &collectorContext{ch, &devCollector.device, client}
-		log.WithFields(log.Fields{
-			"device":    devCollector.device.Name,
-			"collector": fmt.Sprintf("%#v", co),
-		}).Debug("collect")
+		ctx := &collectorContext{ch, &devCollector.device, client, coName}
+		log.WithFields(ctx.fields()).Debug("collect")
 
 		if err = co.collect(ctx); err != nil {
 			result = multierror.Append(result, fmt.Errorf("collecting by %s error: %w", coName, err))

@@ -2,7 +2,6 @@ package collector
 
 import (
 	"fmt"
-	"strconv"
 
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
@@ -78,24 +77,7 @@ func (c *dhcpCollector) colllectForDHCPServer(ctx *collectorContext, dhcpServer 
 		return fmt.Errorf("get lease error: %w", err)
 	}
 
-	if reply.Done.Map["ret"] == "" {
-		return nil
-	}
-
-	v, err := strconv.ParseFloat(reply.Done.Map["ret"], 32)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"dhcp_server": dhcpServer,
-			"device":      ctx.device.Name,
-			"error":       err,
-		}).Error("error parsing DHCP lease counts")
-
-		return fmt.Errorf("parse lease result error: %w", err)
-	}
-
-	ctx.ch <- prometheus.MustNewConstMetric(
-		c.leasesActiveCountDesc, prometheus.GaugeValue, v,
-		ctx.device.Name, ctx.device.Address, dhcpServer)
-
+	rcl := newRetCollector(reply, ctx, dhcpServer)
+	_ = rcl.collectGaugeValue(c.leasesActiveCountDesc, nil)
 	return nil
 }

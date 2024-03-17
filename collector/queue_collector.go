@@ -2,10 +2,8 @@ package collector
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
-	"github.com/KarolBedkowski/routeros-go-client/proto"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 )
@@ -15,26 +13,30 @@ func init() {
 }
 
 type queueCollector struct {
-	monitorProps     []string
-	monitorPropslist string
-
 	simpleQueueProps     []string
 	simpleQueuePropslist string
 
-	descriptions map[string]*prometheus.Desc
+	monitorQueuedBytesDesc   *prometheus.Desc
+	monitorQueuedPacketsDesc *prometheus.Desc
+	packetsDesc              *TXRXDecription
+	bytesDesc                *TXRXDecription
+	queuedBytesDesc          *TXRXDecription
+	queuedPacketsDesc        *TXRXDecription
+	disabledDesc             *prometheus.Desc
 }
 
 func newQueueCollector() routerOSCollector {
+	monitorLabelNames := []string{"name", "address"}
+	labelNames := []string{"name", "address", "simple_queue_name", "queue", "comment"}
+
 	collector := &queueCollector{
-		descriptions: make(map[string]*prometheus.Desc),
-	}
-
-	collector.monitorProps = []string{"queued-packets", "queued-bytes"}
-	collector.monitorPropslist = strings.Join(collector.simpleQueueProps, ",")
-
-	labelNames := []string{"name", "address"}
-	for _, p := range collector.monitorProps {
-		collector.descriptions[p] = descriptionForPropertyName("queue", p, labelNames)
+		monitorQueuedBytesDesc:   descriptionForPropertyName("queue", "queue-bytes", monitorLabelNames),
+		monitorQueuedPacketsDesc: descriptionForPropertyName("queue", "queue-packets", monitorLabelNames),
+		disabledDesc:             descriptionForPropertyName("simple_queue", "disabled", labelNames),
+		packetsDesc:              NewTXRXDescription("simple_queue", "packets_total", labelNames),
+		bytesDesc:                NewTXRXDescription("simple_queue", "bytes_total", labelNames),
+		queuedPacketsDesc:        NewTXRXDescription("simple_queue", "queued_packets_total", labelNames),
+		queuedBytesDesc:          NewTXRXDescription("simple_queue", "queued_bytes_total", labelNames),
 	}
 
 	collector.simpleQueueProps = []string{
@@ -44,25 +46,17 @@ func newQueueCollector() routerOSCollector {
 	}
 	collector.simpleQueuePropslist = strings.Join(collector.simpleQueueProps, ",")
 
-	labelNames = []string{"name", "address", "simple_queue_name", "queue", "comment"}
-	collector.descriptions["disabled"] = descriptionForPropertyName("simple_queue", "disabled", labelNames)
-
-	for _, p := range collector.simpleQueueProps[4:] {
-		collector.descriptions["tx_"+p] = descriptionForPropertyName("simple_queue", "tx_"+p+"_total", labelNames)
-		collector.descriptions["rx_"+p] = descriptionForPropertyName("simple_queue", "rx_"+p+"_total", labelNames)
-	}
-
 	return collector
 }
 
 func (c *queueCollector) describe(ch chan<- *prometheus.Desc) {
-	for _, d := range c.descriptions {
-		ch <- d
-	}
-
-	for _, d := range c.descriptions {
-		ch <- d
-	}
+	c.packetsDesc.describe(ch)
+	c.bytesDesc.describe(ch)
+	c.queuedBytesDesc.describe(ch)
+	c.queuedPacketsDesc.describe(ch)
+	ch <- c.disabledDesc
+	ch <- c.monitorQueuedBytesDesc
+	ch <- c.monitorQueuedPacketsDesc
 }
 
 func (c *queueCollector) collect(ctx *collectorContext) error {
@@ -70,20 +64,15 @@ func (c *queueCollector) collect(ctx *collectorContext) error {
 		return err
 	}
 
-	sqStats, err := c.fetchSimpleQueue(ctx)
-	if err != nil {
-		return err
-	}
+	return c.collectSimpleQueue(ctx)
+}
 
-	for _, re := range sqStats {
-		c.collectForSimpleQqueue(re, ctx)
-	}
-
-	return nil
+func queueTxRxConverter(value string, opts ...string) (float64, float64, error) {
+	return splitStringToFloats(value, "/")
 }
 
 func (c *queueCollector) collectQueue(ctx *collectorContext) error {
-	reply, err := ctx.client.Run("/queue/monitor", "=once=", "=.proplist="+c.monitorPropslist)
+	reply, err := ctx.client.Run("/queue/monitor", "=once=", "=.proplist=queued-packets,queued-bytes")
 	if err != nil {
 		log.WithFields(log.Fields{
 			"device": ctx.device.Name,
@@ -98,36 +87,14 @@ func (c *queueCollector) collectQueue(ctx *collectorContext) error {
 	}
 
 	re := reply.Re[0]
-
-	for _, p := range c.monitorProps {
-		c.collectMetricForProperty(p, re, ctx)
-	}
+	pcl := newPropertyCollector(re, ctx)
+	_ = pcl.collectGaugeValue(c.monitorQueuedBytesDesc, "queued-bytes", nil)
+	_ = pcl.collectGaugeValue(c.monitorQueuedPacketsDesc, "queued-packets", nil)
 
 	return nil
 }
 
-func (c *queueCollector) collectMetricForProperty(property string, re *proto.Sentence, ctx *collectorContext) {
-	val := re.Map[property]
-	if val == "" {
-		return
-	}
-
-	v, err := strconv.ParseFloat(val, 64)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"property": property,
-			"device":   ctx.device.Name,
-			"error":    err,
-		}).Error("error parsing queue metric value")
-
-		return
-	}
-
-	desc := c.descriptions[property]
-	ctx.ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, v, ctx.device.Name, ctx.device.Address)
-}
-
-func (c *queueCollector) fetchSimpleQueue(ctx *collectorContext) ([]*proto.Sentence, error) {
+func (c *queueCollector) collectSimpleQueue(ctx *collectorContext) error {
 	reply, err := ctx.client.Run("/queue/simple/print", "=.proplist="+c.simpleQueuePropslist)
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -135,82 +102,18 @@ func (c *queueCollector) fetchSimpleQueue(ctx *collectorContext) ([]*proto.Sente
 			"error":  err,
 		}).Error("error fetching simple queue metrics")
 
-		return nil, fmt.Errorf("get simple queue error: %w", err)
+		return fmt.Errorf("get simple queue error: %w", err)
 	}
 
-	return reply.Re, nil
-}
+	for _, reply := range reply.Re {
+		pcl := newPropertyCollector(reply, ctx, reply.Map["name"], reply.Map["queue"], reply.Map["comment"])
 
-func (c *queueCollector) collectForSimpleQqueue(reply *proto.Sentence, ctx *collectorContext) {
-	name := reply.Map["name"]
-	queue := reply.Map["queue"]
-	comment := reply.Map["comment"]
-
-	for _, prop := range c.simpleQueueProps[3:] {
-		value := reply.Map[prop]
-		if value == "" {
-			continue
-		}
-
-		var (
-			metricValue float64
-			vtype       = prometheus.CounterValue
-			err         error
-		)
-
-		switch prop {
-		case "disabled":
-			vtype = prometheus.GaugeValue
-			metricValue = parseBool(value)
-		case "bytes", "packets":
-			c.collectMetricForTXRXCounters(value, prop, name, queue, comment, ctx)
-
-			continue
-		case "queued-packets", "queued-bytes":
-			c.collectMetricForTXRXCounters(value, prop, name, queue, comment, ctx)
-
-			continue
-		default:
-			metricValue, err = strconv.ParseFloat(value, 64)
-			if err != nil {
-				log.WithFields(log.Fields{
-					"device":    ctx.device.Name,
-					"interface": reply.Map["name"],
-					"property":  prop,
-					"value":     value,
-					"error":     err,
-				}).Error("error parsing queue metric value")
-
-				continue
-			}
-		}
-
-		desc := c.descriptions[prop]
-		ctx.ch <- prometheus.MustNewConstMetric(desc, vtype, metricValue, ctx.device.Name, ctx.device.Address,
-			name, queue, comment)
-	}
-}
-
-func (c *queueCollector) collectMetricForTXRXCounters(
-	value, property, name, queue, comment string, ctx *collectorContext,
-) {
-	tx, rx, err := splitStringToFloats(value, "/")
-	if err != nil {
-		log.WithFields(log.Fields{
-			"device":   ctx.device.Name,
-			"property": property,
-			"value":    value,
-			"error":    err,
-		}).Error("error parsing queue metric value")
-
-		return
+		_ = pcl.collectGaugeValue(c.disabledDesc, "disabled", convertFromBool)
+		_ = pcl.collectRXTXCounterValue(c.bytesDesc, "bytes", queueTxRxConverter)
+		_ = pcl.collectRXTXCounterValue(c.packetsDesc, "packets", queueTxRxConverter)
+		_ = pcl.collectRXTXCounterValue(c.queuedBytesDesc, "queued-bytes", queueTxRxConverter)
+		_ = pcl.collectRXTXCounterValue(c.queuedPacketsDesc, "queued-packets", queueTxRxConverter)
 	}
 
-	descTX := c.descriptions["tx_"+property]
-	ctx.ch <- prometheus.MustNewConstMetric(descTX, prometheus.CounterValue,
-		tx, ctx.device.Name, ctx.device.Address, name, queue, comment)
-
-	descRX := c.descriptions["rx_"+property]
-	ctx.ch <- prometheus.MustNewConstMetric(descRX, prometheus.CounterValue,
-		rx, ctx.device.Name, ctx.device.Address, name, queue, comment)
+	return nil
 }

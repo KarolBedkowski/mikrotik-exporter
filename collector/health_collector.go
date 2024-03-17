@@ -88,6 +88,7 @@ func (c *healthCollector) collectMetricForProperty(property string, re *proto.Se
 
 	if value == "" {
 		var ok bool
+		// TODO: check
 		if value, ok = re.Map["value"]; !ok {
 			return
 		}

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/KarolBedkowski/routeros-go-client/proto"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 )
@@ -14,16 +13,14 @@ func init() {
 }
 
 type cloudCollector struct {
-	propslist       string
 	ifaceStatusDesc *prometheus.Desc
 }
 
 func newCloudCollector() routerOSCollector {
-	labelNames := []string{"name", "address"}
+	labelNames := []string{"name", "address", "status"}
 
 	c := &cloudCollector{
-		propslist:       "status,rate,full-duplex",
-		ifaceStatusDesc: descriptionForPropertyName("cloud", "status", append(labelNames, "status")),
+		ifaceStatusDesc: descriptionForPropertyName("cloud", "status", labelNames),
 	}
 
 	return c
@@ -48,12 +45,13 @@ func (c *cloudCollector) collect(ctx *collectorContext) error {
 		return nil
 	}
 
-	c.collectStatus(reply.Re[0], ctx)
+	se := reply.Re[0]
 
-	return nil
-}
+	status, ok := se.Map["status"]
+	if !ok {
+		return nil
+	}
 
-func (c *cloudCollector) collectStatus(se *proto.Sentence, ctx *collectorContext) {
 	var (
 		statusUnknown  = 0.0
 		statusUpdated  = 0.0
@@ -61,19 +59,14 @@ func (c *cloudCollector) collectStatus(se *proto.Sentence, ctx *collectorContext
 		statusError    = 0.0
 	)
 
-	v, ok := se.Map["status"]
-	if !ok {
-		return
-	}
-
-	v = strings.ToLower(v)
+	status = strings.ToLower(status)
 
 	switch {
-	case v == "updated":
+	case status == "updated":
 		statusUpdated = 1.0
-	case strings.HasPrefix(v, "updating"):
+	case strings.HasPrefix(status, "updating"):
 		statusUpdating = 1.0
-	case strings.HasPrefix(v, "error"):
+	case strings.HasPrefix(status, "error"):
 		statusError = 1.0
 	default:
 		statusUnknown = 1.0
@@ -87,4 +80,6 @@ func (c *cloudCollector) collectStatus(se *proto.Sentence, ctx *collectorContext
 		statusUpdating, ctx.device.Name, ctx.device.Address, "updating")
 	ctx.ch <- prometheus.MustNewConstMetric(c.ifaceStatusDesc, prometheus.GaugeValue,
 		statusError, ctx.device.Name, ctx.device.Address, "error")
+
+	return nil
 }

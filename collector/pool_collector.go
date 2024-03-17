@@ -2,7 +2,6 @@ package collector
 
 import (
 	"fmt"
-	"strconv"
 
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
@@ -85,26 +84,7 @@ func (c *poolCollector) collectForPool(ipVersion, topic, pool string, ctx *colle
 		return fmt.Errorf("get used pool %s/%s error: %w", topic, pool, err)
 	}
 
-	if reply.Done.Map["ret"] == "" {
-		return nil
-	}
+	rcl := newRetCollector(reply, ctx, ipVersion, pool)
 
-	replyValue := reply.Done.Map["ret"]
-
-	metricValue, err := strconv.ParseFloat(replyValue, 32)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"pool":       pool,
-			"ip_version": ipVersion,
-			"device":     ctx.device.Name,
-			"error":      err,
-		}).Error("error parsing pool counts")
-
-		return fmt.Errorf("parse pool %s used %v error: %w", pool, replyValue, err)
-	}
-
-	ctx.ch <- prometheus.MustNewConstMetric(c.usedCountDesc, prometheus.GaugeValue,
-		metricValue, ctx.device.Name, ctx.device.Address, ipVersion, pool)
-
-	return nil
+	return rcl.collectGaugeValue(c.usedCountDesc, nil)
 }

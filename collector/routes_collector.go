@@ -2,7 +2,6 @@ package collector
 
 import (
 	"fmt"
-	"strconv"
 
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
@@ -72,27 +71,9 @@ func (c *routesCollector) colllectCount(ipVersion, topic string, ctx *collectorC
 		return fmt.Errorf("read route error: %w", err)
 	}
 
-	if reply.Done.Map["ret"] == "" {
-		return nil
-	}
+	rcl := newRetCollector(reply, ctx, ipVersion)
 
-	ret := reply.Done.Map["ret"]
-
-	v, err := strconv.ParseFloat(ret, 32)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"ip_version": ipVersion,
-			"device":     ctx.device.Name,
-			"error":      err,
-		}).Error("error parsing routes metrics")
-
-		return fmt.Errorf("parse %v to float error: %w", ret, err)
-	}
-
-	ctx.ch <- prometheus.MustNewConstMetric(c.countDesc, prometheus.GaugeValue,
-		v, ctx.device.Name, ctx.device.Address, ipVersion)
-
-	return nil
+	return rcl.collectGaugeValue(c.countDesc, nil)
 }
 
 func (c *routesCollector) colllectCountProtcol(ipVersion, topic, protocol string, ctx *collectorContext) error {
@@ -108,26 +89,7 @@ func (c *routesCollector) colllectCountProtcol(ipVersion, topic, protocol string
 		return fmt.Errorf("read route %s error: %w", topic, err)
 	}
 
-	if reply.Done.Map["ret"] == "" {
-		return nil
-	}
+	rcl := newRetCollector(reply, ctx, ipVersion, protocol)
 
-	ret := reply.Done.Map["ret"]
-
-	metricValue, err := strconv.ParseFloat(ret, 32)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"ip_version": ipVersion,
-			"protocol":   protocol,
-			"device":     ctx.device.Name,
-			"error":      err,
-		}).Error("error parsing routes metrics")
-
-		return fmt.Errorf("parse %v to float error: %w", ret, err)
-	}
-
-	ctx.ch <- prometheus.MustNewConstMetric(c.countProtocolDesc, prometheus.GaugeValue,
-		metricValue, ctx.device.Name, ctx.device.Address, ipVersion, protocol)
-
-	return nil
+	return rcl.collectGaugeValue(c.countProtocolDesc, nil)
 }

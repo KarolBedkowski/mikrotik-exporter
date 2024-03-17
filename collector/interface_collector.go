@@ -2,8 +2,6 @@ package collector
 
 import (
 	"fmt"
-	"strconv"
-	"strings"
 
 	"github.com/KarolBedkowski/routeros-go-client/proto"
 	"github.com/prometheus/client_golang/prometheus"
@@ -15,38 +13,51 @@ func init() {
 }
 
 type interfaceCollector struct {
-	props        []string
-	propslist    string
-	descriptions map[string]*prometheus.Desc
+	actualMtuDesc *prometheus.Desc
+	runningDesc   *prometheus.Desc
+	rxByteDesc    *prometheus.Desc
+	txByteDesc    *prometheus.Desc
+	rxPacketDesc  *prometheus.Desc
+	txPacketDesc  *prometheus.Desc
+	rxErrorDesc   *prometheus.Desc
+	txErrorDesc   *prometheus.Desc
+	rxDropDesc    *prometheus.Desc
+	txDropDesc    *prometheus.Desc
+	linkDownsDesc *prometheus.Desc
 }
 
 func newInterfaceCollector() routerOSCollector {
-	labelsProps := []string{"name", "type", "disabled", "comment", "slave"}
 	labelNames := []string{"name", "address", "interface", "type", "disabled", "comment", "running", "slave"}
 
 	collector := &interfaceCollector{
-		descriptions: make(map[string]*prometheus.Desc),
-	}
-
-	collector.props = []string{
-		"actual-mtu", "running", "rx-byte", "tx-byte", "rx-packet", "tx-packet",
-		"rx-error", "tx-error", "rx-drop", "tx-drop", "link-downs",
-	}
-	collector.propslist = strings.Join(append(labelsProps, collector.props...), ",")
-	collector.descriptions["actual-mtu"] = descriptionForPropertyName("interface", "actual_mtu", labelNames)
-	collector.descriptions["running"] = descriptionForPropertyName("interface", "running", labelNames)
-
-	for _, p := range collector.props[2:] {
-		collector.descriptions[p] = descriptionForPropertyName("interface", p+"_total", labelNames)
+		actualMtuDesc: descriptionForPropertyName("interface", "actual_mtu", labelNames),
+		runningDesc:   descriptionForPropertyName("interface", "running", labelNames),
+		rxByteDesc:    descriptionForPropertyName("interface", "rx-byte", labelNames),
+		txByteDesc:    descriptionForPropertyName("interface", "tx-byte", labelNames),
+		rxPacketDesc:  descriptionForPropertyName("interface", "rx-packet", labelNames),
+		txPacketDesc:  descriptionForPropertyName("interface", "tx-packet", labelNames),
+		rxErrorDesc:   descriptionForPropertyName("interface", "rx-error", labelNames),
+		txErrorDesc:   descriptionForPropertyName("interface", "tx-error", labelNames),
+		rxDropDesc:    descriptionForPropertyName("interface", "rx-drop", labelNames),
+		txDropDesc:    descriptionForPropertyName("interface", "tx-drop", labelNames),
+		linkDownsDesc: descriptionForPropertyName("interface", "link-downs", labelNames),
 	}
 
 	return collector
 }
 
 func (c *interfaceCollector) describe(ch chan<- *prometheus.Desc) {
-	for _, d := range c.descriptions {
-		ch <- d
-	}
+	ch <- c.actualMtuDesc
+	ch <- c.runningDesc
+	ch <- c.rxByteDesc
+	ch <- c.txByteDesc
+	ch <- c.rxPacketDesc
+	ch <- c.txPacketDesc
+	ch <- c.rxErrorDesc
+	ch <- c.txErrorDesc
+	ch <- c.rxDropDesc
+	ch <- c.txDropDesc
+	ch <- c.linkDownsDesc
 }
 
 func (c *interfaceCollector) collect(ctx *collectorContext) error {
@@ -63,7 +74,9 @@ func (c *interfaceCollector) collect(ctx *collectorContext) error {
 }
 
 func (c *interfaceCollector) fetch(ctx *collectorContext) ([]*proto.Sentence, error) {
-	reply, err := ctx.client.Run("/interface/print", "=.proplist="+c.propslist)
+	reply, err := ctx.client.Run("/interface/print",
+		"=.proplist=name,type,disabled,comment,slave,actual-mtu,running,rx-byte,tx-byte,"+
+			"rx-packet,tx-packet,rx-error,tx-error,rx-drop,tx-drop,link-downs")
 	if err != nil {
 		log.WithFields(log.Fields{
 			"device": ctx.device.Name,
@@ -76,49 +89,20 @@ func (c *interfaceCollector) fetch(ctx *collectorContext) ([]*proto.Sentence, er
 	return reply.Re, nil
 }
 
-func (c *interfaceCollector) collectForStat(re *proto.Sentence, ctx *collectorContext) {
-	for _, p := range c.props {
-		c.collectMetricForProperty(p, re, ctx)
-	}
-}
+func (c *interfaceCollector) collectForStat(reply *proto.Sentence, ctx *collectorContext) {
+	pcl := newPropertyCollector(reply, ctx,
+		reply.Map["name"], reply.Map["type"], reply.Map["disabled"], reply.Map["comment"],
+		reply.Map["running"], reply.Map["slave"])
 
-func (c *interfaceCollector) collectMetricForProperty(
-	property string, reply *proto.Sentence, ctx *collectorContext,
-) {
-	desc := c.descriptions[property]
-
-	if value := reply.Map[property]; value != "" {
-		var (
-			metricValue float64
-			vtype       = prometheus.CounterValue
-			err         error
-		)
-
-		switch property {
-		case "running":
-			vtype = prometheus.GaugeValue
-			metricValue = parseBool(value)
-		case "actual-mtu":
-			vtype = prometheus.GaugeValue
-
-			fallthrough
-		default:
-			metricValue, err = strconv.ParseFloat(value, 64)
-			if err != nil {
-				log.WithFields(log.Fields{
-					"device":    ctx.device.Name,
-					"interface": reply.Map["name"],
-					"property":  property,
-					"value":     value,
-					"error":     err,
-				}).Error("error parsing interface metric value")
-
-				return
-			}
-		}
-
-		ctx.ch <- prometheus.MustNewConstMetric(desc, vtype, metricValue, ctx.device.Name, ctx.device.Address,
-			reply.Map["name"], reply.Map["type"], reply.Map["disabled"], reply.Map["comment"],
-			reply.Map["running"], reply.Map["slave"])
-	}
+	_ = pcl.collectGaugeValue(c.actualMtuDesc, "actual_mtu", nil)
+	_ = pcl.collectGaugeValue(c.runningDesc, "running", convertFromBool)
+	_ = pcl.collectCounterValue(c.rxByteDesc, "rx-byte", nil)
+	_ = pcl.collectCounterValue(c.txByteDesc, "tx-byte", nil)
+	_ = pcl.collectCounterValue(c.rxPacketDesc, "rx-packet", nil)
+	_ = pcl.collectCounterValue(c.txPacketDesc, "tx-packet", nil)
+	_ = pcl.collectCounterValue(c.rxErrorDesc, "rx-error", nil)
+	_ = pcl.collectCounterValue(c.txErrorDesc, "tx-error", nil)
+	_ = pcl.collectCounterValue(c.rxDropDesc, "rx-drop", nil)
+	_ = pcl.collectCounterValue(c.txDropDesc, "tx-drop", nil)
+	_ = pcl.collectCounterValue(c.linkDownsDesc, "link-downs", nil)
 }
