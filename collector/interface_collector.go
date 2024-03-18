@@ -30,17 +30,17 @@ func newInterfaceCollector() routerOSCollector {
 	labelNames := []string{"name", "address", "interface", "type", "disabled", "comment", "running", "slave"}
 
 	collector := &interfaceCollector{
-		actualMtuDesc: descriptionForPropertyName("interface", "actual_mtu", labelNames),
-		runningDesc:   descriptionForPropertyName("interface", "running", labelNames),
-		rxByteDesc:    descriptionForPropertyName("interface", "rx-byte", labelNames),
-		txByteDesc:    descriptionForPropertyName("interface", "tx-byte", labelNames),
-		rxPacketDesc:  descriptionForPropertyName("interface", "rx-packet", labelNames),
-		txPacketDesc:  descriptionForPropertyName("interface", "tx-packet", labelNames),
-		rxErrorDesc:   descriptionForPropertyName("interface", "rx-error", labelNames),
-		txErrorDesc:   descriptionForPropertyName("interface", "tx-error", labelNames),
-		rxDropDesc:    descriptionForPropertyName("interface", "rx-drop", labelNames),
-		txDropDesc:    descriptionForPropertyName("interface", "tx-drop", labelNames),
-		linkDownsDesc: descriptionForPropertyName("interface", "link-downs", labelNames),
+		actualMtuDesc: descriptionForPropertyName("interface", "actual_mtu_total", labelNames),
+		runningDesc:   descriptionForPropertyName("interface", "running_total", labelNames),
+		rxByteDesc:    descriptionForPropertyName("interface", "rx-byte_total", labelNames),
+		txByteDesc:    descriptionForPropertyName("interface", "tx-byte_total", labelNames),
+		rxPacketDesc:  descriptionForPropertyName("interface", "rx-packet_total", labelNames),
+		txPacketDesc:  descriptionForPropertyName("interface", "tx-packet_total", labelNames),
+		rxErrorDesc:   descriptionForPropertyName("interface", "rx-error_total", labelNames),
+		txErrorDesc:   descriptionForPropertyName("interface", "tx-error_total", labelNames),
+		rxDropDesc:    descriptionForPropertyName("interface", "rx-drop_total", labelNames),
+		txDropDesc:    descriptionForPropertyName("interface", "tx-drop_total", labelNames),
+		linkDownsDesc: descriptionForPropertyName("interface", "link-downs_total", labelNames),
 	}
 
 	return collector
