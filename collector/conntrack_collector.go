@@ -12,8 +12,8 @@ func init() {
 }
 
 type conntrackCollector struct {
-	totalEntriesDesc *prometheus.Desc
-	maxEntriesDesc   *prometheus.Desc
+	totalEntries propertyMetricCollector
+	maxEntries   propertyMetricCollector
 }
 
 func newConntrackCollector() routerOSCollector {
@@ -22,14 +22,16 @@ func newConntrackCollector() routerOSCollector {
 	labelNames := []string{"name", "address"}
 
 	return &conntrackCollector{
-		totalEntriesDesc: description(prefix, "entries", "Number of tracked connections", labelNames),
-		maxEntriesDesc:   description(prefix, "max_entries", "Conntrack table capacity", labelNames),
+		totalEntries: newPropertyGaugeMetric(prefix, "total-entries", labelNames).
+			withHelp("Number of tracked connections").build(),
+		maxEntries: newPropertyGaugeMetric(prefix, "max-entries", labelNames).
+			withHelp("Conntrack table capacity").build(),
 	}
 }
 
 func (c *conntrackCollector) describe(ch chan<- *prometheus.Desc) {
-	ch <- c.totalEntriesDesc
-	ch <- c.maxEntriesDesc
+	c.totalEntries.describe(ch)
+	c.maxEntries.describe(ch)
 }
 
 func (c *conntrackCollector) collect(ctx *collectorContext) error {
@@ -46,9 +48,8 @@ func (c *conntrackCollector) collect(ctx *collectorContext) error {
 
 	if len(reply.Re) > 0 {
 		re := reply.Re[0]
-		pcl := newPropertyCollector(re, ctx)
-		_ = pcl.collectGaugeValue(c.totalEntriesDesc, "total-entries", nil)
-		_ = pcl.collectGaugeValue(c.maxEntriesDesc, "max-entries", nil)
+		_ = c.totalEntries.collect(re, ctx, nil)
+		_ = c.maxEntries.collect(re, ctx, nil)
 	}
 
 	return nil

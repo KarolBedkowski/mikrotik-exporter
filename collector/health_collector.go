@@ -2,7 +2,6 @@ package collector
 
 import (
 	"fmt"
-	"strconv"
 
 	"github.com/KarolBedkowski/routeros-go-client/proto"
 	"github.com/prometheus/client_golang/prometheus"
@@ -14,29 +13,31 @@ func init() {
 }
 
 type healthCollector struct {
-	descriptions map[string]*prometheus.Desc
+	metrics []propertyMetricCollector
 }
 
 func newhealthCollector() routerOSCollector {
+	const prefix = "health"
+
 	labelNames := []string{"name", "address"}
 
 	c := &healthCollector{
-		descriptions: make(map[string]*prometheus.Desc),
+		metrics: []propertyMetricCollector{
+			newPropertyGaugeMetric(prefix, "voltage", labelNames).
+				withHelp("Input voltage to the RouterOS board, in volts").build(),
+			newPropertyGaugeMetric(prefix, "temperature", labelNames).
+				withHelp("Temperature of RouterOS board, in degrees Celsius").build(),
+			newPropertyGaugeMetric(prefix, "cpu-temperature", labelNames).
+				withHelp("Temperature of RouterOS CPU, in degrees Celsius").build(),
+		},
 	}
-
-	c.descriptions["voltage"] = descriptionForPropertyNameHelpText(
-		"health", "voltage", labelNames, "Input voltage to the RouterOS board, in volts")
-	c.descriptions["temperature"] = descriptionForPropertyNameHelpText(
-		"health", "temperature", labelNames, "Temperature of RouterOS board, in degrees Celsius")
-	c.descriptions["cpu-temperature"] = descriptionForPropertyNameHelpText(
-		"health", "cpu-temperature", labelNames, "Temperature of RouterOS CPU, in degrees Celsius")
 
 	return c
 }
 
 func (c *healthCollector) describe(ch chan<- *prometheus.Desc) {
-	for _, d := range c.descriptions {
-		ch <- d
+	for _, m := range c.metrics {
+		m.describe(ch)
 	}
 }
 
@@ -48,9 +49,15 @@ func (c *healthCollector) collect(ctx *collectorContext) error {
 
 	for _, re := range stats {
 		if metric, ok := re.Map["name"]; ok {
-			c.collectMetricForProperty(metric, re, ctx)
-		} else {
-			c.collectForStat(re, ctx)
+			if v, ok := re.Map["value"]; ok {
+				re.Map[metric] = v
+			} else {
+				continue
+			}
+		}
+
+		for _, c := range c.metrics {
+			_ = c.collect(re, ctx, nil)
 		}
 	}
 
@@ -69,43 +76,4 @@ func (c *healthCollector) fetch(ctx *collectorContext) ([]*proto.Sentence, error
 	}
 
 	return reply.Re, nil
-}
-
-func (c *healthCollector) collectForStat(re *proto.Sentence, ctx *collectorContext) {
-	c.collectMetricForProperty("voltage", re, ctx)
-	c.collectMetricForProperty("temperature", re, ctx)
-	c.collectMetricForProperty("cpu-temperature", re, ctx)
-}
-
-func (c *healthCollector) collectMetricForProperty(property string, re *proto.Sentence, ctx *collectorContext) {
-	var (
-		metricValue float64
-		err         error
-	)
-
-	name := property
-	value := re.Map[property]
-
-	if value == "" {
-		var ok bool
-		// TODO: check
-		if value, ok = re.Map["value"]; !ok {
-			return
-		}
-	}
-
-	metricValue, err = strconv.ParseFloat(value, 64)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"device":   ctx.device.Name,
-			"property": name,
-			"value":    value,
-			"error":    err,
-		}).Error("error parsing system health metric value")
-
-		return
-	}
-
-	desc := c.descriptions[name]
-	ctx.ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, metricValue, ctx.device.Name, ctx.device.Address)
 }

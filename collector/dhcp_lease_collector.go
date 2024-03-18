@@ -14,20 +14,22 @@ func init() {
 }
 
 type dhcpLeaseCollector struct {
-	descriptions *prometheus.Desc
+	leases propertyMetricCollector
 }
 
 func newDHCPLCollector() routerOSCollector {
 	labelNames := []string{"name", "address", "activemacaddress", "server", "status", "activeaddress", "hostname"}
 	c := &dhcpLeaseCollector{
-		descriptions: description("dhcp", "leases_metrics", "number of metrics", labelNames),
+		leases: newPropertyGaugeMetric("dhcp", "status", labelNames).
+			withName("leases_metrics").withHelp("number of metrics").
+			withConverter(convertToOne).build(),
 	}
 
 	return c
 }
 
 func (c *dhcpLeaseCollector) describe(ch chan<- *prometheus.Desc) {
-	ch <- c.descriptions
+	c.leases.describe(ch)
 }
 
 func (c *dhcpLeaseCollector) collect(ctx *collectorContext) error {
@@ -60,22 +62,12 @@ func (c *dhcpLeaseCollector) fetch(ctx *collectorContext) ([]*proto.Sentence, er
 }
 
 func (c *dhcpLeaseCollector) collectMetric(ctx *collectorContext, re *proto.Sentence) {
-	// QuoteToASCII because of broken DHCP clients
-	hostname := strconv.QuoteToASCII(re.Map["host-name"])
-
-	metric, err := prometheus.NewConstMetric(c.descriptions, prometheus.GaugeValue, 1.0,
-		ctx.device.Name, ctx.device.Address,
-		re.Map["active-mac-address"], re.Map["server"], re.Map["status"], re.Map["active-address"],
-		hostname)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"device": ctx.device.Name,
-			"error":  err,
-			"reply":  re,
-		}).Error("error parsing dhcp lease")
-
-		return
+	labels := []string{
+		re.Map["active-mac-address"], re.Map["server"], re.Map["status"],
+		re.Map["active-address"],
+		// QuoteToASCII because of broken DHCP clients
+		strconv.QuoteToASCII(re.Map["host-name"]),
 	}
 
-	ctx.ch <- metric
+	_ = c.leases.collect(re, ctx, labels)
 }

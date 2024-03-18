@@ -13,27 +13,29 @@ func init() {
 }
 
 type monitorCollector struct {
-	ifaceStatusDesc *prometheus.Desc
-	ifaceRateDesc   *prometheus.Desc
-	ifaceDuplexDesc *prometheus.Desc
+	metrics []propertyMetricCollector
 }
 
 func newMonitorCollector() routerOSCollector {
 	labelNames := []string{"name", "address", "interface"}
 
+	const prefix = "monitor"
+
 	c := &monitorCollector{
-		ifaceStatusDesc: descriptionForPropertyName("monitor", "status", labelNames),
-		ifaceRateDesc:   descriptionForPropertyName("monitor", "rate", labelNames),
-		ifaceDuplexDesc: descriptionForPropertyName("monitor", "full-duplex", labelNames),
+		metrics: []propertyMetricCollector{
+			newPropertyGaugeMetric(prefix, "status", labelNames).withConverter(convertFromStatus).build(),
+			newPropertyGaugeMetric(prefix, "rate", labelNames).withConverter(convertFromRate).build(),
+			newPropertyGaugeMetric(prefix, "full-duplex", labelNames).withConverter(convertFromBool).build(),
+		},
 	}
 
 	return c
 }
 
 func (c *monitorCollector) describe(ch chan<- *prometheus.Desc) {
-	ch <- c.ifaceStatusDesc
-	ch <- c.ifaceRateDesc
-	ch <- c.ifaceDuplexDesc
+	for _, c := range c.metrics {
+		c.describe(ch)
+	}
 }
 
 func (c *monitorCollector) collect(ctx *collectorContext) error {
@@ -70,11 +72,10 @@ func (c *monitorCollector) collectForMonitor(eths []string, ctx *collectorContex
 	}
 
 	for _, e := range reply.Re {
-		name := e.Map["name"]
-		pcl := newPropertyCollector(e, ctx, name)
-		_ = pcl.collectGaugeValue(c.ifaceStatusDesc, "status", convertFromStatus)
-		_ = pcl.collectGaugeValue(c.ifaceRateDesc, "rate", convertFromRate)
-		_ = pcl.collectGaugeValue(c.ifaceDuplexDesc, "full-duplex", convertFromBool)
+		labels := []string{e.Map["name"]}
+		for _, c := range c.metrics {
+			_ = c.collect(e, ctx, labels)
+		}
 	}
 
 	return nil

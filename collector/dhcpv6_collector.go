@@ -12,7 +12,7 @@ func init() {
 }
 
 type dhcpv6Collector struct {
-	bindingCountDesc *prometheus.Desc
+	bindingCount retMetricCollector
 }
 
 func newDHCPv6Collector() routerOSCollector {
@@ -21,14 +21,15 @@ func newDHCPv6Collector() routerOSCollector {
 	labelNames := []string{"name", "address", "server"}
 
 	c := &dhcpv6Collector{
-		bindingCountDesc: description(prefix, "binding", "number of active bindings per DHCPv6 server", labelNames),
+		bindingCount: newRetGaugeMetric(prefix, "binding", labelNames).
+			withHelp("number of active bindings per DHCPv6 server").build(),
 	}
 
 	return c
 }
 
 func (c *dhcpv6Collector) describe(ch chan<- *prometheus.Desc) {
-	ch <- c.bindingCountDesc
+	c.bindingCount.describe(ch)
 }
 
 func (c *dhcpv6Collector) collect(ctx *collectorContext) error {
@@ -38,8 +39,7 @@ func (c *dhcpv6Collector) collect(ctx *collectorContext) error {
 	}
 
 	for _, n := range names {
-		err := c.colllectForDHCPServer(ctx, n)
-		if err != nil {
+		if err := c.colllectForDHCPServer(ctx, n); err != nil {
 			return err
 		}
 	}
@@ -78,8 +78,5 @@ func (c *dhcpv6Collector) colllectForDHCPServer(ctx *collectorContext, dhcpServe
 		return fmt.Errorf("get bindings error: %w", err)
 	}
 
-	rcl := newRetCollector(reply, ctx, dhcpServer)
-	_ = rcl.collectGaugeValue(c.bindingCountDesc, nil)
-
-	return nil
+	return c.bindingCount.collect(reply, ctx, []string{dhcpServer})
 }

@@ -2,7 +2,6 @@ package collector
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
@@ -43,12 +42,7 @@ func (c *firmwareCollector) collect(ctx *collectorContext) error {
 	pkgs := reply.Re
 
 	for _, pkg := range pkgs {
-		v := 1.0
-		if strings.EqualFold(pkg.Map["disabled"], "true") {
-			v = 0.0
-		}
-
-		ctx.ch <- prometheus.MustNewConstMetric(c.description, prometheus.GaugeValue, v,
+		ctx.ch <- prometheus.MustNewConstMetric(c.description, prometheus.GaugeValue, 1,
 			ctx.device.Name, pkg.Map["name"], pkg.Map["disabled"], pkg.Map["version"],
 			pkg.Map["build-time"])
 	}

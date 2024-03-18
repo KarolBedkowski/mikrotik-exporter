@@ -156,6 +156,10 @@ func convertFromBool(value string) (float64, error) {
 	return 0.0, nil
 }
 
+func convertToOne(value string) (float64, error) {
+	return 1.0, nil
+}
+
 type retCollector struct {
 	reply  *routeros.Reply
 	labels []string
@@ -532,4 +536,124 @@ func (p *propertyMetricBuilder) build() propertyMetricCollector {
 	}
 
 	panic("unknown metric type")
+}
+
+type retMetricBuilder struct {
+	prefix         string
+	property       string
+	valueConverter ValueConverter
+	metricType     metricType
+	metricName     string
+	metricHelp     string
+	labels         []string
+}
+
+func newRetCounterMetric(prefix, property string, labels []string) *retMetricBuilder {
+	return &retMetricBuilder{
+		prefix:     prefix,
+		property:   property,
+		metricType: metricCounter,
+		labels:     labels,
+	}
+}
+
+func newRetGaugeMetric(prefix, property string, labels []string) *retMetricBuilder {
+	return &retMetricBuilder{
+		prefix:     prefix,
+		property:   property,
+		metricType: metricGauge,
+		labels:     labels,
+	}
+}
+
+func (r *retMetricBuilder) withName(name string) *retMetricBuilder {
+	r.metricName = name
+	return r
+}
+
+func (r *retMetricBuilder) withHelp(help string) *retMetricBuilder {
+	r.metricHelp = help
+	return r
+}
+
+func (r *retMetricBuilder) withConverter(vc ValueConverter) *retMetricBuilder {
+	r.valueConverter = vc
+	return r
+}
+
+func (p *retMetricBuilder) build() retMetricCollector {
+	metricName := p.metricName
+	if metricName == "" {
+		metricName = p.property
+		if p.metricType == metricCounter {
+			metricName += "_total"
+		}
+	}
+
+	metricHelp := p.metricHelp
+	if metricHelp == "" {
+		metricHelp = p.property + " for " + p.prefix
+	}
+
+	log.WithFields(log.Fields{
+		"name":     metricName,
+		"help":     metricHelp,
+		"prefix":   p.prefix,
+		"labels":   p.labels,
+		"type":     p.metricType,
+		"property": p.property,
+	}).Debug("build metric")
+
+	switch p.metricType {
+	case metricCounter:
+		desc := descriptionForPropertyNameHelpText(p.prefix, metricName, p.labels, metricHelp)
+		return &retCounterCollector{desc, p.property, p.valueConverter}
+	case metricGauge:
+		desc := descriptionForPropertyNameHelpText(p.prefix, metricName, p.labels, metricHelp)
+		return &retGaugeCollector{desc, p.property, p.valueConverter}
+	}
+
+	panic("unknown metric type")
+}
+
+type retMetricCollector interface {
+	describe(ch chan<- *prometheus.Desc)
+	collect(reply *routeros.Reply, ctx *collectorContext, labels []string) error
+}
+
+type retCounterCollector struct {
+	desc           *prometheus.Desc
+	property       string
+	valueConverter ValueConverter
+}
+
+func (r *retCounterCollector) describe(ch chan<- *prometheus.Desc) {
+	ch <- r.desc
+}
+
+func (r *retCounterCollector) collect(reply *routeros.Reply,
+	ctx *collectorContext, labels []string,
+) error {
+	pcl := newRetCollector(reply, ctx, labels...)
+
+	// TODO: counter
+	return pcl.collectGaugeValue(r.desc, r.valueConverter)
+}
+
+type retGaugeCollector struct {
+	desc           *prometheus.Desc
+	property       string
+	valueConverter ValueConverter
+}
+
+func (r *retGaugeCollector) describe(ch chan<- *prometheus.Desc) {
+	ch <- r.desc
+}
+
+func (r *retGaugeCollector) collect(reply *routeros.Reply,
+	ctx *collectorContext, labels []string,
+) error {
+	pcl := newRetCollector(reply, ctx, labels...)
+
+	return pcl.collectGaugeValue(r.desc, r.valueConverter)
 }

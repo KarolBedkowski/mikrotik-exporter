@@ -15,7 +15,7 @@ func init() {
 type capsmanCollector struct {
 	metrics []propertyMetricCollector
 
-	radiosProvisionedDesc *prometheus.Desc
+	radiosProvisionedDesc propertyMetricCollector
 }
 
 func newCapsmanCollector() routerOSCollector {
@@ -33,15 +33,17 @@ func newCapsmanCollector() routerOSCollector {
 			newPropertyRxTxMetric(prefix, "bytes", labelNames).build(),
 		},
 
-		radiosProvisionedDesc: description("capsman", "radio_provisioned",
-			"Status of provision remote radios", radioLabelNames),
+		radiosProvisionedDesc: newPropertyGaugeMetric("capsman", "provisioned", radioLabelNames).
+			withName("radio_provisioned").withHelp("Status of provision remote radios").
+			withConverter(convertFromBool).
+			build(),
 	}
 
 	return collector
 }
 
 func (c *capsmanCollector) describe(ch chan<- *prometheus.Desc) {
-	ch <- c.radiosProvisionedDesc
+	c.radiosProvisionedDesc.describe(ch)
 
 	for _, m := range c.metrics {
 		m.describe(ch)
@@ -97,10 +99,11 @@ func (c *capsmanCollector) collectRadiosProvisioned(ctx *collectorContext) error
 	}
 
 	for _, re := range reply.Re {
-		v := parseBool(re.Map["provisioned"])
-		ctx.ch <- prometheus.MustNewConstMetric(c.radiosProvisionedDesc,
-			prometheus.GaugeValue, v, ctx.device.Name, ctx.device.Address,
-			re.Map["interface"], re.Map["radio-mac"], re.Map["remote-cap-identity"], re.Map["remote-cap-name"])
+		_ = c.radiosProvisionedDesc.collect(re, ctx,
+			[]string{
+				re.Map["interface"], re.Map["radio-mac"], re.Map["remote-cap-identity"],
+				re.Map["remote-cap-name"],
+			})
 	}
 
 	return nil
