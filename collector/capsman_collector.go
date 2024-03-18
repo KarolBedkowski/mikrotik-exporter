@@ -13,26 +13,26 @@ func init() {
 }
 
 type capsmanCollector struct {
-	uptimeDesc            *prometheus.Desc
-	txSignalDesc          *prometheus.Desc
-	rxSignalDesc          *prometheus.Desc
-	signalDesc            *TXRXDecription
-	packetsDesc           *TXRXDecription
-	bytesDesc             *TXRXDecription
+	metrics []propertyMetricCollector
+
 	radiosProvisionedDesc *prometheus.Desc
 }
 
 func newCapsmanCollector() routerOSCollector {
+	const prefix = "capsman_station"
+
 	labelNames := []string{"name", "address", "interface", "mac_address", "ssid"}
 	radioLabelNames := []string{"name", "address", "interface", "radio_mac", "remote_cap_identity", "remote_cap_name"}
 
 	collector := &capsmanCollector{
-		uptimeDesc:   descriptionForPropertyName("capsman_station", "uptime", labelNames),
-		rxSignalDesc: descriptionForPropertyName("capsman_station", "tx-signal", labelNames),
-		txSignalDesc: descriptionForPropertyName("capsman_station", "rx-signal", labelNames),
-		signalDesc:   NewTXRXDescription("capsman_station", "signal", labelNames),
-		packetsDesc:  NewTXRXDescription("capsman_station", "packets_total", labelNames),
-		bytesDesc:    NewTXRXDescription("capsman_station", "bytes_total", labelNames),
+		metrics: []propertyMetricCollector{
+			newPropertyCounterMetric(prefix, "uptime", labelNames).withConverter(parseDuration).build(),
+			newPropertyGaugeMetric(prefix, "tx-signal", labelNames).build(),
+			newPropertyGaugeMetric(prefix, "rx-signal", labelNames).build(),
+			newPropertyRxTxMetric(prefix, "packets", labelNames).build(),
+			newPropertyRxTxMetric(prefix, "bytes", labelNames).build(),
+		},
+
 		radiosProvisionedDesc: description("capsman", "radio_provisioned",
 			"Status of provision remote radios", radioLabelNames),
 	}
@@ -41,12 +41,11 @@ func newCapsmanCollector() routerOSCollector {
 }
 
 func (c *capsmanCollector) describe(ch chan<- *prometheus.Desc) {
-	ch <- c.uptimeDesc
 	ch <- c.radiosProvisionedDesc
 
-	c.signalDesc.describe(ch)
-	c.packetsDesc.describe(ch)
-	c.bytesDesc.describe(ch)
+	for _, m := range c.metrics {
+		m.describe(ch)
+	}
 }
 
 func (c *capsmanCollector) collect(ctx *collectorContext) error {
@@ -78,15 +77,11 @@ func (c *capsmanCollector) fetch(ctx *collectorContext) ([]*proto.Sentence, erro
 }
 
 func (c *capsmanCollector) collectForStat(re *proto.Sentence, ctx *collectorContext) {
-	pcl := newPropertyCollector(re, ctx,
-		re.Map["interface"], re.Map["mac-address"], re.Map["ssid"])
+	labels := []string{re.Map["interface"], re.Map["mac-address"], re.Map["ssid"]}
 
-	_ = pcl.collectCounterValue(c.uptimeDesc, "uptime", parseDuration)
-	_ = pcl.collectGaugeValue(c.txSignalDesc, "tx-signal", nil)
-	_ = pcl.collectGaugeValue(c.rxSignalDesc, "rx-signal", nil)
-
-	_ = pcl.collectRXTXCounterValue(c.bytesDesc, "bytes", nil)
-	_ = pcl.collectRXTXCounterValue(c.packetsDesc, "packets", nil)
+	for _, m := range c.metrics {
+		_ = m.collect(re, ctx, labels)
+	}
 }
 
 func (c *capsmanCollector) collectRadiosProvisioned(ctx *collectorContext) error {

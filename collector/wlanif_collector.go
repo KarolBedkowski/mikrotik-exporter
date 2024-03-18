@@ -15,21 +15,24 @@ func init() {
 }
 
 type wlanIFCollector struct {
-	frequencyDesc     *prometheus.Desc
-	regClientsDesc    *prometheus.Desc
-	noiseFloorDesc    *prometheus.Desc
-	overaallTXCCQDesc *prometheus.Desc
+	metrics []propertyMetricCollector
+
+	frequencyDesc *prometheus.Desc
 }
 
 func newWlanIFCollector() routerOSCollector {
+	const prefix = "wlan_interface"
+
 	labelNames := []string{"name", "address", "interface", "channel"}
 
 	collector := &wlanIFCollector{
-		frequencyDesc: description("wlan_interface", "frequency",
-			"WiFi frequency", []string{"name", "address", "interface", "freqidx"}),
-		regClientsDesc:    descriptionForPropertyName("wlan_interface", "registered-clients", labelNames),
-		noiseFloorDesc:    descriptionForPropertyName("wlan_interface", "noise-floor", labelNames),
-		overaallTXCCQDesc: descriptionForPropertyName("wlan_interface", "overall-tx-ccq", labelNames),
+		metrics: []propertyMetricCollector{
+			newPropertyGaugeMetric(prefix, "registered-clients", labelNames).build(),
+			newPropertyGaugeMetric(prefix, "noise-floor", labelNames).build(),
+			newPropertyGaugeMetric(prefix, "overall-tx-ccq", labelNames).build(),
+		},
+		frequencyDesc: description(prefix, "frequency", "WiFi frequency",
+			[]string{"name", "address", "interface", "freqidx"}),
 	}
 
 	return collector
@@ -37,9 +40,10 @@ func newWlanIFCollector() routerOSCollector {
 
 func (c *wlanIFCollector) describe(ch chan<- *prometheus.Desc) {
 	ch <- c.frequencyDesc
-	ch <- c.regClientsDesc
-	ch <- c.noiseFloorDesc
-	ch <- c.overaallTXCCQDesc
+
+	for _, c := range c.metrics {
+		c.describe(ch)
+	}
 }
 
 func (c *wlanIFCollector) collect(ctx *collectorContext) error {
@@ -94,10 +98,11 @@ func (c *wlanIFCollector) collectForInterface(iface string, ctx *collectorContex
 	}
 
 	re := reply.Re[0]
-	pcl := newPropertyCollector(re, ctx, iface, re.Map["channel"])
-	_ = pcl.collectGaugeValue(c.regClientsDesc, "registered-clients", nil)
-	_ = pcl.collectGaugeValue(c.noiseFloorDesc, "noise-floor", nil)
-	_ = pcl.collectGaugeValue(c.overaallTXCCQDesc, "overall-tx-ccq", nil)
+	labels := []string{iface, re.Map["channel"]}
+
+	for _, c := range c.metrics {
+		_ = c.collect(re, ctx, labels)
+	}
 
 	c.collectMetricForFreq(iface, re, ctx)
 

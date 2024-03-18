@@ -13,51 +13,37 @@ func init() {
 }
 
 type interfaceCollector struct {
-	actualMtuDesc *prometheus.Desc
-	runningDesc   *prometheus.Desc
-	rxByteDesc    *prometheus.Desc
-	txByteDesc    *prometheus.Desc
-	rxPacketDesc  *prometheus.Desc
-	txPacketDesc  *prometheus.Desc
-	rxErrorDesc   *prometheus.Desc
-	txErrorDesc   *prometheus.Desc
-	rxDropDesc    *prometheus.Desc
-	txDropDesc    *prometheus.Desc
-	linkDownsDesc *prometheus.Desc
+	metrics []propertyMetricCollector
 }
 
 func newInterfaceCollector() routerOSCollector {
+	const prefix = "interface"
+
 	labelNames := []string{"name", "address", "interface", "type", "disabled", "comment", "running", "slave"}
 
 	collector := &interfaceCollector{
-		actualMtuDesc: descriptionForPropertyName("interface", "actual_mtu_total", labelNames),
-		runningDesc:   descriptionForPropertyName("interface", "running_total", labelNames),
-		rxByteDesc:    descriptionForPropertyName("interface", "rx-byte_total", labelNames),
-		txByteDesc:    descriptionForPropertyName("interface", "tx-byte_total", labelNames),
-		rxPacketDesc:  descriptionForPropertyName("interface", "rx-packet_total", labelNames),
-		txPacketDesc:  descriptionForPropertyName("interface", "tx-packet_total", labelNames),
-		rxErrorDesc:   descriptionForPropertyName("interface", "rx-error_total", labelNames),
-		txErrorDesc:   descriptionForPropertyName("interface", "tx-error_total", labelNames),
-		rxDropDesc:    descriptionForPropertyName("interface", "rx-drop_total", labelNames),
-		txDropDesc:    descriptionForPropertyName("interface", "tx-drop_total", labelNames),
-		linkDownsDesc: descriptionForPropertyName("interface", "link-downs_total", labelNames),
+		metrics: []propertyMetricCollector{
+			newPropertyGaugeMetric(prefix, "actual_mtu", labelNames).build(),
+			newPropertyGaugeMetric(prefix, "running", labelNames).withConverter(convertFromBool).build(),
+			newPropertyCounterMetric(prefix, "rx-byte", labelNames).build(),
+			newPropertyCounterMetric(prefix, "tx-byte", labelNames).build(),
+			newPropertyCounterMetric(prefix, "rx-packet", labelNames).build(),
+			newPropertyCounterMetric(prefix, "tx-packet", labelNames).build(),
+			newPropertyCounterMetric(prefix, "rx-error", labelNames).build(),
+			newPropertyCounterMetric(prefix, "tx-error", labelNames).build(),
+			newPropertyCounterMetric(prefix, "rx-drop", labelNames).build(),
+			newPropertyCounterMetric(prefix, "tx-drop", labelNames).build(),
+			newPropertyCounterMetric(prefix, "link-downs", labelNames).build(),
+		},
 	}
 
 	return collector
 }
 
 func (c *interfaceCollector) describe(ch chan<- *prometheus.Desc) {
-	ch <- c.actualMtuDesc
-	ch <- c.runningDesc
-	ch <- c.rxByteDesc
-	ch <- c.txByteDesc
-	ch <- c.rxPacketDesc
-	ch <- c.txPacketDesc
-	ch <- c.rxErrorDesc
-	ch <- c.txErrorDesc
-	ch <- c.rxDropDesc
-	ch <- c.txDropDesc
-	ch <- c.linkDownsDesc
+	for _, p := range c.metrics {
+		p.describe(ch)
+	}
 }
 
 func (c *interfaceCollector) collect(ctx *collectorContext) error {
@@ -90,19 +76,12 @@ func (c *interfaceCollector) fetch(ctx *collectorContext) ([]*proto.Sentence, er
 }
 
 func (c *interfaceCollector) collectForStat(reply *proto.Sentence, ctx *collectorContext) {
-	pcl := newPropertyCollector(reply, ctx,
+	labels := []string{
 		reply.Map["name"], reply.Map["type"], reply.Map["disabled"], reply.Map["comment"],
-		reply.Map["running"], reply.Map["slave"])
+		reply.Map["running"], reply.Map["slave"],
+	}
 
-	_ = pcl.collectGaugeValue(c.actualMtuDesc, "actual_mtu", nil)
-	_ = pcl.collectGaugeValue(c.runningDesc, "running", convertFromBool)
-	_ = pcl.collectCounterValue(c.rxByteDesc, "rx-byte", nil)
-	_ = pcl.collectCounterValue(c.txByteDesc, "tx-byte", nil)
-	_ = pcl.collectCounterValue(c.rxPacketDesc, "rx-packet", nil)
-	_ = pcl.collectCounterValue(c.txPacketDesc, "tx-packet", nil)
-	_ = pcl.collectCounterValue(c.rxErrorDesc, "rx-error", nil)
-	_ = pcl.collectCounterValue(c.txErrorDesc, "tx-error", nil)
-	_ = pcl.collectCounterValue(c.rxDropDesc, "rx-drop", nil)
-	_ = pcl.collectCounterValue(c.txDropDesc, "tx-drop", nil)
-	_ = pcl.collectCounterValue(c.linkDownsDesc, "link-downs", nil)
+	for _, p := range c.metrics {
+		_ = p.collect(reply, ctx, labels)
+	}
 }

@@ -13,34 +13,31 @@ func init() {
 }
 
 type wlanSTACollector struct {
-	signalToNoseDesc   *prometheus.Desc
-	signalStrengthDesc *prometheus.Desc
-	packetsDesc        *TXRXDecription
-	bytesDesc          *TXRXDecription
-	framesDesc         *TXRXDecription
+	metrics []propertyMetricCollector
 }
 
 func newWlanSTACollector() routerOSCollector {
+	const prefix = "wlan_station"
+
 	labelNames := []string{"name", "address", "interface", "mac_address"}
 
 	collector := &wlanSTACollector{
-		signalToNoseDesc:   descriptionForPropertyName("wlan_station", "signal-to-noise", labelNames),
-		signalStrengthDesc: descriptionForPropertyName("wlan_station", "signal-strength", labelNames),
-		packetsDesc:        NewTXRXDescription("wlan_station", "packets_total", labelNames),
-		bytesDesc:          NewTXRXDescription("wlan_station", "bytes_total", labelNames),
-		framesDesc:         NewTXRXDescription("wlan_station", "frames_total", labelNames),
+		metrics: []propertyMetricCollector{
+			newPropertyGaugeMetric(prefix, "signal-to-noise", labelNames).build(),
+			newPropertyGaugeMetric(prefix, "signal-strength", labelNames).build(),
+			newPropertyRxTxMetric(prefix, "packets", labelNames).build(),
+			newPropertyRxTxMetric(prefix, "bytes", labelNames).build(),
+			newPropertyRxTxMetric(prefix, "frames", labelNames).build(),
+		},
 	}
 
 	return collector
 }
 
 func (c *wlanSTACollector) describe(ch chan<- *prometheus.Desc) {
-	ch <- c.signalToNoseDesc
-	ch <- c.signalStrengthDesc
-
-	c.packetsDesc.describe(ch)
-	c.bytesDesc.describe(ch)
-	c.framesDesc.describe(ch)
+	for _, c := range c.metrics {
+		c.describe(ch)
+	}
 }
 
 func (c *wlanSTACollector) collect(ctx *collectorContext) error {
@@ -50,7 +47,10 @@ func (c *wlanSTACollector) collect(ctx *collectorContext) error {
 	}
 
 	for _, re := range stats {
-		c.collectForStat(re, ctx)
+		labels := []string{re.Map["interface"], re.Map["mac-address"]}
+		for _, c := range c.metrics {
+			c.collect(re, ctx, labels)
+		}
 	}
 
 	return nil
@@ -69,13 +69,4 @@ func (c *wlanSTACollector) fetch(ctx *collectorContext) ([]*proto.Sentence, erro
 	}
 
 	return reply.Re, nil
-}
-
-func (c *wlanSTACollector) collectForStat(re *proto.Sentence, ctx *collectorContext) {
-	pcl := newPropertyCollector(re, ctx, re.Map["interface"], re.Map["mac-address"])
-	_ = pcl.collectGaugeValue(c.signalToNoseDesc, "signal-to-noise", nil)
-	_ = pcl.collectGaugeValue(c.signalStrengthDesc, "signal-strength", nil)
-	_ = pcl.collectRXTXCounterValue(c.packetsDesc, "packets", nil)
-	_ = pcl.collectRXTXCounterValue(c.bytesDesc, "bytes", nil)
-	_ = pcl.collectRXTXCounterValue(c.framesDesc, "frames", nil)
 }

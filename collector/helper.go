@@ -332,3 +332,204 @@ func (p *propertyCollector) collectCounterValue(
 
 	return nil
 }
+
+type propertyMetricCollector interface {
+	describe(ch chan<- *prometheus.Desc)
+	collect(reply *proto.Sentence, ctx *collectorContext, labels []string) error
+}
+
+type propertyCounterCollector struct {
+	desc           *prometheus.Desc
+	property       string
+	valueConverter ValueConverter
+}
+
+func (p *propertyCounterCollector) describe(ch chan<- *prometheus.Desc) {
+	ch <- p.desc
+}
+
+func (p *propertyCounterCollector) collect(reply *proto.Sentence,
+	ctx *collectorContext, labels []string,
+) error {
+	pcl := newPropertyCollector(reply, ctx, labels...)
+
+	return pcl.collectCounterValue(p.desc, p.property, p.valueConverter)
+}
+
+type propertyGaugeCollector struct {
+	desc           *prometheus.Desc
+	property       string
+	valueConverter ValueConverter
+}
+
+func (p *propertyGaugeCollector) describe(ch chan<- *prometheus.Desc) {
+	ch <- p.desc
+}
+
+func (p *propertyGaugeCollector) collect(reply *proto.Sentence,
+	ctx *collectorContext, labels []string,
+) error {
+	pcl := newPropertyCollector(reply, ctx, labels...)
+
+	return pcl.collectGaugeValue(p.desc, p.property, p.valueConverter)
+}
+
+type propertyRxTxCollector struct {
+	rxDesc         *prometheus.Desc
+	txDesc         *prometheus.Desc
+	property       string
+	valueConverter TXRXValueConverter
+}
+
+func (p *propertyRxTxCollector) describe(ch chan<- *prometheus.Desc) {
+	ch <- p.rxDesc
+	ch <- p.txDesc
+}
+
+func (p *propertyRxTxCollector) collect(reply *proto.Sentence,
+	ctx *collectorContext, labels []string,
+) error {
+	propertyVal := reply.Map[p.property]
+	if propertyVal == "" {
+		return nil
+	}
+
+	conv := splitStringToFloats
+	if p.valueConverter != nil {
+		conv = p.valueConverter
+	}
+
+	tx, rx, err := conv(propertyVal)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"collector": ctx.collector,
+			"device":    ctx.device.Name,
+			"property":  p.property,
+			"value":     propertyVal,
+			"error":     err,
+		}).Error("error parsing value")
+
+		return fmt.Errorf("parse error: %w", err)
+	}
+
+	labels = append([]string{ctx.device.Name, ctx.device.Address}, labels...)
+
+	// TODO: gauge ?
+	ctx.ch <- prometheus.MustNewConstMetric(p.txDesc, prometheus.CounterValue, tx, labels...)
+	ctx.ch <- prometheus.MustNewConstMetric(p.rxDesc, prometheus.CounterValue, rx, labels...)
+
+	return nil
+}
+
+type metricType int
+
+const (
+	metricCounter metricType = iota
+	metricGauge
+	metricRxTx
+)
+
+type propertyMetricBuilder struct {
+	prefix             string
+	property           string
+	valueConverter     ValueConverter
+	rxTxValueConverter TXRXValueConverter
+	metricType         metricType
+	metricName         string
+	metricHelp         string
+	labels             []string
+}
+
+func newPropertyCounterMetric(prefix, property string, labels []string) *propertyMetricBuilder {
+	return &propertyMetricBuilder{
+		prefix:     prefix,
+		property:   property,
+		metricType: metricCounter,
+		labels:     labels,
+	}
+}
+
+func newPropertyGaugeMetric(prefix, property string, labels []string) *propertyMetricBuilder {
+	return &propertyMetricBuilder{
+		prefix:     prefix,
+		property:   property,
+		metricType: metricGauge,
+		labels:     labels,
+	}
+}
+
+func newPropertyRxTxMetric(prefix, property string, labels []string) *propertyMetricBuilder {
+	return &propertyMetricBuilder{
+		prefix:     prefix,
+		property:   property,
+		metricType: metricRxTx,
+		labels:     labels,
+	}
+}
+
+func (p *propertyMetricBuilder) withName(name string) *propertyMetricBuilder {
+	p.metricName = name
+	return p
+}
+
+func (p *propertyMetricBuilder) withHelp(help string) *propertyMetricBuilder {
+	p.metricHelp = help
+	return p
+}
+
+func (p *propertyMetricBuilder) withConverter(vc ValueConverter) *propertyMetricBuilder {
+	if p.metricType == metricRxTx {
+		panic("can't set ValueConverter for rxtx metric")
+	}
+
+	p.valueConverter = vc
+	return p
+}
+
+func (p *propertyMetricBuilder) withRxTxConverter(vc TXRXValueConverter) *propertyMetricBuilder {
+	if p.metricType != metricRxTx {
+		panic("can't set TXRXValueConverter for non-rxtx metric")
+	}
+
+	p.rxTxValueConverter = vc
+	return p
+}
+
+func (p *propertyMetricBuilder) build() propertyMetricCollector {
+	metricName := p.metricName
+	if metricName == "" {
+		metricName = p.property
+		if p.metricType == metricCounter {
+			metricName += "_total"
+		}
+	}
+
+	metricHelp := p.metricHelp
+	if metricHelp == "" {
+		metricHelp = p.property + " for " + p.prefix
+	}
+
+	log.WithFields(log.Fields{
+		"name":     metricName,
+		"help":     metricHelp,
+		"prefix":   p.prefix,
+		"labels":   p.labels,
+		"type":     p.metricType,
+		"property": p.property,
+	}).Debug("build metric")
+
+	switch p.metricType {
+	case metricCounter:
+		desc := descriptionForPropertyNameHelpText(p.prefix, metricName, p.labels, metricHelp)
+		return &propertyCounterCollector{desc, p.property, p.valueConverter}
+	case metricGauge:
+		desc := descriptionForPropertyNameHelpText(p.prefix, metricName, p.labels, metricHelp)
+		return &propertyGaugeCollector{desc, p.property, p.valueConverter}
+	case metricRxTx:
+		rxDesc := descriptionForPropertyNameHelpText(p.prefix, "rx_"+metricName, p.labels, metricHelp+" (RX)")
+		txDesc := descriptionForPropertyNameHelpText(p.prefix, "tx_"+metricName, p.labels, metricHelp+" (TX)")
+		return &propertyRxTxCollector{rxDesc, txDesc, p.property, p.rxTxValueConverter}
+	}
+
+	panic("unknown metric type")
+}

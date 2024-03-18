@@ -13,48 +13,48 @@ func init() {
 }
 
 type queueCollector struct {
-	simpleQueueProps     []string
 	simpleQueuePropslist string
+
+	metrics []propertyMetricCollector
 
 	monitorQueuedBytesDesc   *prometheus.Desc
 	monitorQueuedPacketsDesc *prometheus.Desc
-	packetsDesc              *TXRXDecription
-	bytesDesc                *TXRXDecription
-	queuedBytesDesc          *TXRXDecription
-	queuedPacketsDesc        *TXRXDecription
-	disabledDesc             *prometheus.Desc
 }
 
 func newQueueCollector() routerOSCollector {
 	monitorLabelNames := []string{"name", "address"}
 	labelNames := []string{"name", "address", "simple_queue_name", "queue", "comment"}
 
+	const sqPrefix = "simple_queue"
+
 	collector := &queueCollector{
 		monitorQueuedBytesDesc:   descriptionForPropertyName("queue", "queue-bytes", monitorLabelNames),
 		monitorQueuedPacketsDesc: descriptionForPropertyName("queue", "queue-packets", monitorLabelNames),
-		disabledDesc:             descriptionForPropertyName("simple_queue", "disabled", labelNames),
-		packetsDesc:              NewTXRXDescription("simple_queue", "packets_total", labelNames),
-		bytesDesc:                NewTXRXDescription("simple_queue", "bytes_total", labelNames),
-		queuedPacketsDesc:        NewTXRXDescription("simple_queue", "queued_packets_total", labelNames),
-		queuedBytesDesc:          NewTXRXDescription("simple_queue", "queued_bytes_total", labelNames),
+
+		metrics: []propertyMetricCollector{
+			newPropertyGaugeMetric(sqPrefix, "disabled", labelNames).withConverter(convertFromBool).build(),
+			newPropertyRxTxMetric(sqPrefix, "packets", labelNames).withRxTxConverter(queueTxRxConverter).build(),
+			newPropertyRxTxMetric(sqPrefix, "bytes", labelNames).withRxTxConverter(queueTxRxConverter).build(),
+			newPropertyRxTxMetric(sqPrefix, "queued_packets", labelNames).withRxTxConverter(queueTxRxConverter).build(),
+			newPropertyRxTxMetric(sqPrefix, "queued_bytes", labelNames).withRxTxConverter(queueTxRxConverter).build(),
+		},
 	}
 
-	collector.simpleQueueProps = []string{
+	simpleQueueProps := []string{
 		"name", "queue", "comment",
 		"disabled",
 		"bytes", "packets", "queued-bytes", "queued-packets",
 	}
-	collector.simpleQueuePropslist = strings.Join(collector.simpleQueueProps, ",")
+	collector.simpleQueuePropslist = strings.Join(simpleQueueProps, ",")
 
 	return collector
 }
 
 func (c *queueCollector) describe(ch chan<- *prometheus.Desc) {
-	c.packetsDesc.describe(ch)
-	c.bytesDesc.describe(ch)
-	c.queuedBytesDesc.describe(ch)
-	c.queuedPacketsDesc.describe(ch)
-	ch <- c.disabledDesc
+	for _, c := range c.metrics {
+		c.describe(ch)
+	}
+
 	ch <- c.monitorQueuedBytesDesc
 	ch <- c.monitorQueuedPacketsDesc
 }
@@ -106,13 +106,10 @@ func (c *queueCollector) collectSimpleQueue(ctx *collectorContext) error {
 	}
 
 	for _, reply := range reply.Re {
-		pcl := newPropertyCollector(reply, ctx, reply.Map["name"], reply.Map["queue"], reply.Map["comment"])
-
-		_ = pcl.collectGaugeValue(c.disabledDesc, "disabled", convertFromBool)
-		_ = pcl.collectRXTXCounterValue(c.bytesDesc, "bytes", queueTxRxConverter)
-		_ = pcl.collectRXTXCounterValue(c.packetsDesc, "packets", queueTxRxConverter)
-		_ = pcl.collectRXTXCounterValue(c.queuedBytesDesc, "queued-bytes", queueTxRxConverter)
-		_ = pcl.collectRXTXCounterValue(c.queuedPacketsDesc, "queued-packets", queueTxRxConverter)
+		labels := []string{reply.Map["name"], reply.Map["queue"], reply.Map["comment"]}
+		for _, m := range c.metrics {
+			_ = m.collect(reply, ctx, labels)
+		}
 	}
 
 	return nil

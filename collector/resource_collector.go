@@ -13,31 +13,29 @@ func init() {
 }
 
 type resourceCollector struct {
-	versionDesc       *prometheus.Desc
-	freeMemoryDesc    *prometheus.Desc
-	totalMemoryDesc   *prometheus.Desc
-	cpuLoadDesc       *prometheus.Desc
-	freeHddSpaceDesc  *prometheus.Desc
-	totalHddSpaceDesc *prometheus.Desc
-	cpuFrequencyDesc  *prometheus.Desc
-	badBlocksDesc     *prometheus.Desc
-	uptimeDesc        *prometheus.Desc
-	cpuCountDesc      *prometheus.Desc
+	metrics []propertyMetricCollector
+
+	versionDesc *prometheus.Desc
 }
 
 func newResourceCollector() routerOSCollector {
+	const prefix = "system"
+
 	labelNames := []string{"name", "address"}
 
 	collector := &resourceCollector{
-		freeMemoryDesc:    descriptionForPropertyName("system", "free-memory", labelNames),
-		totalMemoryDesc:   descriptionForPropertyName("system", "total-memory", labelNames),
-		cpuLoadDesc:       descriptionForPropertyName("system", "cpu-load", labelNames),
-		freeHddSpaceDesc:  descriptionForPropertyName("system", "free-hdd-space", labelNames),
-		totalHddSpaceDesc: descriptionForPropertyName("system", "total-hdd-space", labelNames),
-		cpuFrequencyDesc:  descriptionForPropertyName("system", "cpu-frequency", labelNames),
-		badBlocksDesc:     descriptionForPropertyName("system", "bad-blocks", labelNames),
-		uptimeDesc:        descriptionForPropertyName("system", "uptime_total", labelNames),
-		cpuCountDesc:      descriptionForPropertyName("system", "cput", labelNames),
+		metrics: []propertyMetricCollector{
+			newPropertyGaugeMetric(prefix, "free-memory", labelNames).build(),
+			newPropertyGaugeMetric(prefix, "total-memory", labelNames).build(),
+			newPropertyGaugeMetric(prefix, "cpu-load", labelNames).build(),
+			newPropertyGaugeMetric(prefix, "free-hdd-space", labelNames).build(),
+			newPropertyGaugeMetric(prefix, "total-hdd-space", labelNames).build(),
+			newPropertyGaugeMetric(prefix, "cpu-frequency", labelNames).build(),
+			newPropertyGaugeMetric(prefix, "bad-blocks", labelNames).build(),
+			newPropertyCounterMetric(prefix, "uptime", labelNames).withConverter(parseDuration).build(),
+			newPropertyGaugeMetric(prefix, "cpu", labelNames).build(),
+		},
+
 		versionDesc: description("system", "routeros", "Board and system version",
 			[]string{"name", "address", "board_name", "version"}),
 	}
@@ -46,15 +44,10 @@ func newResourceCollector() routerOSCollector {
 }
 
 func (c *resourceCollector) describe(ch chan<- *prometheus.Desc) {
-	ch <- c.freeMemoryDesc
-	ch <- c.totalMemoryDesc
-	ch <- c.cpuLoadDesc
-	ch <- c.freeHddSpaceDesc
-	ch <- c.totalHddSpaceDesc
-	ch <- c.cpuFrequencyDesc
-	ch <- c.badBlocksDesc
-	ch <- c.uptimeDesc
-	ch <- c.cpuCountDesc
+	for _, c := range c.metrics {
+		c.describe(ch)
+	}
+
 	ch <- c.versionDesc
 }
 
@@ -94,14 +87,7 @@ func (c *resourceCollector) collectForStat(reply *proto.Sentence, ctx *collector
 	ctx.ch <- prometheus.MustNewConstMetric(c.versionDesc, prometheus.GaugeValue, 1,
 		ctx.device.Name, ctx.device.Address, boardname, version)
 
-	pcl := newPropertyCollector(reply, ctx)
-	_ = pcl.collectCounterValue(c.uptimeDesc, "uptime", parseDuration)
-	_ = pcl.collectGaugeValue(c.freeMemoryDesc, "free-memory", nil)
-	_ = pcl.collectGaugeValue(c.totalMemoryDesc, "total-memory", nil)
-	_ = pcl.collectGaugeValue(c.cpuLoadDesc, "cpu-load", nil)
-	_ = pcl.collectGaugeValue(c.freeHddSpaceDesc, "free-hdd-space", nil)
-	_ = pcl.collectGaugeValue(c.totalHddSpaceDesc, "total-hdd-space", nil)
-	_ = pcl.collectGaugeValue(c.cpuFrequencyDesc, "cpu-frequency", nil)
-	_ = pcl.collectGaugeValue(c.badBlocksDesc, "bad-blocks", nil)
-	_ = pcl.collectGaugeValue(c.cpuCountDesc, "cput", nil)
+	for _, c := range c.metrics {
+		_ = c.collect(reply, ctx, nil)
+	}
 }
