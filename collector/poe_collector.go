@@ -13,9 +13,9 @@ func init() {
 }
 
 type poeCollector struct {
-	currentDesc *prometheus.Desc
-	powerDesc   *prometheus.Desc
-	voltageDesc *prometheus.Desc
+	current propertyMetricCollector
+	power   propertyMetricCollector
+	voltage propertyMetricCollector
 }
 
 func newPOECollector() routerOSCollector {
@@ -24,16 +24,19 @@ func newPOECollector() routerOSCollector {
 	labelNames := []string{"name", "address", "interface"}
 
 	return &poeCollector{
-		currentDesc: description(prefix, "current", "current in mA", labelNames),
-		powerDesc:   description(prefix, "wattage", "Power in W", labelNames),
-		voltageDesc: description(prefix, "voltage", "Voltage in V", labelNames),
+		current: newPropertyGaugeMetric(prefix, "current", labelNames).
+			withHelp("current in mA").build(),
+		power: newPropertyGaugeMetric(prefix, "wattage", labelNames).
+			withHelp("power in W").build(),
+		voltage: newPropertyGaugeMetric(prefix, "voltage", labelNames).
+			withHelp("voltage in V").build(),
 	}
 }
 
 func (c *poeCollector) describe(ch chan<- *prometheus.Desc) {
-	ch <- c.currentDesc
-	ch <- c.powerDesc
-	ch <- c.voltageDesc
+	c.current.describe(ch)
+	c.power.describe(ch)
+	c.voltage.describe(ch)
 }
 
 func (c *poeCollector) collect(ctx *collectorContext) error {
@@ -76,10 +79,9 @@ func (c *poeCollector) collectPOEMetricsForInterfaces(ifaces []string, ctx *coll
 
 	for _, se := range reply.Re {
 		if name, ok := se.Map["name"]; ok {
-			pcl := newPropertyCollector(se, ctx, name)
-			_ = pcl.collectGaugeValue(c.currentDesc, "poe-out-current", nil)
-			_ = pcl.collectGaugeValue(c.voltageDesc, "poe-out-voltage", nil)
-			_ = pcl.collectGaugeValue(c.powerDesc, "poe-out-power", nil)
+			_ = c.current.collect(se, ctx, []string{name})
+			_ = c.voltage.collect(se, ctx, []string{name})
+			_ = c.power.collect(se, ctx, []string{name})
 		}
 	}
 

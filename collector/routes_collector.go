@@ -12,9 +12,10 @@ func init() {
 }
 
 type routesCollector struct {
-	protocols         []string
-	countDesc         *prometheus.Desc
-	countProtocolDesc *prometheus.Desc
+	protocols []string
+
+	count         retMetricCollector
+	countProtocol retMetricCollector
 }
 
 func newRoutesCollector() routerOSCollector {
@@ -22,18 +23,20 @@ func newRoutesCollector() routerOSCollector {
 
 	labelNames := []string{"name", "address", "ip_version"}
 
-	c := &routesCollector{}
-	c.countDesc = description("", prefix, "number of routes in RIB", labelNames)
-	c.countProtocolDesc = description(prefix, "protocol", "number of routes per protocol in RIB",
-		append(labelNames, "protocol"))
-	c.protocols = []string{"bgp", "static", "ospf", "dynamic", "connect", "rip"}
+	c := &routesCollector{
+		count: newRetGaugeMetric("", prefix, labelNames).
+			withHelp("number of routes in RIB").build(),
+		countProtocol: newRetGaugeMetric(prefix, "protocol", append(labelNames, "protocol")).
+			withHelp("number of routes per protocol in RIB").build(),
+		protocols: []string{"bgp", "static", "ospf", "dynamic", "connect", "rip"},
+	}
 
 	return c
 }
 
 func (c *routesCollector) describe(ch chan<- *prometheus.Desc) {
-	ch <- c.countDesc
-	ch <- c.countProtocolDesc
+	c.count.describe(ch)
+	c.countProtocol.describe(ch)
 }
 
 func (c *routesCollector) collect(ctx *collectorContext) error {
@@ -71,9 +74,7 @@ func (c *routesCollector) colllectCount(ipVersion, topic string, ctx *collectorC
 		return fmt.Errorf("read route error: %w", err)
 	}
 
-	rcl := newRetCollector(reply, ctx, ipVersion)
-
-	return rcl.collectGaugeValue(c.countDesc, nil)
+	return c.count.collect(reply, ctx, []string{ipVersion})
 }
 
 func (c *routesCollector) colllectCountProtcol(ipVersion, topic, protocol string, ctx *collectorContext) error {
@@ -89,7 +90,5 @@ func (c *routesCollector) colllectCountProtcol(ipVersion, topic, protocol string
 		return fmt.Errorf("read route %s error: %w", topic, err)
 	}
 
-	rcl := newRetCollector(reply, ctx, ipVersion, protocol)
-
-	return rcl.collectGaugeValue(c.countProtocolDesc, nil)
+	return c.countProtocol.collect(reply, ctx, []string{ipVersion, protocol})
 }

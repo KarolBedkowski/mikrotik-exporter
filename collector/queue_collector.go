@@ -17,8 +17,8 @@ type queueCollector struct {
 
 	metrics []propertyMetricCollector
 
-	monitorQueuedBytesDesc   *prometheus.Desc
-	monitorQueuedPacketsDesc *prometheus.Desc
+	monitorQueuedBytes   propertyMetricCollector
+	monitorQueuedPackets propertyMetricCollector
 }
 
 func newQueueCollector() routerOSCollector {
@@ -28,8 +28,8 @@ func newQueueCollector() routerOSCollector {
 	const sqPrefix = "simple_queue"
 
 	collector := &queueCollector{
-		monitorQueuedBytesDesc:   descriptionForPropertyName("queue", "queue-bytes", monitorLabelNames),
-		monitorQueuedPacketsDesc: descriptionForPropertyName("queue", "queue-packets", monitorLabelNames),
+		monitorQueuedBytes:   newPropertyGaugeMetric("queue", "queued-bytes", monitorLabelNames).build(),
+		monitorQueuedPackets: newPropertyGaugeMetric("queue", "queued-packets", monitorLabelNames).build(),
 
 		metrics: []propertyMetricCollector{
 			newPropertyGaugeMetric(sqPrefix, "disabled", labelNames).withConverter(convertFromBool).build(),
@@ -55,8 +55,8 @@ func (c *queueCollector) describe(ch chan<- *prometheus.Desc) {
 		c.describe(ch)
 	}
 
-	ch <- c.monitorQueuedBytesDesc
-	ch <- c.monitorQueuedPacketsDesc
+	c.monitorQueuedBytes.describe(ch)
+	c.monitorQueuedPackets.describe(ch)
 }
 
 func (c *queueCollector) collect(ctx *collectorContext) error {
@@ -87,9 +87,8 @@ func (c *queueCollector) collectQueue(ctx *collectorContext) error {
 	}
 
 	re := reply.Re[0]
-	pcl := newPropertyCollector(re, ctx)
-	_ = pcl.collectGaugeValue(c.monitorQueuedBytesDesc, "queued-bytes", nil)
-	_ = pcl.collectGaugeValue(c.monitorQueuedPacketsDesc, "queued-packets", nil)
+	_ = c.monitorQueuedBytes.collect(re, ctx, nil)
+	_ = c.monitorQueuedPackets.collect(re, ctx, nil)
 
 	return nil
 }
