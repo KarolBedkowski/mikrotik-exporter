@@ -503,7 +503,7 @@ func (p *propertyMetricBuilder) build() propertyMetricCollector {
 	metricName := p.metricName
 	if metricName == "" {
 		metricName = p.property
-		if p.metricType == metricCounter {
+		if p.metricType == metricCounter || p.metricType == metricRxTx {
 			metricName += "_total"
 		}
 	}
