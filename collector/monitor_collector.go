@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
-	log "github.com/sirupsen/logrus"
 )
 
 func init() {
@@ -13,7 +13,7 @@ func init() {
 }
 
 type monitorCollector struct {
-	metrics []propertyMetricCollector
+	metrics propertyMetricList
 }
 
 func newMonitorCollector() routerOSCollector {
@@ -22,7 +22,7 @@ func newMonitorCollector() routerOSCollector {
 	const prefix = "monitor"
 
 	c := &monitorCollector{
-		metrics: []propertyMetricCollector{
+		metrics: propertyMetricList{
 			newPropertyGaugeMetric(prefix, "status", labelNames).withConverter(convertFromStatus).build(),
 			newPropertyGaugeMetric(prefix, "rate", labelNames).withConverter(convertFromRate).build(),
 			newPropertyGaugeMetric(prefix, "full-duplex", labelNames).withConverter(convertFromBool).build(),
@@ -33,26 +33,16 @@ func newMonitorCollector() routerOSCollector {
 }
 
 func (c *monitorCollector) describe(ch chan<- *prometheus.Desc) {
-	for _, c := range c.metrics {
-		c.describe(ch)
-	}
+	c.metrics.describe(ch)
 }
 
 func (c *monitorCollector) collect(ctx *collectorContext) error {
 	reply, err := ctx.client.Run("/interface/ethernet/print", "=.proplist=name")
 	if err != nil {
-		log.WithFields(log.Fields{
-			"device": ctx.device.Name,
-			"error":  err,
-		}).Error("error fetching ethernet interfaces")
-
-		return fmt.Errorf("get ethernet error: %w", err)
+		return fmt.Errorf("fetch ethernet error: %w", err)
 	}
 
-	eths := make([]string, len(reply.Re))
-	for idx, eth := range reply.Re {
-		eths[idx] = eth.Map["name"]
-	}
+	eths := extractPropertyFromReplay(reply, "name")
 
 	return c.collectForMonitor(eths, ctx)
 }
@@ -63,22 +53,21 @@ func (c *monitorCollector) collectForMonitor(eths []string, ctx *collectorContex
 		"=once=",
 		"=.proplist=name,status,rate,full-duplex")
 	if err != nil {
-		log.WithFields(log.Fields{
-			"device": ctx.device.Name,
-			"error":  err,
-		}).Error("error fetching ethernet monitor info")
-
 		return fmt.Errorf("get ethernet monitor error: %w", err)
 	}
 
+	var errs *multierror.Error
+
 	for _, e := range reply.Re {
-		ctx = ctx.withLabels(e.Map["name"])
-		for _, c := range c.metrics {
-			_ = c.collect(e, ctx)
+		name := e.Map["name"]
+		ctx = ctx.withLabels(name)
+
+		if err := c.metrics.collect(e, ctx); err != nil {
+			errs = multierror.Append(errs, fmt.Errorf("collect %v error: %w", name, err))
 		}
 	}
 
-	return nil
+	return errs.ErrorOrNil()
 }
 
 func convertFromStatus(value string) (float64, error) {

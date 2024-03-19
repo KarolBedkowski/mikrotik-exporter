@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/prometheus/client_golang/prometheus"
-	log "github.com/sirupsen/logrus"
 )
 
 func init() {
@@ -33,11 +32,6 @@ func (c *cloudCollector) describe(ch chan<- *prometheus.Desc) {
 func (c *cloudCollector) collect(ctx *collectorContext) error {
 	reply, err := ctx.client.Run("/ip/cloud/print")
 	if err != nil {
-		log.WithFields(log.Fields{
-			"device": ctx.device.Name,
-			"error":  err,
-		}).Error("error fetching cloud")
-
 		return fmt.Errorf("get cloud error: %w", err)
 	}
 
@@ -52,12 +46,7 @@ func (c *cloudCollector) collect(ctx *collectorContext) error {
 		return nil
 	}
 
-	var (
-		statusUnknown  = 0.0
-		statusUpdated  = 0.0
-		statusUpdating = 0.0
-		statusError    = 0.0
-	)
+	var statusUnknown, statusUpdated, statusUpdating, statusError float64
 
 	status = strings.ToLower(status)
 

@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/prometheus/client_golang/prometheus"
-	log "github.com/sirupsen/logrus"
 )
 
 func init() {
@@ -31,17 +30,10 @@ func (c *firmwareCollector) describe(ch chan<- *prometheus.Desc) {
 func (c *firmwareCollector) collect(ctx *collectorContext) error {
 	reply, err := ctx.client.Run("/system/package/getall")
 	if err != nil {
-		log.WithFields(log.Fields{
-			"device": ctx.device.Name,
-			"error":  err,
-		})
-
-		return fmt.Errorf("get package error: %w", err)
+		return fmt.Errorf("fetch package error: %w", err)
 	}
 
-	pkgs := reply.Re
-
-	for _, pkg := range pkgs {
+	for _, pkg := range reply.Re {
 		ctx.ch <- prometheus.MustNewConstMetric(c.description, prometheus.GaugeValue, 1,
 			ctx.device.Name, pkg.Map["name"], pkg.Map["disabled"], pkg.Map["version"],
 			pkg.Map["build-time"])

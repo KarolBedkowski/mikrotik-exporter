@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/prometheus/client_golang/prometheus"
-	log "github.com/sirupsen/logrus"
 )
 
 func init() {
@@ -64,35 +63,29 @@ func (c *routesCollector) colllectForIPVersion(ipVersion, topic string, ctx *col
 func (c *routesCollector) colllectCount(ipVersion, topic string, ctx *collectorContext) error {
 	reply, err := ctx.client.Run("/"+topic+"/route/print", "?disabled=false", "=count-only=")
 	if err != nil {
-		log.WithFields(log.Fields{
-			"ip_version": ipVersion,
-			"device":     ctx.device.Name,
-			"topic":      topic,
-			"error":      err,
-		}).Error("error fetching routes metrics")
-
-		return fmt.Errorf("read route error: %w", err)
+		return fmt.Errorf("fetch route %s error: %w", topic, err)
 	}
 
 	ctx = ctx.withLabels(ipVersion)
 
-	return c.count.collect(reply, ctx)
+	if err := c.count.collect(reply, ctx); err != nil {
+		return fmt.Errorf("collect router %s error: %w", topic, err)
+	}
+
+	return nil
 }
 
 func (c *routesCollector) colllectCountProtcol(ipVersion, topic, protocol string, ctx *collectorContext) error {
 	reply, err := ctx.client.Run("/"+topic+"/route/print", "?disabled=false", "?"+protocol, "=count-only=")
 	if err != nil {
-		log.WithFields(log.Fields{
-			"ip_version": ipVersion,
-			"protocol":   protocol,
-			"device":     ctx.device.Name,
-			"error":      err,
-		}).Error("error fetching routes metrics")
-
-		return fmt.Errorf("read route %s error: %w", topic, err)
+		return fmt.Errorf("fetch route %s error: %w", topic, err)
 	}
 
 	ctx = ctx.withLabels(ipVersion, protocol)
 
-	return c.countProtocol.collect(reply, ctx)
+	if err := c.countProtocol.collect(reply, ctx); err != nil {
+		return fmt.Errorf("collect count protocol %s/%s error: %w", topic, protocol, err)
+	}
+
+	return nil
 }

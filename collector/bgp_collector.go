@@ -7,7 +7,6 @@ import (
 
 	"github.com/KarolBedkowski/routeros-go-client/proto"
 	"github.com/prometheus/client_golang/prometheus"
-	log "github.com/sirupsen/logrus"
 )
 
 func init() {
@@ -56,7 +55,9 @@ func (c *bgpCollector) collect(ctx *collectorContext) error {
 	}
 
 	for _, re := range stats {
-		c.collectForStat(re, ctx)
+		if err := c.collectForStat(re, ctx); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -65,48 +66,40 @@ func (c *bgpCollector) collect(ctx *collectorContext) error {
 func (c *bgpCollector) fetch(ctx *collectorContext) ([]*proto.Sentence, error) {
 	reply, err := ctx.client.Run("/routing/bgp/peer/print", "=.proplist="+c.proplist)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"device": ctx.device.Name,
-			"error":  err,
-		}).Error("error fetching bgp metrics")
-
-		return nil, fmt.Errorf("get bgp peer error: %w", err)
+		return nil, fmt.Errorf("fetch bgp peer error: %w", err)
 	}
 
 	return reply.Re, nil
 }
 
-func (c *bgpCollector) collectForStat(re *proto.Sentence, ctx *collectorContext) {
+func (c *bgpCollector) collectForStat(re *proto.Sentence, ctx *collectorContext) error {
 	asn := re.Map["remote-as"]
 	session := re.Map["name"]
 
 	for _, p := range c.props[2:] {
-		c.collectMetricForProperty(p, session, asn, re, ctx)
+		if err := c.collectMetricForProperty(p, session, asn, re, ctx); err != nil {
+			return fmt.Errorf("collect %s error: %w", p, err)
+		}
 	}
+
+	return nil
 }
 
 func (c *bgpCollector) collectMetricForProperty(
 	property, session, asn string, re *proto.Sentence, ctx *collectorContext,
-) {
+) error {
 	desc := c.descriptions[property]
-
 	propertyVal := re.Map[property]
 
 	value, err := c.parseValueForProperty(property, propertyVal)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"device":   ctx.device.Name,
-			"session":  session,
-			"property": property,
-			"value":    propertyVal,
-			"error":    err,
-		}).Error("error parsing bgp metric value")
-
-		return
+		return fmt.Errorf("parse %v error: %w", propertyVal, err)
 	}
 
 	ctx.ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue,
 		value, ctx.device.Name, ctx.device.Address, session, asn)
+
+	return nil
 }
 
 func (c *bgpCollector) parseValueForProperty(property, value string) (float64, error) {

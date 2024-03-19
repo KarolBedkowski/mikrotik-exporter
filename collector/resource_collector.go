@@ -5,7 +5,6 @@ import (
 
 	"github.com/KarolBedkowski/routeros-go-client/proto"
 	"github.com/prometheus/client_golang/prometheus"
-	log "github.com/sirupsen/logrus"
 )
 
 func init() {
@@ -13,7 +12,7 @@ func init() {
 }
 
 type resourceCollector struct {
-	metrics []propertyMetricCollector
+	metrics propertyMetricList
 
 	versionDesc *prometheus.Desc
 }
@@ -24,7 +23,7 @@ func newResourceCollector() routerOSCollector {
 	labelNames := []string{"name", "address"}
 
 	collector := &resourceCollector{
-		metrics: []propertyMetricCollector{
+		metrics: propertyMetricList{
 			newPropertyGaugeMetric(prefix, "free-memory", labelNames).build(),
 			newPropertyGaugeMetric(prefix, "total-memory", labelNames).build(),
 			newPropertyGaugeMetric(prefix, "cpu-load", labelNames).build(),
@@ -45,10 +44,7 @@ func newResourceCollector() routerOSCollector {
 }
 
 func (c *resourceCollector) describe(ch chan<- *prometheus.Desc) {
-	for _, c := range c.metrics {
-		c.describe(ch)
-	}
-
+	c.metrics.describe(ch)
 	ch <- c.versionDesc
 }
 
@@ -59,7 +55,9 @@ func (c *resourceCollector) collect(ctx *collectorContext) error {
 	}
 
 	for _, re := range stats {
-		c.collectForStat(re, ctx)
+		if err := c.collectForStat(re, ctx); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -70,25 +68,18 @@ func (c *resourceCollector) fetch(ctx *collectorContext) ([]*proto.Sentence, err
 		"=.proplist=free-memory,total-memory,cpu-load,free-hdd-space,total-hdd-space,"+
 			"cpu-frequency,bad-blocks,uptime,cpu-count,board-name,version")
 	if err != nil {
-		log.WithFields(log.Fields{
-			"device": ctx.device.Name,
-			"error":  err,
-		}).Error("error fetching system resource metrics")
-
-		return nil, fmt.Errorf("get resource error: %w", err)
+		return nil, fmt.Errorf("fetch resource error: %w", err)
 	}
 
 	return reply.Re, nil
 }
 
-func (c *resourceCollector) collectForStat(reply *proto.Sentence, ctx *collectorContext) {
+func (c *resourceCollector) collectForStat(reply *proto.Sentence, ctx *collectorContext) error {
 	boardname := reply.Map["board-name"]
 	version := reply.Map["version"]
 
 	ctx.ch <- prometheus.MustNewConstMetric(c.versionDesc, prometheus.GaugeValue, 1,
 		ctx.device.Name, ctx.device.Address, boardname, version)
 
-	for _, c := range c.metrics {
-		_ = c.collect(reply, ctx)
-	}
+	return c.metrics.collect(reply, ctx)
 }

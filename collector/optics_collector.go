@@ -2,27 +2,20 @@ package collector
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
-	"github.com/KarolBedkowski/routeros-go-client/proto"
+	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
-	log "github.com/sirupsen/logrus"
 )
+
+// TODO: need check
 
 func init() {
 	registerCollector("optics", newOpticsCollector)
 }
 
 type opticsCollector struct {
-	rxStatusDesc    *prometheus.Desc
-	txStatusDesc    *prometheus.Desc
-	rxPowerDesc     *prometheus.Desc
-	txPowerDesc     *prometheus.Desc
-	temperatureDesc *prometheus.Desc
-	txBiasDesc      *prometheus.Desc
-	voltageDesc     *prometheus.Desc
-	props           []string
+	metrics propertyMetricList
 }
 
 func newOpticsCollector() routerOSCollector {
@@ -31,52 +24,45 @@ func newOpticsCollector() routerOSCollector {
 	labelNames := []string{"name", "address", "interface"}
 
 	return &opticsCollector{
-		rxStatusDesc:    description(prefix, "rx_status", "RX status (1 = no loss)", labelNames),
-		txStatusDesc:    description(prefix, "tx_status", "TX status (1 = no faults)", labelNames),
-		rxPowerDesc:     description(prefix, "rx_power_dbm", "RX power in dBM", labelNames),
-		txPowerDesc:     description(prefix, "tx_power_dbm", "TX power in dBM", labelNames),
-		temperatureDesc: description(prefix, "temperature_celsius", "temperature in degree celsius", labelNames),
-		txBiasDesc:      description(prefix, "tx_bias_ma", "bias is milliamps", labelNames),
-		voltageDesc:     description(prefix, "voltage_volt", "volage in volt", labelNames),
-		props: []string{
-			"sfp-rx-loss", "sfp-tx-fault", "sfp-temperature", "sfp-supply-voltage",
-			"sfp-tx-bias-current", "sfp-tx-power", "sfp-rx-power",
+		metrics: propertyMetricList{
+			newPropertyGaugeMetric(prefix, "sfp-rx-loss", labelNames).
+				withHelp("RX status").withConverter(convertFromBool).build(),
+			newPropertyGaugeMetric(prefix, "sfp-tx-fault", labelNames).
+				withHelp("TX status").withConverter(convertFromBool).build(),
+			newPropertyGaugeMetric(prefix, "sfp-rx-power", labelNames).
+				withHelp("RX power in dBM").build(),
+			newPropertyGaugeMetric(prefix, "sfp-tx-power", labelNames).
+				withHelp("TX power in dBM").build(),
+			newPropertyGaugeMetric(prefix, "sfp-temperature", labelNames).
+				withHelp("temperature in degree celsius").build(),
+			newPropertyGaugeMetric(prefix, "sfp-tx-bias-current", labelNames).
+				withHelp("bias is milliamps").build(),
+			newPropertyGaugeMetric(prefix, "sfp-supply-voltage", labelNames).build(),
 		},
 	}
 }
 
 func (c *opticsCollector) describe(ch chan<- *prometheus.Desc) {
-	ch <- c.rxStatusDesc
-	ch <- c.txStatusDesc
-	ch <- c.rxPowerDesc
-	ch <- c.txPowerDesc
-	ch <- c.temperatureDesc
-	ch <- c.txBiasDesc
-	ch <- c.voltageDesc
+	c.metrics.describe(ch)
 }
 
 func (c *opticsCollector) collect(ctx *collectorContext) error {
-	reply, err := ctx.client.Run("/interface/ethernet/print", "=.proplist=name")
+	reply, err := ctx.client.Run("/interface/ethernet/print", "=.proplist=name,default-name")
 	if err != nil {
-		log.WithFields(log.Fields{
-			"device": ctx.device.Name,
-			"error":  err,
-		}).Error("error fetching interface metrics")
-
-		return fmt.Errorf("get ethernet error: %w", err)
+		return fmt.Errorf("fetch ethernet error: %w", err)
 	}
 
-	ifaces := make([]string, 0)
+	if len(reply.Re) == 0 {
+		return nil
+	}
+
+	ifaces := make([]string, 0, len(reply.Re))
 
 	for _, iface := range reply.Re {
 		n := iface.Map["name"]
-		if strings.HasPrefix(n, "sfp") {
+		if strings.HasPrefix(n, "sfp") || strings.HasPrefix(iface.Map["default-name"], "sfp") {
 			ifaces = append(ifaces, n)
 		}
-	}
-
-	if len(ifaces) == 0 {
-		return nil
 	}
 
 	return c.collectOpticalMetricsForInterfaces(ifaces, ctx)
@@ -86,87 +72,23 @@ func (c *opticsCollector) collectOpticalMetricsForInterfaces(ifaces []string, ct
 	reply, err := ctx.client.Run("/interface/ethernet/monitor",
 		"=numbers="+strings.Join(ifaces, ","),
 		"=once=",
-		"=.proplist=name,"+strings.Join(c.props, ","))
+		"=.proplist=name,sfp-rx-loss,sfp-tx-fault,sfp-temperature,sfp-supply-voltage,sfp-rx-power,"+
+			"sfp-tx-power,sfp-tx-bias-current")
 	if err != nil {
-		log.WithFields(log.Fields{
-			"device": ctx.device.Name,
-			"error":  err,
-		}).Error("error fetching interface monitor metrics")
-
-		return fmt.Errorf("get ethernet monitor error: %w", err)
+		return fmt.Errorf("fetch ethernet monitor for %v error: %w", ifaces, err)
 	}
+
+	var errs *multierror.Error
 
 	for _, se := range reply.Re {
-		name, ok := se.Map["name"]
-		if !ok {
-			continue
+		if name, ok := se.Map["name"]; ok {
+			ctx = ctx.withLabels(name)
+
+			if err := c.metrics.collect(se, ctx); err != nil {
+				errs = multierror.Append(errs, fmt.Errorf("collect %s error: %w", name, err))
+			}
 		}
-
-		c.collectMetricsForInterface(name, se, ctx)
 	}
 
-	return nil
-}
-
-func (c *opticsCollector) collectMetricsForInterface(name string, se *proto.Sentence, ctx *collectorContext) {
-	for _, prop := range c.props {
-		v, ok := se.Map[prop]
-		if !ok {
-			continue
-		}
-
-		value, err := c.valueForKey(prop, v)
-		if err != nil {
-			log.WithFields(log.Fields{
-				"device":    ctx.device.Name,
-				"interface": name,
-				"property":  prop,
-				"error":     err,
-			}).Error("error parsing interface monitor metric")
-
-			return
-		}
-
-		ctx.ch <- prometheus.MustNewConstMetric(c.descForKey(prop), prometheus.GaugeValue,
-			value, ctx.device.Name, ctx.device.Address, name)
-	}
-}
-
-func (c *opticsCollector) valueForKey(name, value string) (float64, error) {
-	if name == "sfp-rx-loss" || name == "sfp-tx-fault" {
-		status := float64(1)
-		if value == "true" {
-			status = float64(0)
-		}
-
-		return status, nil
-	}
-
-	val, err := strconv.ParseFloat(value, 64)
-	if err != nil {
-		return 0, fmt.Errorf("parse %s value %v error: %w", name, value, err)
-	}
-
-	return val, nil
-}
-
-func (c *opticsCollector) descForKey(name string) *prometheus.Desc {
-	switch name {
-	case "sfp-rx-loss":
-		return c.rxStatusDesc
-	case "sfp-tx-fault":
-		return c.txStatusDesc
-	case "sfp-temperature":
-		return c.temperatureDesc
-	case "sfp-supply-voltage":
-		return c.voltageDesc
-	case "sfp-tx-bias-current":
-		return c.txBiasDesc
-	case "sfp-tx-power":
-		return c.txPowerDesc
-	case "sfp-rx-power":
-		return c.rxPowerDesc
-	}
-
-	return nil
+	return errs.ErrorOrNil()
 }

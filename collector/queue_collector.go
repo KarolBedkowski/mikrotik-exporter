@@ -2,10 +2,9 @@ package collector
 
 import (
 	"fmt"
-	"strings"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
-	log "github.com/sirupsen/logrus"
 )
 
 func init() {
@@ -13,9 +12,7 @@ func init() {
 }
 
 type queueCollector struct {
-	simpleQueuePropslist string
-
-	metrics []propertyMetricCollector
+	metrics propertyMetricList
 
 	monitorQueuedBytes   propertyMetricCollector
 	monitorQueuedPackets propertyMetricCollector
@@ -31,7 +28,7 @@ func newQueueCollector() routerOSCollector {
 		monitorQueuedBytes:   newPropertyGaugeMetric("queue", "queued-bytes", monitorLabelNames).build(),
 		monitorQueuedPackets: newPropertyGaugeMetric("queue", "queued-packets", monitorLabelNames).build(),
 
-		metrics: []propertyMetricCollector{
+		metrics: propertyMetricList{
 			newPropertyGaugeMetric(sqPrefix, "disabled", labelNames).withConverter(convertFromBool).build(),
 			newPropertyRxTxMetric(sqPrefix, "packets", labelNames).withRxTxConverter(queueTxRxConverter).build(),
 			newPropertyRxTxMetric(sqPrefix, "bytes", labelNames).withRxTxConverter(queueTxRxConverter).build(),
@@ -40,21 +37,11 @@ func newQueueCollector() routerOSCollector {
 		},
 	}
 
-	simpleQueueProps := []string{
-		"name", "queue", "comment",
-		"disabled",
-		"bytes", "packets", "queued-bytes", "queued-packets",
-	}
-	collector.simpleQueuePropslist = strings.Join(simpleQueueProps, ",")
-
 	return collector
 }
 
 func (c *queueCollector) describe(ch chan<- *prometheus.Desc) {
-	for _, c := range c.metrics {
-		c.describe(ch)
-	}
-
+	c.metrics.describe(ch)
 	c.monitorQueuedBytes.describe(ch)
 	c.monitorQueuedPackets.describe(ch)
 }
@@ -74,12 +61,7 @@ func queueTxRxConverter(value string) (float64, float64, error) {
 func (c *queueCollector) collectQueue(ctx *collectorContext) error {
 	reply, err := ctx.client.Run("/queue/monitor", "=once=", "=.proplist=queued-packets,queued-bytes")
 	if err != nil {
-		log.WithFields(log.Fields{
-			"device": ctx.device.Name,
-			"error":  err,
-		}).Error("error fetching queue statistics")
-
-		return fmt.Errorf("get queue monitor error: %w", err)
+		return fmt.Errorf("fetch queue monitor error: %w", err)
 	}
 
 	if len(reply.Re) == 0 {
@@ -87,29 +69,36 @@ func (c *queueCollector) collectQueue(ctx *collectorContext) error {
 	}
 
 	re := reply.Re[0]
-	_ = c.monitorQueuedBytes.collect(re, ctx)
-	_ = c.monitorQueuedPackets.collect(re, ctx)
+
+	if err := c.monitorQueuedBytes.collect(re, ctx); err != nil {
+		return fmt.Errorf("collect queue monitor error: %w", err)
+	}
+
+	if err := c.monitorQueuedPackets.collect(re, ctx); err != nil {
+		return fmt.Errorf("collect queue monitor error: %w", err)
+	}
 
 	return nil
 }
 
 func (c *queueCollector) collectSimpleQueue(ctx *collectorContext) error {
-	reply, err := ctx.client.Run("/queue/simple/print", "=.proplist="+c.simpleQueuePropslist)
+	reply, err := ctx.client.Run("/queue/simple/print",
+		"=.proplist=name,queue,comment,disabled,bytes,packets,queued-bytes,queued-packets")
 	if err != nil {
-		log.WithFields(log.Fields{
-			"device": ctx.device.Name,
-			"error":  err,
-		}).Error("error fetching simple queue metrics")
-
-		return fmt.Errorf("get simple queue error: %w", err)
+		return fmt.Errorf("fetch simple queue error: %w", err)
 	}
 
+	var errs *multierror.Error
+
 	for _, reply := range reply.Re {
-		ctx = ctx.withLabels(reply.Map["name"], reply.Map["queue"], reply.Map["comment"])
-		for _, m := range c.metrics {
-			_ = m.collect(reply, ctx)
+		name := reply.Map["name"]
+		queue := reply.Map["queue"]
+		ctx = ctx.withLabels(name, queue, reply.Map["comment"])
+
+		if err := c.metrics.collect(reply, ctx); err != nil {
+			errs = multierror.Append(errs, fmt.Errorf("collect %v/%verror %w", name, queue, err))
 		}
 	}
 
-	return nil
+	return errs.ErrorOrNil()
 }

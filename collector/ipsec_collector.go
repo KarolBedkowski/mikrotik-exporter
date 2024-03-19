@@ -2,120 +2,62 @@ package collector
 
 import (
 	"fmt"
-	"strconv"
-	"strings"
 
-	"github.com/KarolBedkowski/routeros-go-client/proto"
+	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
-	log "github.com/sirupsen/logrus"
 )
+
+// TODO: need verify
 
 func init() {
 	registerCollector("ipsec", newIpsecCollector)
 }
 
 type ipsecCollector struct {
-	props        []string
-	propslist    string
-	descriptions map[string]*prometheus.Desc
+	metrics propertyMetricList
 }
 
 func newIpsecCollector() routerOSCollector {
+	const prefix = "ipsec"
+
+	labels := []string{"src_address", "dst_address", "comment"}
 	c := &ipsecCollector{
-		descriptions: make(map[string]*prometheus.Desc),
-	}
-
-	c.props = []string{"src-address", "dst-address", "ph2-state", "invalid", "active", "comment"}
-	c.propslist = strings.Join(c.props, ",")
-	labelNames := []string{"devicename", "srcdst", "comment"}
-
-	for _, p := range c.props[1:] {
-		c.descriptions[p] = descriptionForPropertyName("ipsec", p, labelNames)
+		metrics: propertyMetricList{
+			newPropertyGaugeMetric(prefix, "ph2-state", labels).withConverter(convertPH2State).build(),
+			newPropertyGaugeMetric(prefix, "invalid", labels).withConverter(convertFromBool).build(),
+			newPropertyGaugeMetric(prefix, "active", labels).withConverter(convertFromBool).build(),
+		},
 	}
 
 	return c
 }
 
 func (c *ipsecCollector) describe(ch chan<- *prometheus.Desc) {
-	for _, d := range c.descriptions {
-		ch <- d
-	}
+	c.metrics.describe(ch)
 }
 
 func (c *ipsecCollector) collect(ctx *collectorContext) error {
-	stats, err := c.fetch(ctx)
+	reply, err := ctx.client.Run("/ip/ipsec/policy/print", "?disabled=false", "?dynamic=false",
+		"=.proplist=src-address,dst-address,ph2-state,invalid,active,comment")
 	if err != nil {
-		return err
+		return fmt.Errorf("fetch ipsec policy error: %w", err)
 	}
 
-	for _, re := range stats {
-		c.collectForStat(re, ctx)
-	}
+	var errs *multierror.Error
 
-	return nil
-}
-
-func (c *ipsecCollector) fetch(ctx *collectorContext) ([]*proto.Sentence, error) {
-	reply, err := ctx.client.Run("/ip/ipsec/policy/print", "?disabled=false", "?dynamic=false", "=.proplist="+c.propslist)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"device": ctx.device.Name,
-			"error":  err,
-		}).Error("error fetching interface metrics")
-
-		return nil, fmt.Errorf("get policy error: %w", err)
-	}
-
-	return reply.Re, nil
-}
-
-func (c *ipsecCollector) collectForStat(re *proto.Sentence, ctx *collectorContext) {
-	srcdst := re.Map["src-address"] + "-" + re.Map["dst-address"]
-	comment := re.Map["comment"]
-
-	for _, p := range c.props[2:] {
-		c.collectMetricForProperty(p, srcdst, comment, re, ctx)
-	}
-}
-
-func (c *ipsecCollector) collectMetricForProperty(property, srcdst, comment string,
-	re *proto.Sentence, ctx *collectorContext,
-) {
-	desc := c.descriptions[property]
-
-	if value := re.Map[property]; value != "" {
-		var (
-			mValue float64
-			err    error
-		)
-
-		switch property {
-		case "ph2-state":
-			if value == "established" {
-				mValue = 1
-			} else {
-				mValue = 0
-			}
-		case "active", "invalid":
-			mValue = parseBool(value)
-		case "comment":
-			return
-		default:
-			mValue, err = strconv.ParseFloat(value, 64)
+	for _, re := range reply.Re {
+		if err := c.metrics.collect(re, ctx); err != nil {
+			errs = multierror.Append(errs, err)
 		}
-
-		if err != nil {
-			log.WithFields(log.Fields{
-				"device":   ctx.device.Name,
-				"srcdst":   srcdst,
-				"property": property,
-				"value":    value,
-				"error":    err,
-			}).Error("error parsing ipsec metric value")
-
-			return
-		}
-
-		ctx.ch <- prometheus.MustNewConstMetric(desc, prometheus.CounterValue, mValue, ctx.device.Name, srcdst, comment)
 	}
+
+	return errs.ErrorOrNil()
+}
+
+func convertPH2State(value string) (float64, error) {
+	if value == "established" {
+		return 1.0, nil
+	}
+
+	return 0.0, nil
 }

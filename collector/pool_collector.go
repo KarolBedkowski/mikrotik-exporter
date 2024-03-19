@@ -3,8 +3,8 @@ package collector
 import (
 	"fmt"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
-	log "github.com/sirupsen/logrus"
 )
 
 func init() {
@@ -41,51 +41,39 @@ func (c *poolCollector) collectForIPVersion(ipVersion, topic string, ctx *collec
 		return err
 	}
 
+	var errs *multierror.Error
+
 	for _, n := range names {
 		if err := c.collectForPool(ipVersion, topic, n, ctx); err != nil {
-			return err
+			errs = multierror.Append(errs, err)
 		}
 	}
 
-	return nil
+	return errs.ErrorOrNil()
 }
 
 func (c *poolCollector) fetchPoolNames(ipVersion, topic string, ctx *collectorContext) ([]string, error) {
+	_ = ipVersion
+
 	reply, err := ctx.client.Run("/"+topic+"/pool/print", "=.proplist=name")
 	if err != nil {
-		log.WithFields(log.Fields{
-			"device":     ctx.device.Name,
-			"ip_version": ipVersion,
-			"topic":      topic,
-			"error":      err,
-		}).Error("error fetching pool names")
-
 		return nil, fmt.Errorf("get pool %s error: %w", topic, err)
 	}
 
-	names := make([]string, 0, len(reply.Re))
-	for _, re := range reply.Re {
-		names = append(names, re.Map["name"])
-	}
-
-	return names, nil
+	return extractPropertyFromReplay(reply, "name"), nil
 }
 
 func (c *poolCollector) collectForPool(ipVersion, topic, pool string, ctx *collectorContext) error {
 	reply, err := ctx.client.Run("/"+topic+"/pool/used/print", "?pool="+pool, "=count-only=")
 	if err != nil {
-		log.WithFields(log.Fields{
-			"pool":       pool,
-			"topic":      topic,
-			"ip_version": ipVersion,
-			"device":     ctx.device.Name,
-			"error":      err,
-		}).Error("error fetching pool counts")
-
-		return fmt.Errorf("get used pool %s/%s error: %w", topic, pool, err)
+		return fmt.Errorf("fetch used pool %s/%s error: %w", topic, pool, err)
 	}
 
 	ctx = ctx.withLabels(ipVersion, pool)
 
-	return c.usedCount.collect(reply, ctx)
+	if err := c.usedCount.collect(reply, ctx); err != nil {
+		return fmt.Errorf("collect pool %s/%s error: %w", topic, pool, err)
+	}
+
+	return nil
 }

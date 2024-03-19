@@ -6,9 +6,11 @@ import (
 	"strings"
 
 	"github.com/KarolBedkowski/routeros-go-client/proto"
+	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
-	log "github.com/sirupsen/logrus"
 )
+
+// TODO: probably totally broken
 
 func init() {
 	registerCollector("lte", newLteCollector)
@@ -61,50 +63,38 @@ func (c *lteCollector) collect(ctx *collectorContext) error {
 func (c *lteCollector) fetchInterfaceNames(ctx *collectorContext) ([]string, error) {
 	reply, err := ctx.client.Run("/interface/lte/print", "?disabled=false", "=.proplist=name")
 	if err != nil {
-		log.WithFields(log.Fields{
-			"device": ctx.device.Name,
-			"error":  err,
-		}).Error("error fetching lte interface names")
-
-		return nil, fmt.Errorf("get lte error: %w", err)
+		return nil, fmt.Errorf("fetch lte interface names error: %w", err)
 	}
 
-	names := []string{}
-	for _, re := range reply.Re {
-		names = append(names, re.Map["name"])
-	}
-
-	return names, nil
+	return extractPropertyFromReplay(reply, "name"), nil
 }
 
 func (c *lteCollector) collectForInterface(iface string, ctx *collectorContext) error {
 	reply, err := ctx.client.Run("/interface/lte/info", "=number="+iface, "=once=", "=.proplist="+c.propslist)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"interface": iface,
-			"device":    ctx.device.Name,
-			"error":     err,
-		}).Error("error fetching interface statistics")
-
-		return fmt.Errorf("get lte info error: %w", err)
+		return fmt.Errorf("fetch %s lte interface statistics error: %w", iface, err)
 	}
 
 	if len(reply.Re) == 0 {
 		return nil
 	}
 
+	var errs *multierror.Error
+
 	for _, p := range c.props[3:] {
 		// there's always going to be only one sentence in reply, as we
 		// have to explicitly specify the interface
-		c.collectMetricForProperty(p, iface, reply.Re[0], ctx)
+		if err := c.collectMetricForProperty(p, iface, reply.Re[0], ctx); err != nil {
+			errs = multierror.Append(errs, fmt.Errorf("collect %s for %s error: %w", p, iface, err))
+		}
 	}
 
-	return nil
+	return errs.ErrorOrNil()
 }
 
 func (c *lteCollector) collectMetricForProperty(property, iface string,
 	reply *proto.Sentence, ctx *collectorContext,
-) {
+) error {
 	desc := c.descriptions[property]
 	currentCellID := reply.Map["current-cellid"]
 	// get only band and its width, drop earfcn and phy-cellid info
@@ -118,23 +108,19 @@ func (c *lteCollector) collectMetricForProperty(property, iface string,
 		caband = strings.Fields(caband)[0]
 	}
 
-	if reply.Map[property] == "" {
-		return
+	value := reply.Map[property]
+	if value == "" {
+		return nil
 	}
 
-	v, err := strconv.ParseFloat(reply.Map[property], 64)
+	v, err := strconv.ParseFloat(value, 64)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"property":  property,
-			"interface": iface,
-			"device":    ctx.device.Name,
-			"error":     err,
-		}).Error("error parsing interface metric value")
-
-		return
+		return fmt.Errorf("parse %v error: %w", value, err)
 	}
 
 	ctx.ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue, v,
 		ctx.device.Name, ctx.device.Address,
 		iface, currentCellID, primaryband, caband)
+
+	return nil
 }

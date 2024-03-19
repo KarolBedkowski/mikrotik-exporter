@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/KarolBedkowski/routeros-go-client/proto"
+	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
-	log "github.com/sirupsen/logrus"
 )
 
 func init() {
@@ -36,23 +36,22 @@ func (c *netwatchCollector) collect(ctx *collectorContext) error {
 		return err
 	}
 
+	var errs *multierror.Error
+
 	for _, re := range stats {
-		c.collectStatus(re.Map["host"], re.Map["comment"], re, ctx)
+		if err := c.collectStatus(re.Map["host"], re.Map["comment"], re, ctx); err != nil {
+			errs = multierror.Append(errs, fmt.Errorf("collect error %w", err))
+		}
 	}
 
-	return nil
+	return errs.ErrorOrNil()
 }
 
 func (c *netwatchCollector) fetch(ctx *collectorContext) ([]*proto.Sentence, error) {
 	reply, err := ctx.client.Run("/tool/netwatch/print", "?disabled=false",
 		"=.proplist=host,comment,status")
 	if err != nil {
-		log.WithFields(log.Fields{
-			"device": ctx.device.Name,
-			"error":  err,
-		}).Error("error fetching netwatch metrics")
-
-		return nil, fmt.Errorf("get netwatch error: %w", err)
+		return nil, fmt.Errorf("fetch netwatch error: %w", err)
 	}
 
 	return reply.Re, nil
@@ -62,7 +61,7 @@ var ErrUnexpectedStatus = errors.New("unexpected netwatch status value")
 
 func (c *netwatchCollector) collectStatus(
 	host, comment string, re *proto.Sentence, ctx *collectorContext,
-) {
+) error {
 	if value := re.Map["status"]; value != "" {
 		var upVal, downVal, unknownVal float64
 
@@ -74,13 +73,7 @@ func (c *netwatchCollector) collectStatus(
 		case "down":
 			downVal = 1
 		default:
-			log.WithFields(log.Fields{
-				"device":   ctx.device.Name,
-				"host":     host,
-				"property": "status",
-				"value":    value,
-				"error":    ErrUnexpectedStatus,
-			}).Error("error parsing netwatch metric value")
+			return fmt.Errorf("parse value %v for host %s (%v) error: %w", value, host, comment, ErrUnexpectedStatus)
 		}
 
 		desc := c.statusDesc
@@ -91,4 +84,6 @@ func (c *netwatchCollector) collectStatus(
 		ctx.ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue,
 			unknownVal, ctx.device.Name, ctx.device.Address, host, comment, "unknown")
 	}
+
+	return nil
 }

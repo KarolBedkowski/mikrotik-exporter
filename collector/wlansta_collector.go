@@ -3,9 +3,8 @@ package collector
 import (
 	"fmt"
 
-	"github.com/KarolBedkowski/routeros-go-client/proto"
+	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
-	log "github.com/sirupsen/logrus"
 )
 
 func init() {
@@ -13,7 +12,7 @@ func init() {
 }
 
 type wlanSTACollector struct {
-	metrics []propertyMetricCollector
+	metrics propertyMetricList
 }
 
 func newWlanSTACollector() routerOSCollector {
@@ -22,7 +21,7 @@ func newWlanSTACollector() routerOSCollector {
 	labelNames := []string{"name", "address", "interface", "mac_address"}
 
 	collector := &wlanSTACollector{
-		metrics: []propertyMetricCollector{
+		metrics: propertyMetricList{
 			newPropertyGaugeMetric(prefix, "signal-to-noise", labelNames).build(),
 			newPropertyGaugeMetric(prefix, "signal-strength", labelNames).build(),
 			newPropertyRxTxMetric(prefix, "packets", labelNames).build(),
@@ -35,39 +34,25 @@ func newWlanSTACollector() routerOSCollector {
 }
 
 func (c *wlanSTACollector) describe(ch chan<- *prometheus.Desc) {
-	for _, c := range c.metrics {
-		c.describe(ch)
-	}
+	c.metrics.describe(ch)
 }
 
 func (c *wlanSTACollector) collect(ctx *collectorContext) error {
-	stats, err := c.fetch(ctx)
-	if err != nil {
-		return err
-	}
-
-	for _, re := range stats {
-		ctx = ctx.withLabels(re.Map["interface"], re.Map["mac-address"])
-
-		for _, c := range c.metrics {
-			_ = c.collect(re, ctx)
-		}
-	}
-
-	return nil
-}
-
-func (c *wlanSTACollector) fetch(ctx *collectorContext) ([]*proto.Sentence, error) {
 	reply, err := ctx.client.Run("/interface/wireless/registration-table/print",
 		"=.proplist=interface,mac-address,signal-to-noise,signal-strength,packets,bytes,frames")
 	if err != nil {
-		log.WithFields(log.Fields{
-			"device": ctx.device.Name,
-			"error":  err,
-		}).Error("error fetching wlan station metrics")
-
-		return nil, fmt.Errorf("read wireless reg error: %w", err)
+		return fmt.Errorf("fetch wireless reg error: %w", err)
 	}
 
-	return reply.Re, nil
+	var errs *multierror.Error
+
+	for _, re := range reply.Re {
+		ctx = ctx.withLabels(re.Map["interface"], re.Map["mac-address"])
+
+		if err := c.metrics.collect(re, ctx); err != nil {
+			errs = multierror.Append(errs, err)
+		}
+	}
+
+	return errs.ErrorOrNil()
 }

@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/KarolBedkowski/routeros-go-client/proto"
+	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
-	log "github.com/sirupsen/logrus"
 )
 
 func init() {
@@ -13,7 +13,7 @@ func init() {
 }
 
 type interfaceCollector struct {
-	metrics []propertyMetricCollector
+	metrics propertyMetricList
 }
 
 func newInterfaceCollector() routerOSCollector {
@@ -22,7 +22,7 @@ func newInterfaceCollector() routerOSCollector {
 	labelNames := []string{"name", "address", "interface", "type", "disabled", "comment", "running", "slave"}
 
 	collector := &interfaceCollector{
-		metrics: []propertyMetricCollector{
+		metrics: propertyMetricList{
 			newPropertyGaugeMetric(prefix, "actual-mtu", labelNames).build(),
 			newPropertyGaugeMetric(prefix, "running", labelNames).withConverter(convertFromBool).build(),
 			newPropertyCounterMetric(prefix, "rx-byte", labelNames).build(),
@@ -41,47 +41,33 @@ func newInterfaceCollector() routerOSCollector {
 }
 
 func (c *interfaceCollector) describe(ch chan<- *prometheus.Desc) {
-	for _, p := range c.metrics {
-		p.describe(ch)
-	}
+	c.metrics.describe(ch)
 }
 
 func (c *interfaceCollector) collect(ctx *collectorContext) error {
-	stats, err := c.fetch(ctx)
-	if err != nil {
-		return err
-	}
-
-	for _, re := range stats {
-		c.collectForStat(re, ctx)
-	}
-
-	return nil
-}
-
-func (c *interfaceCollector) fetch(ctx *collectorContext) ([]*proto.Sentence, error) {
 	reply, err := ctx.client.Run("/interface/print",
 		"=.proplist=name,type,disabled,comment,slave,actual-mtu,running,rx-byte,tx-byte,"+
 			"rx-packet,tx-packet,rx-error,tx-error,rx-drop,tx-drop,link-downs")
 	if err != nil {
-		log.WithFields(log.Fields{
-			"device": ctx.device.Name,
-			"error":  err,
-		}).Error("error fetching interface metrics")
-
-		return nil, fmt.Errorf("get interfaces detail error: %w", err)
+		return fmt.Errorf("fetch interfaces detail error: %w", err)
 	}
 
-	return reply.Re, nil
+	var errs *multierror.Error
+
+	for _, re := range reply.Re {
+		if err := c.collectForStat(re, ctx); err != nil {
+			errs = multierror.Append(errs, err)
+		}
+	}
+
+	return errs.ErrorOrNil()
 }
 
-func (c *interfaceCollector) collectForStat(reply *proto.Sentence, ctx *collectorContext) {
+func (c *interfaceCollector) collectForStat(reply *proto.Sentence, ctx *collectorContext) error {
 	ctx = ctx.withLabels(
 		reply.Map["name"], reply.Map["type"], reply.Map["disabled"], reply.Map["comment"],
 		reply.Map["running"], reply.Map["slave"],
 	)
 
-	for _, p := range c.metrics {
-		_ = p.collect(reply, ctx)
-	}
+	return c.metrics.collect(reply, ctx)
 }

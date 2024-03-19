@@ -3,8 +3,8 @@ package collector
 import (
 	"fmt"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
-	log "github.com/sirupsen/logrus"
 )
 
 func init() {
@@ -38,19 +38,24 @@ func (c *conntrackCollector) collect(ctx *collectorContext) error {
 	reply, err := ctx.client.Run("/ip/firewall/connection/tracking/print",
 		"=.proplist=total-entries,max-entries")
 	if err != nil {
-		log.WithFields(log.Fields{
-			"device": ctx.device.Name,
-			"error":  err,
-		}).Error("error fetching conntrack table metrics")
-
 		return fmt.Errorf("get tracking error: %w", err)
 	}
 
+	var errs *multierror.Error
+
 	if len(reply.Re) > 0 {
 		re := reply.Re[0]
-		_ = c.totalEntries.collect(re, ctx)
-		_ = c.maxEntries.collect(re, ctx)
+
+		if err := c.totalEntries.collect(re, ctx); err != nil {
+			errs = multierror.Append(errs,
+				fmt.Errorf("collect total entries error: %w", err))
+		}
+
+		if err := c.maxEntries.collect(re, ctx); err != nil {
+			errs = multierror.Append(errs,
+				fmt.Errorf("collect max entries error: %w", err))
+		}
 	}
 
-	return nil
+	return errs.ErrorOrNil()
 }

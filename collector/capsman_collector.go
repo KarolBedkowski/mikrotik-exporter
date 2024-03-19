@@ -3,9 +3,8 @@ package collector
 import (
 	"fmt"
 
-	"github.com/KarolBedkowski/routeros-go-client/proto"
+	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
-	log "github.com/sirupsen/logrus"
 )
 
 func init() {
@@ -13,7 +12,7 @@ func init() {
 }
 
 type capsmanCollector struct {
-	metrics []propertyMetricCollector
+	metrics propertyMetricList
 
 	radiosProvisionedDesc propertyMetricCollector
 }
@@ -21,11 +20,11 @@ type capsmanCollector struct {
 func newCapsmanCollector() routerOSCollector {
 	const prefix = "capsman_station"
 
-	labelNames := []string{"name", "address", "interface", "mac_address", "ssid"}
+	labelNames := []string{"name", "address", "interface", "mac_address", "ssid", "eap_identity", "comment"}
 	radioLabelNames := []string{"name", "address", "interface", "radio_mac", "remote_cap_identity", "remote_cap_name"}
 
 	collector := &capsmanCollector{
-		metrics: []propertyMetricCollector{
+		metrics: propertyMetricList{
 			newPropertyCounterMetric(prefix, "uptime", labelNames).withConverter(parseDuration).
 				withName("uptime_seconds").build(),
 			newPropertyGaugeMetric(prefix, "tx-signal", labelNames).build(),
@@ -45,66 +44,61 @@ func newCapsmanCollector() routerOSCollector {
 
 func (c *capsmanCollector) describe(ch chan<- *prometheus.Desc) {
 	c.radiosProvisionedDesc.describe(ch)
-
-	for _, m := range c.metrics {
-		m.describe(ch)
-	}
+	c.metrics.describe(ch)
 }
 
 func (c *capsmanCollector) collect(ctx *collectorContext) error {
-	stats, err := c.fetch(ctx)
-	if err != nil {
-		return err
+	var errs *multierror.Error
+
+	if err := c.collectRegistrations(ctx); err != nil {
+		errs = multierror.Append(errs, err)
 	}
 
-	for _, re := range stats {
-		c.collectForStat(re, ctx)
+	if err := c.collectRadiosProvisioned(ctx); err != nil {
+		errs = multierror.Append(errs, err)
 	}
 
-	return c.collectRadiosProvisioned(ctx)
+	return errs.ErrorOrNil()
 }
 
-func (c *capsmanCollector) fetch(ctx *collectorContext) ([]*proto.Sentence, error) {
+func (c *capsmanCollector) collectRegistrations(ctx *collectorContext) error {
 	reply, err := ctx.client.Run("/caps-man/registration-table/print",
-		"=.proplist=interface,mac-address,ssid,uptime,tx-signal,rx-signal,packets,bytes")
+		"=.proplist=interface,mac-address,ssid,uptime,tx-signal,rx-signal,packets,bytes,eap-identity,comment")
 	if err != nil {
-		log.WithFields(log.Fields{
-			"device": ctx.device.Name,
-			"error":  err,
-		}).Error("error fetching wlan station metrics")
-
-		return nil, fmt.Errorf("get capsman reg error: %w", err)
+		return fmt.Errorf("fetch capsman reg error: %w", err)
 	}
 
-	return reply.Re, nil
-}
+	var errs *multierror.Error
 
-func (c *capsmanCollector) collectForStat(re *proto.Sentence, ctx *collectorContext) {
-	ctx = ctx.withLabels(re.Map["interface"], re.Map["mac-address"], re.Map["ssid"])
+	for _, re := range reply.Re {
+		ctx = ctx.withLabels(re.Map["interface"], re.Map["mac-address"], re.Map["ssid"],
+			re.Map["eap-identity"], re.Map["comment"])
 
-	for _, m := range c.metrics {
-		_ = m.collect(re, ctx)
+		if err := c.metrics.collect(re, ctx); err != nil {
+			errs = multierror.Append(errs, fmt.Errorf("collect registrations error: %w", err))
+		}
 	}
+
+	return errs.ErrorOrNil()
 }
 
 func (c *capsmanCollector) collectRadiosProvisioned(ctx *collectorContext) error {
 	reply, err := ctx.client.Run("/caps-man/radio/print",
 		"=.proplist=interface,radio-mac,remote-cap-identity,remote-cap-name,provisioned")
 	if err != nil {
-		log.WithFields(log.Fields{
-			"device": ctx.device.Name,
-			"error":  err,
-		}).Error("error fetching capsman radios metrics")
-
-		return fmt.Errorf("get capsman radio error: %w", err)
+		return fmt.Errorf("fetch capsman radio error: %w", err)
 	}
+
+	var errs *multierror.Error
 
 	for _, re := range reply.Re {
 		ctx = ctx.withLabels(re.Map["interface"], re.Map["radio-mac"], re.Map["remote-cap-identity"],
 			re.Map["remote-cap-name"])
 
-		_ = c.radiosProvisionedDesc.collect(re, ctx)
+		if err := c.radiosProvisionedDesc.collect(re, ctx); err != nil {
+			errs = multierror.Append(errs, fmt.Errorf("collect provisions error: %w", err))
+		}
 	}
 
-	return nil
+	return errs.ErrorOrNil()
 }

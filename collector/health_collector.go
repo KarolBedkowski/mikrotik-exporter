@@ -3,9 +3,8 @@ package collector
 import (
 	"fmt"
 
-	"github.com/KarolBedkowski/routeros-go-client/proto"
+	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
-	log "github.com/sirupsen/logrus"
 )
 
 func init() {
@@ -13,7 +12,7 @@ func init() {
 }
 
 type healthCollector struct {
-	metrics []propertyMetricCollector
+	metrics propertyMetricList
 }
 
 func newhealthCollector() routerOSCollector {
@@ -22,7 +21,7 @@ func newhealthCollector() routerOSCollector {
 	labelNames := []string{"name", "address"}
 
 	c := &healthCollector{
-		metrics: []propertyMetricCollector{
+		metrics: propertyMetricList{
 			newPropertyGaugeMetric(prefix, "voltage", labelNames).
 				withHelp("Input voltage to the RouterOS board, in volts").build(),
 			newPropertyGaugeMetric(prefix, "temperature", labelNames).
@@ -36,18 +35,18 @@ func newhealthCollector() routerOSCollector {
 }
 
 func (c *healthCollector) describe(ch chan<- *prometheus.Desc) {
-	for _, m := range c.metrics {
-		m.describe(ch)
-	}
+	c.metrics.describe(ch)
 }
 
 func (c *healthCollector) collect(ctx *collectorContext) error {
-	stats, err := c.fetch(ctx)
+	reply, err := ctx.client.Run("/system/health/print")
 	if err != nil {
-		return err
+		return fmt.Errorf("fetch health error: %w", err)
 	}
 
-	for _, re := range stats {
+	var errs *multierror.Error
+
+	for _, re := range reply.Re {
 		if metric, ok := re.Map["name"]; ok {
 			if v, ok := re.Map["value"]; ok {
 				re.Map[metric] = v
@@ -56,24 +55,10 @@ func (c *healthCollector) collect(ctx *collectorContext) error {
 			}
 		}
 
-		for _, c := range c.metrics {
-			_ = c.collect(re, ctx)
+		if err := c.metrics.collect(re, ctx); err != nil {
+			errs = multierror.Append(errs, err)
 		}
 	}
 
-	return nil
-}
-
-func (c *healthCollector) fetch(ctx *collectorContext) ([]*proto.Sentence, error) {
-	reply, err := ctx.client.Run("/system/health/print")
-	if err != nil {
-		log.WithFields(log.Fields{
-			"device": ctx.device.Name,
-			"error":  err,
-		}).Error("error fetching system health metrics")
-
-		return nil, fmt.Errorf("get health error: %w", err)
-	}
-
-	return reply.Re, nil
+	return errs.ErrorOrNil()
 }

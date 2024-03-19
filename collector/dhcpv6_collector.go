@@ -3,8 +3,8 @@ package collector
 import (
 	"fmt"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
-	log "github.com/sirupsen/logrus"
 )
 
 func init() {
@@ -34,51 +34,41 @@ func (c *dhcpv6Collector) describe(ch chan<- *prometheus.Desc) {
 
 func (c *dhcpv6Collector) collect(ctx *collectorContext) error {
 	names, err := c.fetchDHCPServerNames(ctx)
-	if err != nil {
+	if err != nil || len(names) == 0 {
 		return err
 	}
 
+	var errs *multierror.Error
+
 	for _, n := range names {
 		if err := c.colllectForDHCPServer(ctx, n); err != nil {
-			return err
+			errs = multierror.Append(errs, err)
 		}
 	}
 
-	return nil
+	return errs.ErrorOrNil()
 }
 
 func (c *dhcpv6Collector) fetchDHCPServerNames(ctx *collectorContext) ([]string, error) {
 	reply, err := ctx.client.Run("/ipv6/dhcp-server/print", "=.proplist=name")
 	if err != nil {
-		log.WithFields(log.Fields{
-			"device": ctx.device.Name,
-			"error":  err,
-		}).Error("error fetching DHCPv6 server names")
-
-		return nil, fmt.Errorf("get dhcp-server error: %w", err)
+		return nil, fmt.Errorf("fetch dhcp6 server names error: %w", err)
 	}
 
-	names := []string{}
-	for _, re := range reply.Re {
-		names = append(names, re.Map["name"])
-	}
-
-	return names, nil
+	return extractPropertyFromReplay(reply, "name"), nil
 }
 
 func (c *dhcpv6Collector) colllectForDHCPServer(ctx *collectorContext, dhcpServer string) error {
 	reply, err := ctx.client.Run("/ipv6/dhcp-server/binding/print", "?server="+dhcpServer, "=count-only=")
 	if err != nil {
-		log.WithFields(log.Fields{
-			"dhcpv6_server": dhcpServer,
-			"device":        ctx.device.Name,
-			"error":         err,
-		}).Error("error fetching DHCPv6 binding counts")
-
-		return fmt.Errorf("get bindings error: %w", err)
+		return fmt.Errorf("get dhcpv6 bindings error: %w", err)
 	}
 
 	ctx = ctx.withLabels(dhcpServer)
 
-	return c.bindingCount.collect(reply, ctx)
+	if err := c.bindingCount.collect(reply, ctx); err != nil {
+		return fmt.Errorf("collect error: %w", err)
+	}
+
+	return nil
 }

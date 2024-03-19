@@ -11,6 +11,7 @@ import (
 
 	"github.com/KarolBedkowski/routeros-go-client"
 	"github.com/KarolBedkowski/routeros-go-client/proto"
+	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 )
@@ -100,12 +101,6 @@ func parseDuration(duration string) (float64, error) {
 		if match != "" {
 			v, err := strconv.Atoi(match)
 			if err != nil {
-				log.WithFields(log.Fields{
-					"duration": duration,
-					"value":    match,
-					"error":    err,
-				}).Error("error parsing duration field value")
-
 				return float64(0), err
 			}
 
@@ -116,14 +111,6 @@ func parseDuration(duration string) (float64, error) {
 	return totalDur.Seconds(), nil
 }
 
-func parseBool(value string) float64 {
-	if value == "true" {
-		return 1.0
-	}
-
-	return 0.0
-}
-
 type ValueConverter func(value string) (float64, error)
 
 func convertToFloat(value string) (float64, error) {
@@ -131,7 +118,7 @@ func convertToFloat(value string) (float64, error) {
 }
 
 func convertFromBool(value string) (float64, error) {
-	if value == "true" {
+	if value == "true" || value == "yes" {
 		return 1.0, nil
 	}
 
@@ -172,7 +159,7 @@ func (p *propertyCollector) collect(reply *proto.Sentence,
 			"device":    ctx.device.Name,
 			"property":  p.property,
 			"labels":    ctx.labels,
-		}).Debugf("property %s not found value", p.property)
+		}).Debugf("property %s value not found", p.property)
 
 		return nil
 	}
@@ -187,15 +174,7 @@ func (p *propertyCollector) collect(reply *proto.Sentence,
 
 	value, err := p.valueConverter(propertyVal)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"collector": ctx.collector,
-			"device":    ctx.device.Name,
-			"property":  p.property,
-			"value":     propertyVal,
-			"error":     err,
-		}).Error("error parsing value")
-
-		return fmt.Errorf("parse error: %w", err)
+		return fmt.Errorf("parse %v for property %s error: %w", propertyVal, p.property, err)
 	}
 
 	ctx.ch <- prometheus.MustNewConstMetric(p.desc, p.valueType, value, ctx.labels...)
@@ -236,15 +215,7 @@ func (p *propertyRxTxCollector) collect(reply *proto.Sentence,
 
 	tx, rx, err := p.valueConverter(propertyVal)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"collector": ctx.collector,
-			"device":    ctx.device.Name,
-			"property":  p.property,
-			"value":     propertyVal,
-			"error":     err,
-		}).Error("error parsing value")
-
-		return fmt.Errorf("parse error: %w", err)
+		return fmt.Errorf("parse %v for property %s error: %w", propertyVal, p.property, err)
 	}
 
 	labels := ctx.labels
@@ -486,18 +457,40 @@ func (r *retGaugeCollector) collect(reply *routeros.Reply,
 
 	value, err := r.valueConverter(propertyVal)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"collector": ctx.collector,
-			"device":    ctx.device.Name,
-			"property":  "<RET>",
-			"value":     propertyVal,
-			"error":     err,
-		}).Error("error parsing value")
-
-		return fmt.Errorf("parse error: %w", err)
+		return fmt.Errorf("parse ret value %v error: %w", propertyVal, err)
 	}
 
 	ctx.ch <- prometheus.MustNewConstMetric(r.desc, prometheus.GaugeValue, value, ctx.labels...)
 
 	return nil
+}
+
+type propertyMetricList []propertyMetricCollector
+
+func (p propertyMetricList) describe(ch chan<- *prometheus.Desc) {
+	for _, m := range p {
+		m.describe(ch)
+	}
+}
+
+func (p propertyMetricList) collect(re *proto.Sentence, ctx *collectorContext) error {
+	var errs *multierror.Error
+
+	for _, m := range p {
+		if err := m.collect(re, ctx); err != nil {
+			errs = multierror.Append(errs, fmt.Errorf("collect error %w", err))
+		}
+	}
+
+	return errs.ErrorOrNil()
+}
+
+func extractPropertyFromReplay(reply *routeros.Reply, name string) []string {
+	values := make([]string, 0, len(reply.Re))
+
+	for _, re := range reply.Re {
+		values = append(values, re.Map[name])
+	}
+
+	return values
 }

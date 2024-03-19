@@ -132,7 +132,14 @@ func (c *collector) srvToDevice(devCol *deviceCollector) []*deviceCollector {
 			}
 
 			ndc := &deviceCollector{d, devCol.collectors, nil, true}
-			_ = c.getIdentity(ndc)
+
+			if err := c.getIdentity(ndc); err != nil {
+				log.WithFields(log.Fields{
+					"device": devCol.device.Name,
+					"error":  err,
+				}).Error("error fetching identity")
+			}
+
 			realDevices = append(realDevices, ndc)
 		}
 	}
@@ -170,23 +177,13 @@ func (c *collector) Collect(ch chan<- prometheus.Metric) {
 func (c *collector) getIdentity(devCol *deviceCollector) error {
 	cl, err := c.getConnection(devCol)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"device": devCol.device.Name,
-			"error":  err,
-		}).Error("error dialing device fetching identity")
-
-		return err
+		return fmt.Errorf("get connection error: %w", err)
 	}
 
 	defer c.closeConnection(devCol)
 
 	reply, err := cl.Run("/system/identity/print")
 	if err != nil {
-		log.WithFields(log.Fields{
-			"device": devCol.device.Name,
-			"error":  err,
-		}).Error("error fetching identity")
-
 		return fmt.Errorf("get identity error: %w", err)
 	}
 
@@ -208,9 +205,9 @@ func (c *collector) collectForDevice(d *deviceCollector, ch chan<- prometheus.Me
 	success := 0.0
 
 	if err != nil {
-		log.Errorf("ERROR: %s collector failed after %fs: %s", name, duration.Seconds(), err)
+		log.WithField("device", name).Errorf("ERROR: collector failed after %fs: %s", duration.Seconds(), err)
 	} else {
-		log.Debugf("OK: %s collector succeeded after %fs.", name, duration.Seconds())
+		log.WithField("device", name).Debugf("OK: collector succeeded after %fs.", duration.Seconds())
 
 		success = 1
 	}
@@ -222,12 +219,7 @@ func (c *collector) collectForDevice(d *deviceCollector, ch chan<- prometheus.Me
 func (c *collector) connectAndCollect(devCollector *deviceCollector, ch chan<- prometheus.Metric) error {
 	client, err := c.getConnection(devCollector)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"device": devCollector.device.Name,
-			"error":  err,
-		}).Error("error dialing device")
-
-		return err
+		return fmt.Errorf("connect error: %w", err)
 	}
 
 	defer c.closeConnection(devCollector)

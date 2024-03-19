@@ -5,8 +5,8 @@ import (
 	"strconv"
 
 	"github.com/KarolBedkowski/routeros-go-client/proto"
+	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
-	log "github.com/sirupsen/logrus"
 )
 
 func init() {
@@ -36,42 +36,43 @@ func (c *dhcpLeaseCollector) describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *dhcpLeaseCollector) collect(ctx *collectorContext) error {
-	stats, err := c.fetch(ctx)
-	if err != nil {
-		return err
-	}
-
-	for _, re := range stats {
-		c.collectMetric(ctx, re)
-	}
-
-	return nil
-}
-
-func (c *dhcpLeaseCollector) fetch(ctx *collectorContext) ([]*proto.Sentence, error) {
 	reply, err := ctx.client.Run("/ip/dhcp-server/lease/print", "?status=bound",
 		"=.proplist=active-mac-address,server,status,active-address,host-name,comment")
 	if err != nil {
-		log.WithFields(log.Fields{
-			"device": ctx.device.Name,
-			"error":  err,
-			"reply":  reply,
-		}).Error("error fetching DHCP leases metrics")
-
-		return nil, fmt.Errorf("get lease error: %w", err)
+		return fmt.Errorf("fetch dhcp lease error: %w", err)
 	}
 
-	return reply.Re, nil
+	var errs *multierror.Error
+
+	for _, re := range reply.Re {
+		if err := c.collectMetric(ctx, re); err != nil {
+			errs = multierror.Append(errs, err)
+		}
+	}
+
+	return errs.ErrorOrNil()
 }
 
-func (c *dhcpLeaseCollector) collectMetric(ctx *collectorContext, re *proto.Sentence) {
-	// QuoteToASCII because of broken DHCP clients
-	hostname := strconv.QuoteToASCII(re.Map["host-name"])
-	hostname = hostname[1 : len(hostname)-1]
+func (c *dhcpLeaseCollector) collectMetric(ctx *collectorContext, re *proto.Sentence) error {
+	hostname := re.Map["host-name"]
+	if hostname != "" {
+		if hostname[0] == '"' {
+			hostname = hostname[1 : len(hostname)-1]
+		}
+
+		// QuoteToASCII because of broken DHCP clients
+		hostname = strconv.QuoteToASCII(hostname)
+		hostname = hostname[1 : len(hostname)-1]
+	}
+
 	ctx = ctx.withLabels(
 		re.Map["active-mac-address"], re.Map["server"], re.Map["status"],
 		re.Map["active-address"], hostname, re.Map["comment"],
 	)
 
-	_ = c.leases.collect(re, ctx)
+	if err := c.leases.collect(re, ctx); err != nil {
+		return fmt.Errorf("collect error: %w", err)
+	}
+
+	return nil
 }
