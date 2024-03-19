@@ -67,7 +67,7 @@ func (c *queueCollector) collect(ctx *collectorContext) error {
 	return c.collectSimpleQueue(ctx)
 }
 
-func queueTxRxConverter(value string, opts ...string) (float64, float64, error) {
+func queueTxRxConverter(value string) (float64, float64, error) {
 	return splitStringToFloats(value, "/")
 }
 

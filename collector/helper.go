@@ -57,14 +57,13 @@ func description(prefix, name, helpText string, labelNames []string) *prometheus
 
 var ErrEmptyValue = errors.New("empty value")
 
-func splitStringToFloats(metric string, sep ...string) (float64, float64, error) {
+func splitStringToFloatsOnComma(metric string) (float64, float64, error) {
+	return splitStringToFloats(metric, ",")
+}
+
+func splitStringToFloats(metric string, separator string) (float64, float64, error) {
 	if metric == "" {
 		return math.NaN(), math.NaN(), ErrEmptyValue
-	}
-
-	separator := ","
-	if len(sep) > 0 {
-		separator = sep[0]
 	}
 
 	strs := strings.Split(metric, separator)
@@ -145,7 +144,7 @@ func convertToOne(value string) (float64, error) {
 	return 1.0, nil
 }
 
-type TXRXValueConverter func(value string, opts ...string) (float64, float64, error)
+type TXRXValueConverter func(value string) (float64, float64, error)
 
 type propertyMetricCollector interface {
 	describe(ch chan<- *prometheus.Desc)
@@ -353,7 +352,7 @@ func (p *propertyMetricBuilder) build() propertyMetricCollector {
 	}
 
 	if p.rxTxValueConverter == nil {
-		p.rxTxValueConverter = splitStringToFloats
+		p.rxTxValueConverter = splitStringToFloatsOnComma
 	}
 
 	log.WithFields(log.Fields{

@@ -59,7 +59,7 @@ func TestSplitStringToFloats(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		f1, f2, err := splitStringToFloats(testCase.input)
+		f1, f2, err := splitStringToFloatsOnComma(testCase.input)
 
 		switch testCase.hasError {
 		case true:
