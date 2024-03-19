@@ -35,8 +35,8 @@ func newQueueCollector() routerOSCollector {
 			newPropertyGaugeMetric(sqPrefix, "disabled", labelNames).withConverter(convertFromBool).build(),
 			newPropertyRxTxMetric(sqPrefix, "packets", labelNames).withRxTxConverter(queueTxRxConverter).build(),
 			newPropertyRxTxMetric(sqPrefix, "bytes", labelNames).withRxTxConverter(queueTxRxConverter).build(),
-			newPropertyRxTxMetric(sqPrefix, "queued_packets", labelNames).withRxTxConverter(queueTxRxConverter).build(),
-			newPropertyRxTxMetric(sqPrefix, "queued_bytes", labelNames).withRxTxConverter(queueTxRxConverter).build(),
+			newPropertyRxTxMetric(sqPrefix, "queued-packets", labelNames).withRxTxConverter(queueTxRxConverter).build(),
+			newPropertyRxTxMetric(sqPrefix, "queued-bytes", labelNames).withRxTxConverter(queueTxRxConverter).build(),
 		},
 	}
 
