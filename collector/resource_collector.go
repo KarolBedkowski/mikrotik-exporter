@@ -32,7 +32,8 @@ func newResourceCollector() routerOSCollector {
 			newPropertyGaugeMetric(prefix, "total-hdd-space", labelNames).build(),
 			newPropertyGaugeMetric(prefix, "cpu-frequency", labelNames).build(),
 			newPropertyGaugeMetric(prefix, "bad-blocks", labelNames).build(),
-			newPropertyCounterMetric(prefix, "uptime", labelNames).withConverter(parseDuration).build(),
+			newPropertyCounterMetric(prefix, "uptime", labelNames).
+				withName("uptime_seconds").withConverter(parseDuration).build(),
 			newPropertyGaugeMetric(prefix, "cpu-count", labelNames).build(),
 		},
 

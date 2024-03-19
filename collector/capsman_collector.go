@@ -26,7 +26,8 @@ func newCapsmanCollector() routerOSCollector {
 
 	collector := &capsmanCollector{
 		metrics: []propertyMetricCollector{
-			newPropertyCounterMetric(prefix, "uptime", labelNames).withConverter(parseDuration).build(),
+			newPropertyCounterMetric(prefix, "uptime", labelNames).withConverter(parseDuration).
+				withName("uptime_seconds").build(),
 			newPropertyGaugeMetric(prefix, "tx-signal", labelNames).build(),
 			newPropertyGaugeMetric(prefix, "rx-signal", labelNames).build(),
 			newPropertyRxTxMetric(prefix, "packets", labelNames).build(),
