@@ -125,23 +125,6 @@ func parseBool(value string) float64 {
 	return 0.0
 }
 
-type TXRXDecription struct {
-	RXDesc *prometheus.Desc
-	TXDesc *prometheus.Desc
-}
-
-func NewTXRXDescription(prefix, property string, labelNames []string) *TXRXDecription {
-	return &TXRXDecription{
-		RXDesc: descriptionForPropertyName(prefix, "rx_"+property, labelNames),
-		TXDesc: descriptionForPropertyName(prefix, "tx_"+property, labelNames),
-	}
-}
-
-func (t *TXRXDecription) describe(ch chan<- *prometheus.Desc) {
-	ch <- t.RXDesc
-	ch <- t.TXDesc
-}
-
 type ValueConverter func(value string) (float64, error)
 
 func convertToFloat(value string) (float64, error) {
@@ -160,182 +143,7 @@ func convertToOne(value string) (float64, error) {
 	return 1.0, nil
 }
 
-type retCollector struct {
-	reply  *routeros.Reply
-	labels []string
-	ctx    *collectorContext
-}
-
-func newRetCollector(reply *routeros.Reply,
-	ctx *collectorContext, labels ...string,
-) *retCollector {
-	labels = append([]string{ctx.device.Name, ctx.device.Address}, labels...)
-
-	return &retCollector{
-		reply:  reply,
-		ctx:    ctx,
-		labels: labels,
-	}
-}
-
-func (r *retCollector) collectGaugeValue(
-	desc *prometheus.Desc, converter ValueConverter,
-) error {
-	propertyVal := r.reply.Done.Map["ret"]
-	if propertyVal == "" {
-		return nil
-	}
-
-	if i := strings.Index(propertyVal, "@"); i > -1 {
-		propertyVal = propertyVal[:i]
-	}
-
-	if converter == nil {
-		converter = convertToFloat
-	}
-
-	value, err := converter(propertyVal)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"collector": r.ctx.collector,
-			"device":    r.ctx.device.Name,
-			"property":  "<RET>",
-			"value":     propertyVal,
-			"error":     err,
-		}).Error("error parsing value")
-
-		return fmt.Errorf("parse error: %w", err)
-	}
-
-	r.ctx.ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue,
-		value, r.labels...)
-
-	return nil
-}
-
-type propertyCollector struct {
-	sentence *proto.Sentence
-	labels   []string
-	ctx      *collectorContext
-}
-
-func newPropertyCollector(sentence *proto.Sentence,
-	ctx *collectorContext, labels ...string,
-) *propertyCollector {
-	labels = append([]string{ctx.device.Name, ctx.device.Address}, labels...)
-
-	return &propertyCollector{
-		sentence: sentence,
-		ctx:      ctx,
-		labels:   labels,
-	}
-}
-
-func (p *propertyCollector) collectGaugeValue(
-	desc *prometheus.Desc, property string,
-	converter ValueConverter,
-) error {
-	propertyVal := p.sentence.Map[property]
-	if propertyVal == "" {
-		return nil
-	}
-
-	if i := strings.Index(propertyVal, "@"); i > -1 {
-		propertyVal = propertyVal[:i]
-	}
-
-	if converter == nil {
-		converter = convertToFloat
-	}
-
-	value, err := converter(propertyVal)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"collector": p.ctx.collector,
-			"device":    p.ctx.device.Name,
-			"property":  property,
-			"value":     propertyVal,
-			"error":     err,
-		}).Error("error parsing value")
-
-		return fmt.Errorf("parse error: %w", err)
-	}
-
-	p.ctx.ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue,
-		value, p.labels...)
-
-	return nil
-}
-
 type TXRXValueConverter func(value string, opts ...string) (float64, float64, error)
-
-func (p *propertyCollector) collectRXTXCounterValue(
-	desc *TXRXDecription, property string,
-	conv TXRXValueConverter,
-) error {
-	propertyVal := p.sentence.Map[property]
-	if propertyVal == "" {
-		return nil
-	}
-
-	if conv == nil {
-		conv = splitStringToFloats
-	}
-
-	tx, rx, err := conv(propertyVal)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"collector": p.ctx.collector,
-			"device":    p.ctx.device.Name,
-			"property":  property,
-			"value":     propertyVal,
-			"error":     err,
-		}).Error("error parsing value")
-
-		return fmt.Errorf("parse error: %w", err)
-	}
-
-	p.ctx.ch <- prometheus.MustNewConstMetric(desc.TXDesc, prometheus.CounterValue, tx, p.labels...)
-	p.ctx.ch <- prometheus.MustNewConstMetric(desc.RXDesc, prometheus.CounterValue, rx, p.labels...)
-
-	return nil
-}
-
-func (p *propertyCollector) collectCounterValue(
-	desc *prometheus.Desc, property string,
-	converter ValueConverter,
-) error {
-	propertyVal := p.sentence.Map[property]
-	if propertyVal == "" {
-		return nil
-	}
-
-	if i := strings.Index(propertyVal, "@"); i > -1 {
-		propertyVal = propertyVal[:i]
-	}
-
-	if converter == nil {
-		converter = convertToFloat
-	}
-
-	value, err := converter(propertyVal)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"collector": p.ctx.collector,
-			"device":    p.ctx.device.Name,
-			"property":  property,
-			"value":     propertyVal,
-			"error":     err,
-		}).Error("error parsing value")
-
-		return fmt.Errorf("parse error: %w", err)
-	}
-
-	p.ctx.ch <- prometheus.MustNewConstMetric(desc, prometheus.CounterValue,
-		value, p.labels...)
-
-	return nil
-}
 
 type propertyMetricCollector interface {
 	describe(ch chan<- *prometheus.Desc)
@@ -355,9 +163,32 @@ func (p *propertyCounterCollector) describe(ch chan<- *prometheus.Desc) {
 func (p *propertyCounterCollector) collect(reply *proto.Sentence,
 	ctx *collectorContext, labels []string,
 ) error {
-	pcl := newPropertyCollector(reply, ctx, labels...)
+	propertyVal := reply.Map[p.property]
+	if propertyVal == "" {
+		return nil
+	}
 
-	return pcl.collectCounterValue(p.desc, p.property, p.valueConverter)
+	if i := strings.Index(propertyVal, "@"); i > -1 {
+		propertyVal = propertyVal[:i]
+	}
+
+	value, err := p.valueConverter(propertyVal)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"collector": ctx.collector,
+			"device":    ctx.device.Name,
+			"property":  p.property,
+			"value":     propertyVal,
+			"error":     err,
+		}).Error("error parsing value")
+
+		return fmt.Errorf("parse error: %w", err)
+	}
+
+	ctx.ch <- prometheus.MustNewConstMetric(p.desc, prometheus.CounterValue,
+		value, append([]string{ctx.device.Name, ctx.device.Address}, labels...)...)
+
+	return nil
 }
 
 type propertyGaugeCollector struct {
@@ -373,9 +204,32 @@ func (p *propertyGaugeCollector) describe(ch chan<- *prometheus.Desc) {
 func (p *propertyGaugeCollector) collect(reply *proto.Sentence,
 	ctx *collectorContext, labels []string,
 ) error {
-	pcl := newPropertyCollector(reply, ctx, labels...)
+	propertyVal := reply.Map[p.property]
+	if propertyVal == "" {
+		return nil
+	}
 
-	return pcl.collectGaugeValue(p.desc, p.property, p.valueConverter)
+	if i := strings.Index(propertyVal, "@"); i > -1 {
+		propertyVal = propertyVal[:i]
+	}
+
+	value, err := p.valueConverter(propertyVal)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"collector": ctx.collector,
+			"device":    ctx.device.Name,
+			"property":  p.property,
+			"value":     propertyVal,
+			"error":     err,
+		}).Error("error parsing value")
+
+		return fmt.Errorf("parse error: %w", err)
+	}
+
+	ctx.ch <- prometheus.MustNewConstMetric(p.desc, prometheus.GaugeValue,
+		value, append([]string{ctx.device.Name, ctx.device.Address}, labels...)...)
+
+	return nil
 }
 
 type propertyRxTxCollector struct {
@@ -398,12 +252,7 @@ func (p *propertyRxTxCollector) collect(reply *proto.Sentence,
 		return nil
 	}
 
-	conv := splitStringToFloats
-	if p.valueConverter != nil {
-		conv = p.valueConverter
-	}
-
-	tx, rx, err := conv(propertyVal)
+	tx, rx, err := p.valueConverter(propertyVal)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"collector": ctx.collector,
@@ -473,11 +322,13 @@ func newPropertyRxTxMetric(prefix, property string, labels []string) *propertyMe
 
 func (p *propertyMetricBuilder) withName(name string) *propertyMetricBuilder {
 	p.metricName = name
+
 	return p
 }
 
 func (p *propertyMetricBuilder) withHelp(help string) *propertyMetricBuilder {
 	p.metricHelp = help
+
 	return p
 }
 
@@ -487,6 +338,7 @@ func (p *propertyMetricBuilder) withConverter(vc ValueConverter) *propertyMetric
 	}
 
 	p.valueConverter = vc
+
 	return p
 }
 
@@ -511,6 +363,14 @@ func (p *propertyMetricBuilder) build() propertyMetricCollector {
 	metricHelp := p.metricHelp
 	if metricHelp == "" {
 		metricHelp = p.property + " for " + p.prefix
+	}
+
+	if p.valueConverter == nil {
+		p.valueConverter = convertToFloat
+	}
+
+	if p.rxTxValueConverter == nil {
+		p.rxTxValueConverter = splitStringToFloats
 	}
 
 	log.WithFields(log.Fields{
@@ -605,9 +465,6 @@ func (p *retMetricBuilder) build() retMetricCollector {
 	}).Debug("build metric")
 
 	switch p.metricType {
-	case metricCounter:
-		desc := descriptionForPropertyNameHelpText(p.prefix, metricName, p.labels, metricHelp)
-		return &retCounterCollector{desc, p.property, p.valueConverter}
 	case metricGauge:
 		desc := descriptionForPropertyNameHelpText(p.prefix, metricName, p.labels, metricHelp)
 		return &retGaugeCollector{desc, p.property, p.valueConverter}
@@ -619,25 +476,6 @@ func (p *retMetricBuilder) build() retMetricCollector {
 type retMetricCollector interface {
 	describe(ch chan<- *prometheus.Desc)
 	collect(reply *routeros.Reply, ctx *collectorContext, labels []string) error
-}
-
-type retCounterCollector struct {
-	desc           *prometheus.Desc
-	property       string
-	valueConverter ValueConverter
-}
-
-func (r *retCounterCollector) describe(ch chan<- *prometheus.Desc) {
-	ch <- r.desc
-}
-
-func (r *retCounterCollector) collect(reply *routeros.Reply,
-	ctx *collectorContext, labels []string,
-) error {
-	pcl := newRetCollector(reply, ctx, labels...)
-
-	// TODO: counter
-	return pcl.collectGaugeValue(r.desc, r.valueConverter)
 }
 
 type retGaugeCollector struct {
@@ -653,7 +491,36 @@ func (r *retGaugeCollector) describe(ch chan<- *prometheus.Desc) {
 func (r *retGaugeCollector) collect(reply *routeros.Reply,
 	ctx *collectorContext, labels []string,
 ) error {
-	pcl := newRetCollector(reply, ctx, labels...)
+	propertyVal := reply.Done.Map["ret"]
+	if propertyVal == "" {
+		return nil
+	}
 
-	return pcl.collectGaugeValue(r.desc, r.valueConverter)
+	if i := strings.Index(propertyVal, "@"); i > -1 {
+		propertyVal = propertyVal[:i]
+	}
+
+	converter := r.valueConverter
+	if converter == nil {
+		converter = convertToFloat
+	}
+
+	value, err := converter(propertyVal)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"collector": ctx.collector,
+			"device":    ctx.device.Name,
+			"property":  "<RET>",
+			"value":     propertyVal,
+			"error":     err,
+		}).Error("error parsing value")
+
+		return fmt.Errorf("parse error: %w", err)
+	}
+
+	labels = append([]string{ctx.device.Name, ctx.device.Address}, labels...)
+
+	ctx.ch <- prometheus.MustNewConstMetric(r.desc, prometheus.GaugeValue, value, labels...)
+
+	return nil
 }
