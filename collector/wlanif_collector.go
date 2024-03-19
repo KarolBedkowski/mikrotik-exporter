@@ -98,10 +98,11 @@ func (c *wlanIFCollector) collectForInterface(iface string, ctx *collectorContex
 	}
 
 	re := reply.Re[0]
-	labels := []string{iface, re.Map["channel"]}
+
+	ctx = ctx.withLabels(iface, re.Map["channel"])
 
 	for _, c := range c.metrics {
-		_ = c.collect(re, ctx, labels)
+		_ = c.collect(re, ctx)
 	}
 
 	c.collectMetricForFreq(iface, re, ctx)

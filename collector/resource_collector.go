@@ -33,7 +33,7 @@ func newResourceCollector() routerOSCollector {
 			newPropertyGaugeMetric(prefix, "cpu-frequency", labelNames).build(),
 			newPropertyGaugeMetric(prefix, "bad-blocks", labelNames).build(),
 			newPropertyCounterMetric(prefix, "uptime", labelNames).withConverter(parseDuration).build(),
-			newPropertyGaugeMetric(prefix, "cpu", labelNames).build(),
+			newPropertyGaugeMetric(prefix, "cpu-count", labelNames).build(),
 		},
 
 		versionDesc: description("system", "routeros", "Board and system version",
@@ -88,6 +88,6 @@ func (c *resourceCollector) collectForStat(reply *proto.Sentence, ctx *collector
 		ctx.device.Name, ctx.device.Address, boardname, version)
 
 	for _, c := range c.metrics {
-		_ = c.collect(reply, ctx, nil)
+		_ = c.collect(reply, ctx)
 	}
 }

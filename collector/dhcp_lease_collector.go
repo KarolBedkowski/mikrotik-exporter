@@ -62,12 +62,12 @@ func (c *dhcpLeaseCollector) fetch(ctx *collectorContext) ([]*proto.Sentence, er
 }
 
 func (c *dhcpLeaseCollector) collectMetric(ctx *collectorContext, re *proto.Sentence) {
-	labels := []string{
+	ctx = ctx.withLabels(
 		re.Map["active-mac-address"], re.Map["server"], re.Map["status"],
 		re.Map["active-address"],
 		// QuoteToASCII because of broken DHCP clients
 		strconv.QuoteToASCII(re.Map["host-name"]),
-	}
+	)
 
-	_ = c.leases.collect(re, ctx, labels)
+	_ = c.leases.collect(re, ctx)
 }

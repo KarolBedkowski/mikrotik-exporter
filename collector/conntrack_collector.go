@@ -48,8 +48,8 @@ func (c *conntrackCollector) collect(ctx *collectorContext) error {
 
 	if len(reply.Re) > 0 {
 		re := reply.Re[0]
-		_ = c.totalEntries.collect(re, ctx, nil)
-		_ = c.maxEntries.collect(re, ctx, nil)
+		_ = c.totalEntries.collect(re, ctx)
+		_ = c.maxEntries.collect(re, ctx)
 	}
 
 	return nil

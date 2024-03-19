@@ -23,7 +23,7 @@ func newInterfaceCollector() routerOSCollector {
 
 	collector := &interfaceCollector{
 		metrics: []propertyMetricCollector{
-			newPropertyGaugeMetric(prefix, "actual_mtu", labelNames).build(),
+			newPropertyGaugeMetric(prefix, "actual-mtu", labelNames).build(),
 			newPropertyGaugeMetric(prefix, "running", labelNames).withConverter(convertFromBool).build(),
 			newPropertyCounterMetric(prefix, "rx-byte", labelNames).build(),
 			newPropertyCounterMetric(prefix, "tx-byte", labelNames).build(),
@@ -76,12 +76,12 @@ func (c *interfaceCollector) fetch(ctx *collectorContext) ([]*proto.Sentence, er
 }
 
 func (c *interfaceCollector) collectForStat(reply *proto.Sentence, ctx *collectorContext) {
-	labels := []string{
+	ctx = ctx.withLabels(
 		reply.Map["name"], reply.Map["type"], reply.Map["disabled"], reply.Map["comment"],
 		reply.Map["running"], reply.Map["slave"],
-	}
+	)
 
 	for _, p := range c.metrics {
-		_ = p.collect(reply, ctx, labels)
+		_ = p.collect(reply, ctx)
 	}
 }

@@ -140,6 +140,8 @@ func convertFromBool(value string) (float64, error) {
 }
 
 func convertToOne(value string) (float64, error) {
+	_ = value
+
 	return 1.0, nil
 }
 
@@ -147,23 +149,35 @@ type TXRXValueConverter func(value string, opts ...string) (float64, float64, er
 
 type propertyMetricCollector interface {
 	describe(ch chan<- *prometheus.Desc)
-	collect(reply *proto.Sentence, ctx *collectorContext, labels []string) error
+	collect(reply *proto.Sentence, ctx *collectorContext) error
 }
 
-type propertyCounterCollector struct {
+type propertyCollector struct {
 	desc           *prometheus.Desc
 	property       string
 	valueConverter ValueConverter
+	valueType      prometheus.ValueType
 }
 
-func (p *propertyCounterCollector) describe(ch chan<- *prometheus.Desc) {
+func (p *propertyCollector) describe(ch chan<- *prometheus.Desc) {
 	ch <- p.desc
 }
 
-func (p *propertyCounterCollector) collect(reply *proto.Sentence,
-	ctx *collectorContext, labels []string,
+func (p *propertyCollector) collect(reply *proto.Sentence,
+	ctx *collectorContext,
 ) error {
-	propertyVal := reply.Map[p.property]
+	propertyVal, ok := reply.Map[p.property]
+	if !ok {
+		log.WithFields(log.Fields{
+			"collector": ctx.collector,
+			"device":    ctx.device.Name,
+			"property":  p.property,
+			"labels":    ctx.labels,
+		}).Debugf("property %s not found value", p.property)
+
+		return nil
+	}
+
 	if propertyVal == "" {
 		return nil
 	}
@@ -185,49 +199,7 @@ func (p *propertyCounterCollector) collect(reply *proto.Sentence,
 		return fmt.Errorf("parse error: %w", err)
 	}
 
-	ctx.ch <- prometheus.MustNewConstMetric(p.desc, prometheus.CounterValue,
-		value, append([]string{ctx.device.Name, ctx.device.Address}, labels...)...)
-
-	return nil
-}
-
-type propertyGaugeCollector struct {
-	desc           *prometheus.Desc
-	property       string
-	valueConverter ValueConverter
-}
-
-func (p *propertyGaugeCollector) describe(ch chan<- *prometheus.Desc) {
-	ch <- p.desc
-}
-
-func (p *propertyGaugeCollector) collect(reply *proto.Sentence,
-	ctx *collectorContext, labels []string,
-) error {
-	propertyVal := reply.Map[p.property]
-	if propertyVal == "" {
-		return nil
-	}
-
-	if i := strings.Index(propertyVal, "@"); i > -1 {
-		propertyVal = propertyVal[:i]
-	}
-
-	value, err := p.valueConverter(propertyVal)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"collector": ctx.collector,
-			"device":    ctx.device.Name,
-			"property":  p.property,
-			"value":     propertyVal,
-			"error":     err,
-		}).Error("error parsing value")
-
-		return fmt.Errorf("parse error: %w", err)
-	}
-
-	ctx.ch <- prometheus.MustNewConstMetric(p.desc, prometheus.GaugeValue,
-		value, append([]string{ctx.device.Name, ctx.device.Address}, labels...)...)
+	ctx.ch <- prometheus.MustNewConstMetric(p.desc, p.valueType, value, ctx.labels...)
 
 	return nil
 }
@@ -245,9 +217,20 @@ func (p *propertyRxTxCollector) describe(ch chan<- *prometheus.Desc) {
 }
 
 func (p *propertyRxTxCollector) collect(reply *proto.Sentence,
-	ctx *collectorContext, labels []string,
+	ctx *collectorContext,
 ) error {
-	propertyVal := reply.Map[p.property]
+	propertyVal, ok := reply.Map[p.property]
+	if !ok {
+		log.WithFields(log.Fields{
+			"collector": ctx.collector,
+			"device":    ctx.device.Name,
+			"property":  p.property,
+			"labels":    ctx.labels,
+		}).Debugf("property %s not found value", p.property)
+
+		return nil
+	}
+
 	if propertyVal == "" {
 		return nil
 	}
@@ -265,9 +248,8 @@ func (p *propertyRxTxCollector) collect(reply *proto.Sentence,
 		return fmt.Errorf("parse error: %w", err)
 	}
 
-	labels = append([]string{ctx.device.Name, ctx.device.Address}, labels...)
+	labels := ctx.labels
 
-	// TODO: gauge ?
 	ctx.ch <- prometheus.MustNewConstMetric(p.txDesc, prometheus.CounterValue, tx, labels...)
 	ctx.ch <- prometheus.MustNewConstMetric(p.rxDesc, prometheus.CounterValue, rx, labels...)
 
@@ -348,6 +330,7 @@ func (p *propertyMetricBuilder) withRxTxConverter(vc TXRXValueConverter) *proper
 	}
 
 	p.rxTxValueConverter = vc
+
 	return p
 }
 
@@ -385,13 +368,16 @@ func (p *propertyMetricBuilder) build() propertyMetricCollector {
 	switch p.metricType {
 	case metricCounter:
 		desc := descriptionForPropertyNameHelpText(p.prefix, metricName, p.labels, metricHelp)
-		return &propertyCounterCollector{desc, p.property, p.valueConverter}
+
+		return &propertyCollector{desc, p.property, p.valueConverter, prometheus.GaugeValue}
 	case metricGauge:
 		desc := descriptionForPropertyNameHelpText(p.prefix, metricName, p.labels, metricHelp)
-		return &propertyGaugeCollector{desc, p.property, p.valueConverter}
+
+		return &propertyCollector{desc, p.property, p.valueConverter, prometheus.GaugeValue}
 	case metricRxTx:
 		rxDesc := descriptionForPropertyNameHelpText(p.prefix, "rx_"+metricName, p.labels, metricHelp+" (RX)")
 		txDesc := descriptionForPropertyNameHelpText(p.prefix, "tx_"+metricName, p.labels, metricHelp+" (TX)")
+
 		return &propertyRxTxCollector{rxDesc, txDesc, p.property, p.rxTxValueConverter}
 	}
 
@@ -408,15 +394,6 @@ type retMetricBuilder struct {
 	labels         []string
 }
 
-func newRetCounterMetric(prefix, property string, labels []string) *retMetricBuilder {
-	return &retMetricBuilder{
-		prefix:     prefix,
-		property:   property,
-		metricType: metricCounter,
-		labels:     labels,
-	}
-}
-
 func newRetGaugeMetric(prefix, property string, labels []string) *retMetricBuilder {
 	return &retMetricBuilder{
 		prefix:     prefix,
@@ -428,46 +405,54 @@ func newRetGaugeMetric(prefix, property string, labels []string) *retMetricBuild
 
 func (r *retMetricBuilder) withName(name string) *retMetricBuilder {
 	r.metricName = name
+
 	return r
 }
 
 func (r *retMetricBuilder) withHelp(help string) *retMetricBuilder {
 	r.metricHelp = help
+
 	return r
 }
 
 func (r *retMetricBuilder) withConverter(vc ValueConverter) *retMetricBuilder {
 	r.valueConverter = vc
+
 	return r
 }
 
-func (p *retMetricBuilder) build() retMetricCollector {
-	metricName := p.metricName
+func (r *retMetricBuilder) build() retMetricCollector {
+	metricName := r.metricName
 	if metricName == "" {
-		metricName = p.property
-		if p.metricType == metricCounter {
+		metricName = r.property
+		if r.metricType == metricCounter {
 			metricName += "_total"
 		}
 	}
 
-	metricHelp := p.metricHelp
+	metricHelp := r.metricHelp
 	if metricHelp == "" {
-		metricHelp = p.property + " for " + p.prefix
+		metricHelp = r.property + " for " + r.prefix
+	}
+
+	valueConverter := convertToFloat
+	if r.valueConverter != nil {
+		valueConverter = r.valueConverter
 	}
 
 	log.WithFields(log.Fields{
 		"name":     metricName,
 		"help":     metricHelp,
-		"prefix":   p.prefix,
-		"labels":   p.labels,
-		"type":     p.metricType,
-		"property": p.property,
+		"prefix":   r.prefix,
+		"labels":   r.labels,
+		"type":     r.metricType,
+		"property": r.property,
 	}).Debug("build metric")
 
-	switch p.metricType {
-	case metricGauge:
-		desc := descriptionForPropertyNameHelpText(p.prefix, metricName, p.labels, metricHelp)
-		return &retGaugeCollector{desc, p.property, p.valueConverter}
+	if r.metricType == metricGauge {
+		desc := descriptionForPropertyNameHelpText(r.prefix, metricName, r.labels, metricHelp)
+
+		return &retGaugeCollector{desc, r.property, valueConverter}
 	}
 
 	panic("unknown metric type")
@@ -475,7 +460,7 @@ func (p *retMetricBuilder) build() retMetricCollector {
 
 type retMetricCollector interface {
 	describe(ch chan<- *prometheus.Desc)
-	collect(reply *routeros.Reply, ctx *collectorContext, labels []string) error
+	collect(reply *routeros.Reply, ctx *collectorContext) error
 }
 
 type retGaugeCollector struct {
@@ -489,7 +474,7 @@ func (r *retGaugeCollector) describe(ch chan<- *prometheus.Desc) {
 }
 
 func (r *retGaugeCollector) collect(reply *routeros.Reply,
-	ctx *collectorContext, labels []string,
+	ctx *collectorContext,
 ) error {
 	propertyVal := reply.Done.Map["ret"]
 	if propertyVal == "" {
@@ -500,12 +485,7 @@ func (r *retGaugeCollector) collect(reply *routeros.Reply,
 		propertyVal = propertyVal[:i]
 	}
 
-	converter := r.valueConverter
-	if converter == nil {
-		converter = convertToFloat
-	}
-
-	value, err := converter(propertyVal)
+	value, err := r.valueConverter(propertyVal)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"collector": ctx.collector,
@@ -518,9 +498,7 @@ func (r *retGaugeCollector) collect(reply *routeros.Reply,
 		return fmt.Errorf("parse error: %w", err)
 	}
 
-	labels = append([]string{ctx.device.Name, ctx.device.Address}, labels...)
-
-	ctx.ch <- prometheus.MustNewConstMetric(r.desc, prometheus.GaugeValue, value, labels...)
+	ctx.ch <- prometheus.MustNewConstMetric(r.desc, prometheus.GaugeValue, value, ctx.labels...)
 
 	return nil
 }

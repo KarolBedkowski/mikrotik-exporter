@@ -87,8 +87,8 @@ func (c *queueCollector) collectQueue(ctx *collectorContext) error {
 	}
 
 	re := reply.Re[0]
-	_ = c.monitorQueuedBytes.collect(re, ctx, nil)
-	_ = c.monitorQueuedPackets.collect(re, ctx, nil)
+	_ = c.monitorQueuedBytes.collect(re, ctx)
+	_ = c.monitorQueuedPackets.collect(re, ctx)
 
 	return nil
 }
@@ -105,9 +105,9 @@ func (c *queueCollector) collectSimpleQueue(ctx *collectorContext) error {
 	}
 
 	for _, reply := range reply.Re {
-		labels := []string{reply.Map["name"], reply.Map["queue"], reply.Map["comment"]}
+		ctx = ctx.withLabels(reply.Map["name"], reply.Map["queue"], reply.Map["comment"])
 		for _, m := range c.metrics {
-			_ = m.collect(reply, ctx, labels)
+			_ = m.collect(reply, ctx)
 		}
 	}
 

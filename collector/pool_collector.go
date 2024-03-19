@@ -85,5 +85,7 @@ func (c *poolCollector) collectForPool(ipVersion, topic, pool string, ctx *colle
 		return fmt.Errorf("get used pool %s/%s error: %w", topic, pool, err)
 	}
 
-	return c.usedCount.collect(reply, ctx, []string{ipVersion, pool})
+	ctx = ctx.withLabels(ipVersion, pool)
+
+	return c.usedCount.collect(reply, ctx)
 }

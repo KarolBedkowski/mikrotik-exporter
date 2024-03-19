@@ -47,9 +47,10 @@ func (c *wlanSTACollector) collect(ctx *collectorContext) error {
 	}
 
 	for _, re := range stats {
-		labels := []string{re.Map["interface"], re.Map["mac-address"]}
+		ctx = ctx.withLabels(re.Map["interface"], re.Map["mac-address"])
+
 		for _, c := range c.metrics {
-			c.collect(re, ctx, labels)
+			_ = c.collect(re, ctx)
 		}
 	}
 

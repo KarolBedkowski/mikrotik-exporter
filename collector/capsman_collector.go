@@ -79,10 +79,10 @@ func (c *capsmanCollector) fetch(ctx *collectorContext) ([]*proto.Sentence, erro
 }
 
 func (c *capsmanCollector) collectForStat(re *proto.Sentence, ctx *collectorContext) {
-	labels := []string{re.Map["interface"], re.Map["mac-address"], re.Map["ssid"]}
+	ctx = ctx.withLabels(re.Map["interface"], re.Map["mac-address"], re.Map["ssid"])
 
 	for _, m := range c.metrics {
-		_ = m.collect(re, ctx, labels)
+		_ = m.collect(re, ctx)
 	}
 }
 
@@ -99,11 +99,10 @@ func (c *capsmanCollector) collectRadiosProvisioned(ctx *collectorContext) error
 	}
 
 	for _, re := range reply.Re {
-		_ = c.radiosProvisionedDesc.collect(re, ctx,
-			[]string{
-				re.Map["interface"], re.Map["radio-mac"], re.Map["remote-cap-identity"],
-				re.Map["remote-cap-name"],
-			})
+		ctx = ctx.withLabels(re.Map["interface"], re.Map["radio-mac"], re.Map["remote-cap-identity"],
+			re.Map["remote-cap-name"])
+
+		_ = c.radiosProvisionedDesc.collect(re, ctx)
 	}
 
 	return nil

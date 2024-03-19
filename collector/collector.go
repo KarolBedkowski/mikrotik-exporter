@@ -236,7 +236,7 @@ func (c *collector) connectAndCollect(devCollector *deviceCollector, ch chan<- p
 
 	for _, coName := range devCollector.collectors {
 		co := c.collectors[coName]
-		ctx := &collectorContext{ch, &devCollector.device, client, coName}
+		ctx := newCollectorContext(ch, &devCollector.device, client, coName)
 		log.WithFields(ctx.fields()).Debug("collect")
 
 		if err = co.collect(ctx); err != nil {

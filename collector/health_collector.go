@@ -57,7 +57,7 @@ func (c *healthCollector) collect(ctx *collectorContext) error {
 		}
 
 		for _, c := range c.metrics {
-			_ = c.collect(re, ctx, nil)
+			_ = c.collect(re, ctx)
 		}
 	}
 

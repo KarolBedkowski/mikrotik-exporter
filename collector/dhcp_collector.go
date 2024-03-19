@@ -78,5 +78,7 @@ func (c *dhcpCollector) colllectForDHCPServer(ctx *collectorContext, dhcpServer 
 		return fmt.Errorf("get lease error: %w", err)
 	}
 
-	return c.leasesActiveCount.collect(reply, ctx, []string{dhcpServer})
+	ctx = ctx.withLabels(dhcpServer)
+
+	return c.leasesActiveCount.collect(reply, ctx)
 }

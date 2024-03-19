@@ -74,7 +74,9 @@ func (c *routesCollector) colllectCount(ipVersion, topic string, ctx *collectorC
 		return fmt.Errorf("read route error: %w", err)
 	}
 
-	return c.count.collect(reply, ctx, []string{ipVersion})
+	ctx = ctx.withLabels(ipVersion)
+
+	return c.count.collect(reply, ctx)
 }
 
 func (c *routesCollector) colllectCountProtcol(ipVersion, topic, protocol string, ctx *collectorContext) error {
@@ -90,5 +92,7 @@ func (c *routesCollector) colllectCountProtcol(ipVersion, topic, protocol string
 		return fmt.Errorf("read route %s error: %w", topic, err)
 	}
 
-	return c.countProtocol.collect(reply, ctx, []string{ipVersion, protocol})
+	ctx = ctx.withLabels(ipVersion, protocol)
+
+	return c.countProtocol.collect(reply, ctx)
 }

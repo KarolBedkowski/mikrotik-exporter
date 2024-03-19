@@ -72,9 +72,9 @@ func (c *monitorCollector) collectForMonitor(eths []string, ctx *collectorContex
 	}
 
 	for _, e := range reply.Re {
-		labels := []string{e.Map["name"]}
+		ctx = ctx.withLabels(e.Map["name"])
 		for _, c := range c.metrics {
-			_ = c.collect(e, ctx, labels)
+			_ = c.collect(e, ctx)
 		}
 	}
 

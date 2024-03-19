@@ -79,9 +79,10 @@ func (c *poeCollector) collectPOEMetricsForInterfaces(ifaces []string, ctx *coll
 
 	for _, se := range reply.Re {
 		if name, ok := se.Map["name"]; ok {
-			_ = c.current.collect(se, ctx, []string{name})
-			_ = c.voltage.collect(se, ctx, []string{name})
-			_ = c.power.collect(se, ctx, []string{name})
+			ctx = ctx.withLabels(name)
+			_ = c.current.collect(se, ctx)
+			_ = c.voltage.collect(se, ctx)
+			_ = c.power.collect(se, ctx)
 		}
 	}
 
