@@ -18,7 +18,10 @@ type dhcpLeaseCollector struct {
 }
 
 func newDHCPLCollector() routerOSCollector {
-	labelNames := []string{"name", "address", "activemacaddress", "server", "status", "activeaddress", "hostname"}
+	labelNames := []string{
+		"name", "address", "activemacaddress", "server", "status", "activeaddress",
+		"hostname", "comment",
+	}
 	c := &dhcpLeaseCollector{
 		leases: newPropertyGaugeMetric("dhcp", "status", labelNames).
 			withName("leases_metrics").withHelp("number of metrics").
@@ -47,7 +50,7 @@ func (c *dhcpLeaseCollector) collect(ctx *collectorContext) error {
 
 func (c *dhcpLeaseCollector) fetch(ctx *collectorContext) ([]*proto.Sentence, error) {
 	reply, err := ctx.client.Run("/ip/dhcp-server/lease/print", "?status=bound",
-		"=.proplist=active-mac-address,server,status,active-address,host-name")
+		"=.proplist=active-mac-address,server,status,active-address,host-name,comment")
 	if err != nil {
 		log.WithFields(log.Fields{
 			"device": ctx.device.Name,
@@ -62,11 +65,12 @@ func (c *dhcpLeaseCollector) fetch(ctx *collectorContext) ([]*proto.Sentence, er
 }
 
 func (c *dhcpLeaseCollector) collectMetric(ctx *collectorContext, re *proto.Sentence) {
+	// QuoteToASCII because of broken DHCP clients
+	hostname := strconv.QuoteToASCII(re.Map["host-name"])
+	hostname = hostname[1 : len(hostname)-1]
 	ctx = ctx.withLabels(
 		re.Map["active-mac-address"], re.Map["server"], re.Map["status"],
-		re.Map["active-address"],
-		// QuoteToASCII because of broken DHCP clients
-		strconv.QuoteToASCII(re.Map["host-name"]),
+		re.Map["active-address"], hostname, re.Map["comment"],
 	)
 
 	_ = c.leases.collect(re, ctx)
