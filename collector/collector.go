@@ -78,7 +78,7 @@ func NewCollector(cfg *config.Config) (prometheus.Collector, error) {
 		dc := &deviceCollector{d, featNames, nil, d.Srv != nil}
 		dcs = append(dcs, dc)
 
-		log.WithFields(log.Fields{"device": &dc}).Debug("new device")
+		log.WithFields(log.Fields{"device": &dc.device, "feat": featNames}).Debug("new device")
 	}
 
 	c := &collector{
@@ -392,12 +392,13 @@ func newCollectors(cfg *config.Config) map[string]routerOSCollector {
 	collectors := make(map[string]routerOSCollector)
 
 	uniqueNames := make(map[string]struct{})
-	for _, name := range cfg.Features.FeatureNames() {
-		uniqueNames[name] = struct{}{}
-	}
+
+	applyDefault := false
 
 	for _, dev := range cfg.Devices {
-		if dev.Profile != "" {
+		if dev.Profile == "" {
+			applyDefault = true
+		} else {
 			features, err := cfg.DeviceFeatures(dev.Name)
 			if err != nil {
 				panic(err)
@@ -406,6 +407,12 @@ func newCollectors(cfg *config.Config) map[string]routerOSCollector {
 			for _, name := range features.FeatureNames() {
 				uniqueNames[name] = struct{}{}
 			}
+		}
+	}
+
+	if applyDefault {
+		for _, name := range cfg.Features.FeatureNames() {
+			uniqueNames[name] = struct{}{}
 		}
 	}
 
