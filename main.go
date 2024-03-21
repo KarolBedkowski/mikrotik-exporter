@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -38,6 +39,8 @@ var (
 	user        = flag.String("user", "", "user for authentication with single device")
 	ver         = flag.Bool("version", false, "find the version of binary")
 	webConfig   = flag.String("web-config", "", "web config file to load")
+
+	listCollectors = flag.Bool("list-collectors", false, "list available collectors")
 
 	appVersion = "DEVELOPMENT"
 )
@@ -72,6 +75,20 @@ func main() {
 
 	if *ver {
 		fmt.Printf("\nVersion:   %s\n\n", appVersion)
+		os.Exit(0)
+	}
+
+	if *listCollectors {
+		fmt.Printf("\nAvailable collectors:\n")
+
+		collectors := collector.AvailableCollectors()
+		sort.Strings(collectors)
+
+		for _, c := range collectors {
+			fmt.Printf(" - %s\n", c)
+		}
+
+		fmt.Println()
 		os.Exit(0)
 	}
 
