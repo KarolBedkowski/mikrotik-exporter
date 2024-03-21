@@ -87,7 +87,7 @@ func splitStringToFloats(metric string, separator string) (float64, float64, err
 
 var ErrInvalidDuration = errors.New("invalid duration value sent to regex")
 
-func parseDuration(duration string) (float64, error) {
+func metricFromDuration(duration string) (float64, error) {
 	var totalDur time.Duration
 
 	reMatch := durationRegex.FindAllStringSubmatch(duration, -1)
@@ -113,11 +113,11 @@ func parseDuration(duration string) (float64, error) {
 
 type ValueConverter func(value string) (float64, error)
 
-func convertToFloat(value string) (float64, error) {
+func metricFromString(value string) (float64, error) {
 	return strconv.ParseFloat(value, 64)
 }
 
-func convertFromBool(value string) (float64, error) {
+func metricFromBool(value string) (float64, error) {
 	if value == "true" || value == "yes" {
 		return 1.0, nil
 	}
@@ -125,13 +125,11 @@ func convertFromBool(value string) (float64, error) {
 	return 0.0, nil
 }
 
-func convertToOne(value string) (float64, error) {
+func metricConstantValue(value string) (float64, error) {
 	_ = value
 
 	return 1.0, nil
 }
-
-type TXRXValueConverter func(value string) (float64, float64, error)
 
 type propertyMetricCollector interface {
 	describe(ch chan<- *prometheus.Desc)
@@ -215,7 +213,7 @@ func (p *propertyRxTxCollector) collect(reply *proto.Sentence,
 
 	tx, rx, err := p.valueConverter(propertyVal)
 	if err != nil {
-		return fmt.Errorf("parse %v for property %s error: %w", propertyVal, p.property, err)
+		return fmt.Errorf("collect %v for property %s error: %w", propertyVal, p.property, err)
 	}
 
 	labels := ctx.labels
@@ -233,6 +231,8 @@ const (
 	metricGauge
 	metricRxTx
 )
+
+type TXRXValueConverter func(value string) (float64, float64, error)
 
 type propertyMetricBuilder struct {
 	prefix             string
@@ -319,7 +319,7 @@ func (p *propertyMetricBuilder) build() propertyMetricCollector {
 	}
 
 	if p.valueConverter == nil {
-		p.valueConverter = convertToFloat
+		p.valueConverter = metricFromString
 	}
 
 	if p.rxTxValueConverter == nil {
@@ -340,10 +340,12 @@ func (p *propertyMetricBuilder) build() propertyMetricCollector {
 		desc := descriptionForPropertyNameHelpText(p.prefix, metricName, p.labels, metricHelp)
 
 		return &propertyCollector{desc, p.property, p.valueConverter, prometheus.GaugeValue}
+
 	case metricGauge:
 		desc := descriptionForPropertyNameHelpText(p.prefix, metricName, p.labels, metricHelp)
 
 		return &propertyCollector{desc, p.property, p.valueConverter, prometheus.GaugeValue}
+
 	case metricRxTx:
 		rxDesc := descriptionForPropertyNameHelpText(p.prefix, "rx_"+metricName, p.labels, metricHelp+" (RX)")
 		txDesc := descriptionForPropertyNameHelpText(p.prefix, "tx_"+metricName, p.labels, metricHelp+" (TX)")
@@ -373,7 +375,7 @@ func newRetGaugeMetric(prefix, property string, labels []string) *retMetricBuild
 	}
 }
 
-func (r *retMetricBuilder) withName(name string) *retMetricBuilder {
+func (r *retMetricBuilder) withName(name string) *retMetricBuilder { //nolint:unused
 	r.metricName = name
 
 	return r
@@ -385,7 +387,7 @@ func (r *retMetricBuilder) withHelp(help string) *retMetricBuilder {
 	return r
 }
 
-func (r *retMetricBuilder) withConverter(vc ValueConverter) *retMetricBuilder {
+func (r *retMetricBuilder) withConverter(vc ValueConverter) *retMetricBuilder { //nolint:unused
 	r.valueConverter = vc
 
 	return r
@@ -405,7 +407,7 @@ func (r *retMetricBuilder) build() retMetricCollector {
 		metricHelp = r.property + " for " + r.prefix
 	}
 
-	valueConverter := convertToFloat
+	valueConverter := metricFromString
 	if r.valueConverter != nil {
 		valueConverter = r.valueConverter
 	}
@@ -478,14 +480,14 @@ func (p propertyMetricList) collect(re *proto.Sentence, ctx *collectorContext) e
 
 	for _, m := range p {
 		if err := m.collect(re, ctx); err != nil {
-			errs = multierror.Append(errs, fmt.Errorf("collect error %w", err))
+			errs = multierror.Append(errs, err)
 		}
 	}
 
 	return errs.ErrorOrNil()
 }
 
-func extractPropertyFromReplay(reply *routeros.Reply, name string) []string {
+func extractPropertyFromReplay(reply *routeros.Reply, name string) []string { //nolint:unparam
 	values := make([]string, 0, len(reply.Re))
 
 	for _, re := range reply.Re {
@@ -493,4 +495,18 @@ func extractPropertyFromReplay(reply *routeros.Reply, name string) []string {
 	}
 
 	return values
+}
+
+func cleanHostName(hostname string) string {
+	if hostname != "" {
+		if hostname[0] == '"' {
+			hostname = hostname[1 : len(hostname)-1]
+		}
+
+		// QuoteToASCII because of broken DHCP clients
+		hostname = strconv.QuoteToASCII(hostname)
+		hostname = hostname[1 : len(hostname)-1]
+	}
+
+	return hostname
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/KarolBedkowski/routeros-go-client/proto"
+	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -22,7 +23,7 @@ func newResourceCollector() routerOSCollector {
 
 	labelNames := []string{"name", "address"}
 
-	collector := &resourceCollector{
+	return &resourceCollector{
 		metrics: propertyMetricList{
 			newPropertyGaugeMetric(prefix, "free-memory", labelNames).build(),
 			newPropertyGaugeMetric(prefix, "total-memory", labelNames).build(),
@@ -32,15 +33,13 @@ func newResourceCollector() routerOSCollector {
 			newPropertyGaugeMetric(prefix, "cpu-frequency", labelNames).build(),
 			newPropertyGaugeMetric(prefix, "bad-blocks", labelNames).build(),
 			newPropertyCounterMetric(prefix, "uptime", labelNames).
-				withName("uptime_seconds").withConverter(parseDuration).build(),
+				withName("uptime_seconds").withConverter(metricFromDuration).build(),
 			newPropertyGaugeMetric(prefix, "cpu-count", labelNames).build(),
 		},
 
 		versionDesc: description("system", "routeros", "Board and system version",
 			[]string{"name", "address", "board_name", "version"}),
 	}
-
-	return collector
 }
 
 func (c *resourceCollector) describe(ch chan<- *prometheus.Desc) {
@@ -49,29 +48,22 @@ func (c *resourceCollector) describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *resourceCollector) collect(ctx *collectorContext) error {
-	stats, err := c.fetch(ctx)
-	if err != nil {
-		return err
-	}
-
-	for _, re := range stats {
-		if err := c.collectForStat(re, ctx); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (c *resourceCollector) fetch(ctx *collectorContext) ([]*proto.Sentence, error) {
 	reply, err := ctx.client.Run("/system/resource/print",
 		"=.proplist=free-memory,total-memory,cpu-load,free-hdd-space,total-hdd-space,"+
 			"cpu-frequency,bad-blocks,uptime,cpu-count,board-name,version")
 	if err != nil {
-		return nil, fmt.Errorf("fetch resource error: %w", err)
+		return fmt.Errorf("fetch resource error: %w", err)
 	}
 
-	return reply.Re, nil
+	var errs *multierror.Error
+
+	for _, re := range reply.Re {
+		if err := c.collectForStat(re, ctx); err != nil {
+			errs = multierror.Append(errs, err)
+		}
+	}
+
+	return errs.ErrorOrNil()
 }
 
 func (c *resourceCollector) collectForStat(reply *proto.Sentence, ctx *collectorContext) error {
@@ -81,5 +73,9 @@ func (c *resourceCollector) collectForStat(reply *proto.Sentence, ctx *collector
 	ctx.ch <- prometheus.MustNewConstMetric(c.versionDesc, prometheus.GaugeValue, 1,
 		ctx.device.Name, ctx.device.Address, boardname, version)
 
-	return c.metrics.collect(reply, ctx)
+	if err := c.metrics.collect(reply, ctx); err != nil {
+		return fmt.Errorf("collect error: %w", err)
+	}
+
+	return nil
 }

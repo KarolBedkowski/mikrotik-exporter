@@ -19,11 +19,10 @@ type netwatchCollector struct {
 
 func newNetwatchCollector() routerOSCollector {
 	labelNames := []string{"name", "address", "host", "comment", "status"}
-	c := &netwatchCollector{
+
+	return &netwatchCollector{
 		statusDesc: descriptionForPropertyName("netwatch", "status", labelNames),
 	}
-
-	return c
 }
 
 func (c *netwatchCollector) describe(ch chan<- *prometheus.Desc) {
@@ -31,30 +30,21 @@ func (c *netwatchCollector) describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *netwatchCollector) collect(ctx *collectorContext) error {
-	stats, err := c.fetch(ctx)
+	reply, err := ctx.client.Run("/tool/netwatch/print", "?disabled=false",
+		"=.proplist=host,comment,status")
 	if err != nil {
-		return err
+		return fmt.Errorf("fetch netwatch error: %w", err)
 	}
 
 	var errs *multierror.Error
 
-	for _, re := range stats {
+	for _, re := range reply.Re {
 		if err := c.collectStatus(re.Map["host"], re.Map["comment"], re, ctx); err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("collect error %w", err))
 		}
 	}
 
 	return errs.ErrorOrNil()
-}
-
-func (c *netwatchCollector) fetch(ctx *collectorContext) ([]*proto.Sentence, error) {
-	reply, err := ctx.client.Run("/tool/netwatch/print", "?disabled=false",
-		"=.proplist=host,comment,status")
-	if err != nil {
-		return nil, fmt.Errorf("fetch netwatch error: %w", err)
-	}
-
-	return reply.Re, nil
 }
 
 var ErrUnexpectedStatus = errors.New("unexpected netwatch status value")

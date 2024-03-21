@@ -3,7 +3,6 @@ package collector
 import (
 	"fmt"
 
-	"github.com/KarolBedkowski/routeros-go-client/proto"
 	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -21,10 +20,10 @@ func newInterfaceCollector() routerOSCollector {
 
 	labelNames := []string{"name", "address", "interface", "type", "disabled", "comment", "running", "slave"}
 
-	collector := &interfaceCollector{
+	return &interfaceCollector{
 		metrics: propertyMetricList{
 			newPropertyGaugeMetric(prefix, "actual-mtu", labelNames).build(),
-			newPropertyGaugeMetric(prefix, "running", labelNames).withConverter(convertFromBool).build(),
+			newPropertyGaugeMetric(prefix, "running", labelNames).withConverter(metricFromBool).build(),
 			newPropertyCounterMetric(prefix, "rx-byte", labelNames).build(),
 			newPropertyCounterMetric(prefix, "tx-byte", labelNames).build(),
 			newPropertyCounterMetric(prefix, "rx-packet", labelNames).build(),
@@ -36,8 +35,6 @@ func newInterfaceCollector() routerOSCollector {
 			newPropertyCounterMetric(prefix, "link-downs", labelNames).build(),
 		},
 	}
-
-	return collector
 }
 
 func (c *interfaceCollector) describe(ch chan<- *prometheus.Desc) {
@@ -55,19 +52,15 @@ func (c *interfaceCollector) collect(ctx *collectorContext) error {
 	var errs *multierror.Error
 
 	for _, re := range reply.Re {
-		if err := c.collectForStat(re, ctx); err != nil {
+		ctx = ctx.withLabels(
+			re.Map["name"], re.Map["type"], re.Map["disabled"],
+			re.Map["comment"], re.Map["running"], re.Map["slave"],
+		)
+
+		if err := c.metrics.collect(re, ctx); err != nil {
 			errs = multierror.Append(errs, err)
 		}
 	}
 
 	return errs.ErrorOrNil()
-}
-
-func (c *interfaceCollector) collectForStat(reply *proto.Sentence, ctx *collectorContext) error {
-	ctx = ctx.withLabels(
-		reply.Map["name"], reply.Map["type"], reply.Map["disabled"], reply.Map["comment"],
-		reply.Map["running"], reply.Map["slave"],
-	)
-
-	return c.metrics.collect(reply, ctx)
 }

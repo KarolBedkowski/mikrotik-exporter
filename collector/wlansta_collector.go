@@ -20,7 +20,7 @@ func newWlanSTACollector() routerOSCollector {
 
 	labelNames := []string{"name", "address", "interface", "mac_address"}
 
-	collector := &wlanSTACollector{
+	return &wlanSTACollector{
 		metrics: propertyMetricList{
 			newPropertyGaugeMetric(prefix, "signal-to-noise", labelNames).build(),
 			newPropertyGaugeMetric(prefix, "signal-strength", labelNames).build(),
@@ -29,8 +29,6 @@ func newWlanSTACollector() routerOSCollector {
 			newPropertyRxTxMetric(prefix, "frames", labelNames).build(),
 		},
 	}
-
-	return collector
 }
 
 func (c *wlanSTACollector) describe(ch chan<- *prometheus.Desc) {

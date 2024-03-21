@@ -30,7 +30,7 @@ func newLteCollector() routerOSCollector {
 			newPropertyGaugeMetric(prefix, "rsrq", labelNames).build(),
 			newPropertyGaugeMetric(prefix, "sinr", labelNames).build(),
 			newPropertyGaugeMetric(prefix, "status", labelNames).
-				withName("connected").withConverter(convertFromLteStatus).build(),
+				withName("connected").withConverter(metricFromLTEStatus).build(),
 		},
 	}
 }
@@ -85,7 +85,7 @@ func (c *lteCollector) collectForInterface(iface string, ctx *collectorContext) 
 	return nil
 }
 
-func convertFromLteStatus(value string) (float64, error) {
+func metricFromLTEStatus(value string) (float64, error) {
 	if value == "connected" {
 		return 1.0, nil
 	}

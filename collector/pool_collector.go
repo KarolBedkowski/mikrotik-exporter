@@ -19,12 +19,11 @@ func newPoolCollector() routerOSCollector {
 	const prefix = "ip_pool"
 
 	labelNames := []string{"name", "address", "ip_version", "pool"}
-	c := &poolCollector{
+
+	return &poolCollector{
 		usedCount: newRetGaugeMetric(prefix, "pool_used", labelNames).
 			withHelp("number of used IP/prefixes in a pool").build(),
 	}
-
-	return c
 }
 
 func (c *poolCollector) describe(ch chan<- *prometheus.Desc) {
@@ -32,18 +31,23 @@ func (c *poolCollector) describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *poolCollector) collect(ctx *collectorContext) error {
-	return c.collectForIPVersion("4", "ip", ctx)
+	return multierror.Append(nil,
+		c.collectTopic("4", "ip", ctx),
+		c.collectTopic("6", "ipv6", ctx),
+	).ErrorOrNil()
 }
 
-func (c *poolCollector) collectForIPVersion(ipVersion, topic string, ctx *collectorContext) error {
-	names, err := c.fetchPoolNames(ipVersion, topic, ctx)
+func (c *poolCollector) collectTopic(ipVersion, topic string, ctx *collectorContext) error {
+	reply, err := ctx.client.Run("/"+topic+"/pool/print", "=.proplist=name")
 	if err != nil {
-		return err
+		return fmt.Errorf("fetch %s pool error: %w", topic, err)
 	}
+
+	pools := extractPropertyFromReplay(reply, "name")
 
 	var errs *multierror.Error
 
-	for _, n := range names {
+	for _, n := range pools {
 		if err := c.collectForPool(ipVersion, topic, n, ctx); err != nil {
 			errs = multierror.Append(errs, err)
 		}
@@ -52,27 +56,16 @@ func (c *poolCollector) collectForIPVersion(ipVersion, topic string, ctx *collec
 	return errs.ErrorOrNil()
 }
 
-func (c *poolCollector) fetchPoolNames(ipVersion, topic string, ctx *collectorContext) ([]string, error) {
-	_ = ipVersion
-
-	reply, err := ctx.client.Run("/"+topic+"/pool/print", "=.proplist=name")
-	if err != nil {
-		return nil, fmt.Errorf("get pool %s error: %w", topic, err)
-	}
-
-	return extractPropertyFromReplay(reply, "name"), nil
-}
-
 func (c *poolCollector) collectForPool(ipVersion, topic, pool string, ctx *collectorContext) error {
 	reply, err := ctx.client.Run("/"+topic+"/pool/used/print", "?pool="+pool, "=count-only=")
 	if err != nil {
-		return fmt.Errorf("fetch used pool %s/%s error: %w", topic, pool, err)
+		return fmt.Errorf("fetch used ip pool %s error: %w", pool, err)
 	}
 
 	ctx = ctx.withLabels(ipVersion, pool)
 
 	if err := c.usedCount.collect(reply, ctx); err != nil {
-		return fmt.Errorf("collect pool %s/%s error: %w", topic, pool, err)
+		return fmt.Errorf("collect ip pool %s error: %w", pool, err)
 	}
 
 	return nil

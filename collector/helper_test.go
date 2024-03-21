@@ -123,7 +123,7 @@ func TestParseDuration(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		f, err := parseDuration(testCase.input)
+		f, err := metricFromDuration(testCase.input)
 
 		switch testCase.hasError {
 		case true:

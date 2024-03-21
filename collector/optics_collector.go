@@ -26,9 +26,9 @@ func newOpticsCollector() routerOSCollector {
 	return &opticsCollector{
 		metrics: propertyMetricList{
 			newPropertyGaugeMetric(prefix, "sfp-rx-loss", labelNames).
-				withHelp("RX status").withConverter(convertFromBool).build(),
+				withHelp("RX status").withConverter(metricFromBool).build(),
 			newPropertyGaugeMetric(prefix, "sfp-tx-fault", labelNames).
-				withHelp("TX status").withConverter(convertFromBool).build(),
+				withHelp("TX status").withConverter(metricFromBool).build(),
 			newPropertyGaugeMetric(prefix, "sfp-rx-power", labelNames).
 				withHelp("RX power in dBM").build(),
 			newPropertyGaugeMetric(prefix, "sfp-tx-power", labelNames).

@@ -25,7 +25,7 @@ func newCapsmanCollector() routerOSCollector {
 
 	collector := &capsmanCollector{
 		metrics: propertyMetricList{
-			newPropertyCounterMetric(prefix, "uptime", labelNames).withConverter(parseDuration).
+			newPropertyCounterMetric(prefix, "uptime", labelNames).withConverter(metricFromDuration).
 				withName("uptime_seconds").build(),
 			newPropertyGaugeMetric(prefix, "tx-signal", labelNames).build(),
 			newPropertyGaugeMetric(prefix, "rx-signal", labelNames).build(),
@@ -35,7 +35,7 @@ func newCapsmanCollector() routerOSCollector {
 
 		radiosProvisionedDesc: newPropertyGaugeMetric("capsman", "provisioned", radioLabelNames).
 			withName("radio_provisioned").withHelp("Status of provision remote radios").
-			withConverter(convertFromBool).
+			withConverter(metricFromBool).
 			build(),
 	}
 
@@ -48,17 +48,10 @@ func (c *capsmanCollector) describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *capsmanCollector) collect(ctx *collectorContext) error {
-	var errs *multierror.Error
-
-	if err := c.collectRegistrations(ctx); err != nil {
-		errs = multierror.Append(errs, err)
-	}
-
-	if err := c.collectRadiosProvisioned(ctx); err != nil {
-		errs = multierror.Append(errs, err)
-	}
-
-	return errs.ErrorOrNil()
+	return multierror.Append(nil,
+		c.collectRegistrations(ctx),
+		c.collectRadiosProvisioned(ctx),
+	).ErrorOrNil()
 }
 
 func (c *capsmanCollector) collectRegistrations(ctx *collectorContext) error {

@@ -3,6 +3,7 @@ package collector
 import (
 	"fmt"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -22,15 +23,13 @@ func newRoutesCollector() routerOSCollector {
 
 	labelNames := []string{"name", "address", "ip_version"}
 
-	c := &routesCollector{
+	return &routesCollector{
 		count: newRetGaugeMetric("", prefix, labelNames).
 			withHelp("number of routes in RIB").build(),
 		countProtocol: newRetGaugeMetric(prefix, "protocol", append(labelNames, "protocol")).
 			withHelp("number of routes per protocol in RIB").build(),
 		protocols: []string{"bgp", "static", "ospf", "dynamic", "connect", "rip"},
 	}
-
-	return c
 }
 
 func (c *routesCollector) describe(ch chan<- *prometheus.Desc) {
@@ -39,11 +38,10 @@ func (c *routesCollector) describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *routesCollector) collect(ctx *collectorContext) error {
-	if err := c.colllectForIPVersion("4", "ip", ctx); err != nil {
-		return err
-	}
-
-	return c.colllectForIPVersion("6", "ip", ctx)
+	return multierror.Append(nil,
+		c.colllectForIPVersion("4", "ip", ctx),
+		c.colllectForIPVersion("6", "ipv6", ctx),
+	).ErrorOrNil()
 }
 
 func (c *routesCollector) colllectForIPVersion(ipVersion, topic string, ctx *collectorContext) error {
@@ -69,7 +67,7 @@ func (c *routesCollector) colllectCount(ipVersion, topic string, ctx *collectorC
 	ctx = ctx.withLabels(ipVersion)
 
 	if err := c.count.collect(reply, ctx); err != nil {
-		return fmt.Errorf("collect router %s error: %w", topic, err)
+		return fmt.Errorf("collect router %s %s error: %w", topic, ipVersion, err)
 	}
 
 	return nil
@@ -84,7 +82,7 @@ func (c *routesCollector) colllectCountProtcol(ipVersion, topic, protocol string
 	ctx = ctx.withLabels(ipVersion, protocol)
 
 	if err := c.countProtocol.collect(reply, ctx); err != nil {
-		return fmt.Errorf("collect count protocol %s/%s error: %w", topic, protocol, err)
+		return fmt.Errorf("collect count protocol %s %s error: %w", topic, protocol, err)
 	}
 
 	return nil

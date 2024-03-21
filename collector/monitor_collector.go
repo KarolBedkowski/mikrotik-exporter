@@ -23,9 +23,9 @@ func newMonitorCollector() routerOSCollector {
 
 	c := &monitorCollector{
 		metrics: propertyMetricList{
-			newPropertyGaugeMetric(prefix, "status", labelNames).withConverter(convertFromStatus).build(),
-			newPropertyGaugeMetric(prefix, "rate", labelNames).withConverter(convertFromRate).build(),
-			newPropertyGaugeMetric(prefix, "full-duplex", labelNames).withConverter(convertFromBool).build(),
+			newPropertyGaugeMetric(prefix, "status", labelNames).withConverter(metricFromLinkStatus).build(),
+			newPropertyGaugeMetric(prefix, "rate", labelNames).withConverter(metricFromRate).build(),
+			newPropertyGaugeMetric(prefix, "full-duplex", labelNames).withConverter(metricFromBool).build(),
 		},
 	}
 
@@ -70,7 +70,7 @@ func (c *monitorCollector) collectForMonitor(eths []string, ctx *collectorContex
 	return errs.ErrorOrNil()
 }
 
-func convertFromStatus(value string) (float64, error) {
+func metricFromLinkStatus(value string) (float64, error) {
 	if value == "link-ok" {
 		return 1.0, nil
 	}
@@ -78,7 +78,7 @@ func convertFromStatus(value string) (float64, error) {
 	return 0.0, nil
 }
 
-func convertFromRate(v string) (float64, error) {
+func metricFromRate(v string) (float64, error) {
 	value := 0
 
 	switch v {

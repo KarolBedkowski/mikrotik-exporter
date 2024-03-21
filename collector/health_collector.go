@@ -20,7 +20,7 @@ func newhealthCollector() routerOSCollector {
 
 	labelNames := []string{"name", "address"}
 
-	c := &healthCollector{
+	return &healthCollector{
 		metrics: propertyMetricList{
 			newPropertyGaugeMetric(prefix, "voltage", labelNames).
 				withHelp("Input voltage to the RouterOS board, in volts").build(),
@@ -30,8 +30,6 @@ func newhealthCollector() routerOSCollector {
 				withHelp("Temperature of RouterOS CPU, in degrees Celsius").build(),
 		},
 	}
-
-	return c
 }
 
 func (c *healthCollector) describe(ch chan<- *prometheus.Desc) {

@@ -24,20 +24,18 @@ func newQueueCollector() routerOSCollector {
 
 	const sqPrefix = "simple_queue"
 
-	collector := &queueCollector{
+	return &queueCollector{
 		monitorQueuedBytes:   newPropertyGaugeMetric("queue", "queued-bytes", monitorLabelNames).build(),
 		monitorQueuedPackets: newPropertyGaugeMetric("queue", "queued-packets", monitorLabelNames).build(),
 
 		metrics: propertyMetricList{
-			newPropertyGaugeMetric(sqPrefix, "disabled", labelNames).withConverter(convertFromBool).build(),
-			newPropertyRxTxMetric(sqPrefix, "packets", labelNames).withRxTxConverter(queueTxRxConverter).build(),
-			newPropertyRxTxMetric(sqPrefix, "bytes", labelNames).withRxTxConverter(queueTxRxConverter).build(),
-			newPropertyRxTxMetric(sqPrefix, "queued-packets", labelNames).withRxTxConverter(queueTxRxConverter).build(),
-			newPropertyRxTxMetric(sqPrefix, "queued-bytes", labelNames).withRxTxConverter(queueTxRxConverter).build(),
+			newPropertyGaugeMetric(sqPrefix, "disabled", labelNames).withConverter(metricFromBool).build(),
+			newPropertyRxTxMetric(sqPrefix, "packets", labelNames).withRxTxConverter(metricFromQueueTxRx).build(),
+			newPropertyRxTxMetric(sqPrefix, "bytes", labelNames).withRxTxConverter(metricFromQueueTxRx).build(),
+			newPropertyRxTxMetric(sqPrefix, "queued-packets", labelNames).withRxTxConverter(metricFromQueueTxRx).build(),
+			newPropertyRxTxMetric(sqPrefix, "queued-bytes", labelNames).withRxTxConverter(metricFromQueueTxRx).build(),
 		},
 	}
-
-	return collector
 }
 
 func (c *queueCollector) describe(ch chan<- *prometheus.Desc) {
@@ -47,14 +45,13 @@ func (c *queueCollector) describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *queueCollector) collect(ctx *collectorContext) error {
-	if err := c.collectQueue(ctx); err != nil {
-		return err
-	}
-
-	return c.collectSimpleQueue(ctx)
+	return multierror.Append(nil,
+		c.collectQueue(ctx),
+		c.collectSimpleQueue(ctx),
+	).ErrorOrNil()
 }
 
-func queueTxRxConverter(value string) (float64, float64, error) {
+func metricFromQueueTxRx(value string) (float64, float64, error) {
 	return splitStringToFloats(value, "/")
 }
 
@@ -96,7 +93,7 @@ func (c *queueCollector) collectSimpleQueue(ctx *collectorContext) error {
 		ctx = ctx.withLabels(name, queue, reply.Map["comment"])
 
 		if err := c.metrics.collect(reply, ctx); err != nil {
-			errs = multierror.Append(errs, fmt.Errorf("collect %v/%verror %w", name, queue, err))
+			errs = multierror.Append(errs, fmt.Errorf("collect %v/%v error: %w", name, queue, err))
 		}
 	}
 

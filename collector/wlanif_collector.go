@@ -24,7 +24,7 @@ func newWlanIFCollector() routerOSCollector {
 
 	labelNames := []string{"name", "address", "interface", "channel"}
 
-	collector := &wlanIFCollector{
+	return &wlanIFCollector{
 		metrics: propertyMetricList{
 			newPropertyGaugeMetric(prefix, "registered-clients", labelNames).build(),
 			newPropertyGaugeMetric(prefix, "noise-floor", labelNames).build(),
@@ -33,8 +33,6 @@ func newWlanIFCollector() routerOSCollector {
 		frequencyDesc: description(prefix, "frequency", "WiFi frequency",
 			[]string{"name", "address", "interface", "freqidx"}),
 	}
-
-	return collector
 }
 
 func (c *wlanIFCollector) describe(ch chan<- *prometheus.Desc) {

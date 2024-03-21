@@ -33,10 +33,12 @@ func (c *dhcpv6Collector) describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *dhcpv6Collector) collect(ctx *collectorContext) error {
-	names, err := c.fetchDHCPServerNames(ctx)
-	if err != nil || len(names) == 0 {
-		return err
+	reply, err := ctx.client.Run("/ipv6/dhcp-server/print", "=.proplist=name")
+	if err != nil {
+		return fmt.Errorf("fetch dhcp6 server names error: %w", err)
 	}
+
+	names := extractPropertyFromReplay(reply, "name")
 
 	var errs *multierror.Error
 
@@ -49,17 +51,9 @@ func (c *dhcpv6Collector) collect(ctx *collectorContext) error {
 	return errs.ErrorOrNil()
 }
 
-func (c *dhcpv6Collector) fetchDHCPServerNames(ctx *collectorContext) ([]string, error) {
-	reply, err := ctx.client.Run("/ipv6/dhcp-server/print", "=.proplist=name")
-	if err != nil {
-		return nil, fmt.Errorf("fetch dhcp6 server names error: %w", err)
-	}
-
-	return extractPropertyFromReplay(reply, "name"), nil
-}
-
 func (c *dhcpv6Collector) colllectForDHCPServer(ctx *collectorContext, dhcpServer string) error {
-	reply, err := ctx.client.Run("/ipv6/dhcp-server/binding/print", "?server="+dhcpServer, "=count-only=")
+	reply, err := ctx.client.Run("/ipv6/dhcp-server/binding/print",
+		"?server="+dhcpServer, "=count-only=")
 	if err != nil {
 		return fmt.Errorf("get dhcpv6 bindings error: %w", err)
 	}

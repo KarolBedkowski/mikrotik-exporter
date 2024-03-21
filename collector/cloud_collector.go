@@ -18,11 +18,9 @@ type cloudCollector struct {
 func newCloudCollector() routerOSCollector {
 	labelNames := []string{"name", "address", "status"}
 
-	c := &cloudCollector{
+	return &cloudCollector{
 		ifaceStatusDesc: descriptionForPropertyName("cloud", "status", labelNames),
 	}
-
-	return c
 }
 
 func (c *cloudCollector) describe(ch chan<- *prometheus.Desc) {

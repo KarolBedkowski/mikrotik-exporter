@@ -2,7 +2,6 @@ package collector
 
 import (
 	"fmt"
-	"strconv"
 
 	"github.com/KarolBedkowski/routeros-go-client/proto"
 	"github.com/hashicorp/go-multierror"
@@ -22,13 +21,12 @@ func newDHCPLCollector() routerOSCollector {
 		"name", "address", "activemacaddress", "server", "status", "activeaddress",
 		"hostname", "comment",
 	}
-	c := &dhcpLeaseCollector{
+
+	return &dhcpLeaseCollector{
 		leases: newPropertyGaugeMetric("dhcp", "status", labelNames).
 			withName("leases_metrics").withHelp("number of metrics").
-			withConverter(convertToOne).build(),
+			withConverter(metricConstantValue).build(),
 	}
-
-	return c
 }
 
 func (c *dhcpLeaseCollector) describe(ch chan<- *prometheus.Desc) {
@@ -54,20 +52,10 @@ func (c *dhcpLeaseCollector) collect(ctx *collectorContext) error {
 }
 
 func (c *dhcpLeaseCollector) collectMetric(ctx *collectorContext, re *proto.Sentence) error {
-	hostname := re.Map["host-name"]
-	if hostname != "" {
-		if hostname[0] == '"' {
-			hostname = hostname[1 : len(hostname)-1]
-		}
-
-		// QuoteToASCII because of broken DHCP clients
-		hostname = strconv.QuoteToASCII(hostname)
-		hostname = hostname[1 : len(hostname)-1]
-	}
-
 	ctx = ctx.withLabels(
 		re.Map["active-mac-address"], re.Map["server"], re.Map["status"],
-		re.Map["active-address"], hostname, re.Map["comment"],
+		re.Map["active-address"], cleanHostName(re.Map["host-name"]),
+		re.Map["comment"],
 	)
 
 	if err := c.leases.collect(re, ctx); err != nil {
