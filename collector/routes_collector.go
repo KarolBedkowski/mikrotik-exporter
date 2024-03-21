@@ -38,10 +38,13 @@ func (c *routesCollector) describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *routesCollector) collect(ctx *collectorContext) error {
-	return multierror.Append(nil,
-		c.colllectForIPVersion("4", "ip", ctx),
-		c.colllectForIPVersion("6", "ipv6", ctx),
-	).ErrorOrNil()
+	errs := multierror.Append(nil, c.colllectForIPVersion("4", "ip", ctx))
+
+	if !ctx.device.IPv6Disabled {
+		errs = multierror.Append(errs, c.colllectForIPVersion("6", "ipv6", ctx))
+	}
+
+	return errs.ErrorOrNil()
 }
 
 func (c *routesCollector) colllectForIPVersion(ipVersion, topic string, ctx *collectorContext) error {

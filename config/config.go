@@ -70,6 +70,8 @@ type Device struct {
 	Port     string     `yaml:"port"`
 	Profile  string     `yaml:"profile,omitempty"`
 
+	IPv6Disabled bool `yaml:"ipv6_disabled"`
+
 	Timeout  uint `yaml:"timeout,omitempty"`
 	TLS      bool `yaml:"tls,omitempty"`
 	Insecure bool `yaml:"insecure,omitempty"`

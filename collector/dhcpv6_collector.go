@@ -33,6 +33,10 @@ func (c *dhcpv6Collector) describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *dhcpv6Collector) collect(ctx *collectorContext) error {
+	if ctx.device.IPv6Disabled {
+		return nil
+	}
+
 	reply, err := ctx.client.Run("/ipv6/dhcp-server/print", "=.proplist=name")
 	if err != nil {
 		return fmt.Errorf("fetch dhcp6 server names error: %w", err)
