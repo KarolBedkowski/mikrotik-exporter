@@ -29,7 +29,6 @@ devices:
 
 
 features:
-  bgp: true
   conntrack: true
   dhcp: true
   dhcpv6: true
@@ -47,7 +46,6 @@ features:
 
 profiles:
   all:
-    bgp: true
     capsman: true
     conntrack: true
     dhcp: true

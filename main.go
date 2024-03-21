@@ -47,7 +47,6 @@ func init() {
 }
 
 func main() {
-	flag.Bool("with-bgp", false, "retrieves BGP routing infrormation")
 	flag.Bool("with-capsman", false, "retrieves capsman station metrics")
 	flag.Bool("with-cloud", false, "retrieves cloud routing infrormation")
 	flag.Bool("with-conntrack", false, "retrieves connection tracking metrics")

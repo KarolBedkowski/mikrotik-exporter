@@ -21,7 +21,6 @@ func TestShouldParse(t *testing.T) {
 
 	assertDevice("test1", "192.168.1.1", "foo", "bar", &c.Devices[0], t)
 	assertDevice("test2", "192.168.2.1", "test", "123", &c.Devices[1], t)
-	assertFeature("BGP", c.Features, t)
 	assertFeature("Conntrack", c.Features, t)
 	assertFeature("DHCP", c.Features, t)
 	assertFeature("DHCPv6", c.Features, t)
@@ -39,7 +38,6 @@ func TestShouldParse(t *testing.T) {
 	assertFeature("Firmware", *f, t)
 	assertFeature("Health", *f, t)
 	assertFeature("Monitor", *f, t)
-	assertNotFeature("BGP", *f, t)
 
 	if dev, err := c.FindDevice("testDns"); err != nil {
 		t.Fatalf("could not find device: %v", err)

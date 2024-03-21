@@ -26,7 +26,6 @@ devices:
 
 # default features (profile)
 features:
-  bgp: true
   cloud: true
   conntrack: true
   dhcp: true

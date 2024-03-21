@@ -79,7 +79,6 @@ devices:
     password: password_to_all_dns_routers
 
 features:
-  bgp: true
   dhcp: true
   dhcpv6: true
   dhcpl: true
