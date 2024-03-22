@@ -45,6 +45,12 @@ var (
 		[]string{"device"},
 		nil,
 	)
+	scrapeErrorsDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "scrape", "errors"),
+		"mikrotik_exporter: number of failed collection per device",
+		[]string{"device"},
+		nil,
+	)
 )
 
 type deviceCollector struct {
@@ -93,6 +99,7 @@ func NewCollector(cfg *config.Config) (prometheus.Collector, error) {
 func (c *collector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- scrapeDurationDesc
 	ch <- scrapeSuccessDesc
+	ch <- scrapeErrorsDesc
 
 	for _, co := range c.collectors {
 		co.describe(ch)
@@ -224,7 +231,10 @@ func (c *collector) connectAndCollect(devCollector *deviceCollector, ch chan<- p
 
 	defer c.closeConnection(devCollector)
 
-	var result *multierror.Error
+	var (
+		result    *multierror.Error
+		numFailed int
+	)
 
 	for _, coName := range devCollector.collectors {
 		co := c.collectors[coName]
@@ -233,8 +243,12 @@ func (c *collector) connectAndCollect(devCollector *deviceCollector, ch chan<- p
 
 		if err = co.collect(ctx); err != nil {
 			result = multierror.Append(result, fmt.Errorf("collecting by %s error: %w", coName, err))
+			numFailed++
 		}
 	}
+
+	ch <- prometheus.MustNewConstMetric(scrapeErrorsDesc, prometheus.GaugeValue,
+		float64(numFailed), devCollector.device.Name)
 
 	if err := result.ErrorOrNil(); err != nil {
 		return fmt.Errorf("collect error: %w", err)
