@@ -11,7 +11,12 @@ v2.0.0 2024-03-16
 * feat: tls and timeout is configurable per device
 * feat: add support for web-config (i.e. configure exporter tls and 
   authentication) 
+* feat: add --list-collectors flag 
+* feat: allow user to disable by device configuration collecting IPv6 related
+  metrics
+* feat: new exporter metric: mikrotik_scrape_errors
 * dev: refactor, clean code; update deps.
+* remove broken bgp collector
 
 Updated collectors 
 * dhcpl: remove unstable labels from metrics 
@@ -21,6 +26,8 @@ Updated collectors
 * system: add cpu-freq, bad-block, cpu-count metrics
 * resource: separate metrics for border name and version
 * ltr, queue, wlanif: handle empty api response 
+* ipsec: fix collector, add peers metrics
+
 
 New collectors:
 * collector for queue/simplequeue
