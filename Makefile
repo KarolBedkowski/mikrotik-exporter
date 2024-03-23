@@ -1,7 +1,18 @@
 
-VERSION=`git describe --always`
+VERSION=`git describe --always | cut -d- -f1`
+DATE=`date +%Y%m%d%H%M%S`
+USER=`whoami`
+BRANCH=`git branch | grep '^\*' | cut -d ' ' -f 2`
+REVISION=`git describe --always`
 
-LDFLAGS=-X main.appVersion=$(VERSION)
+
+LDFLAGS=\
+	-X github.com/prometheus/common/version.Version=$(VERSION) \
+	-X github.com/prometheus/common/version.Revision='$(REVISION) \
+	-X github.com/prometheus/common/version.BuildDate=$(DATE) \
+	-X github.com/prometheus/common/version.BuildUser=$(USER) \
+	-X github.com/prometheus/common/version.Branch=$(BRANCH)
+
 
 .PHONY: build
 build:

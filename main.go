@@ -18,6 +18,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/collectors/version"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	common_version "github.com/prometheus/common/version"
 	"github.com/prometheus/exporter-toolkit/web"
 	log "github.com/sirupsen/logrus"
 )
@@ -41,8 +42,6 @@ var (
 	webConfig   = flag.String("web-config", "", "web config file to load")
 
 	listCollectors = flag.Bool("list-collectors", false, "list available collectors")
-
-	appVersion = "DEVELOPMENT"
 )
 
 func init() {
@@ -74,7 +73,7 @@ func main() {
 	flag.Parse()
 
 	if *ver {
-		fmt.Printf("\nVersion:   %s\n\n", appVersion)
+		fmt.Printf("\nVersion:   %s\n\n", common_version.Print("mikrotik_exporter"))
 		os.Exit(0)
 	}
 
