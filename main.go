@@ -181,15 +181,27 @@ func startServer(cfg *config.Config, logger log.Logger) {
 		_, _ = w.Write([]byte("ok"))
 	})
 
-	http.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte(`<html>
-			<head><title>Mikrotik Exporter</title></head>
-			<body>
-			<h1>Mikrotik Exporter</h1>
-			<p><a href="` + *metricsPath + `">Metrics</a></p>
-			</body>
-			</html>`))
-	})
+	if *metricsPath != "/" {
+		landingConfig := web.LandingConfig{
+			Name:        "Mikrotik Exporter",
+			Description: "Prometheus Mikrotik Exporter",
+			Version:     common_version.Info(),
+			Links: []web.LandingLinks{
+				{
+					Address: *metricsPath,
+					Text:    "Metrics",
+				},
+			},
+		}
+
+		landingPage, err := web.NewLandingPage(landingConfig)
+		if err != nil {
+			level.Error(logger).Log("err", err)
+			os.Exit(1)
+		}
+
+		http.Handle("/", landingPage)
+	}
 
 	serverTimeout := time.Duration(2**timeout) * time.Second
 	srv := &http.Server{
