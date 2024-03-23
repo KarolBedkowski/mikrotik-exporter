@@ -4,8 +4,8 @@ import (
 	"mikrotik-exporter/config"
 
 	routeros "github.com/KarolBedkowski/routeros-go-client"
+	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
-	log "github.com/sirupsen/logrus"
 )
 
 type collectorContext struct {
@@ -14,11 +14,13 @@ type collectorContext struct {
 	client    *routeros.Client
 	collector string
 
+	logger log.Logger
+
 	labels []string
 }
 
 func newCollectorContext(ch chan<- prometheus.Metric, device *config.Device, client *routeros.Client,
-	collector string,
+	collector string, logger log.Logger,
 ) *collectorContext {
 	return &collectorContext{
 		ch:        ch,
@@ -26,13 +28,7 @@ func newCollectorContext(ch chan<- prometheus.Metric, device *config.Device, cli
 		client:    client,
 		collector: collector,
 		labels:    []string{device.Name, device.Address},
-	}
-}
-
-func (c collectorContext) fields() log.Fields {
-	return log.Fields{
-		"device":    c.device.Name,
-		"collector": c.collector,
+		logger:    log.With(logger, "device", device.Name, "collector", collector),
 	}
 }
 
@@ -43,5 +39,6 @@ func (c *collectorContext) withLabels(labels ...string) *collectorContext {
 		client:    c.client,
 		collector: c.collector,
 		labels:    append([]string{c.device.Name, c.device.Address}, labels...),
+		logger:    c.logger,
 	}
 }

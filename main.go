@@ -14,13 +14,15 @@ import (
 	"mikrotik-exporter/collector"
 	"mikrotik-exporter/config"
 
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/collectors/version"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	common_version "github.com/prometheus/common/version"
 	"github.com/prometheus/exporter-toolkit/web"
-	log "github.com/sirupsen/logrus"
 )
 
 // single device can be defined via CLI flags, multiple via config file.
@@ -29,7 +31,7 @@ var (
 	configFile  = flag.String("config-file", "", "config file to load")
 	device      = flag.String("device", "", "single device to monitor")
 	insecure    = flag.Bool("insecure", false, "skips verification of server certificate when using TLS (not recommended)")
-	logFormat   = flag.String("log-format", "json", "logformat text or json (default json)")
+	logFormat   = flag.String("log-format", "text", "log format text or json (default text)")
 	logLevel    = flag.String("log-level", "info", "log level")
 	metricsPath = flag.String("path", "/metrics", "path to answer requests on")
 	password    = flag.String("password", "", "password for authentication for single device")
@@ -91,29 +93,13 @@ func main() {
 		os.Exit(0)
 	}
 
-	configureLog()
+	logger := config.ConfigureLog(*logLevel, *logFormat)
+	cfg := loadConfig(logger)
 
-	cfg := loadConfig()
-
-	startServer(cfg)
+	startServer(cfg, logger)
 }
 
-func configureLog() {
-	ll, err := log.ParseLevel(*logLevel)
-	if err != nil {
-		panic(err)
-	}
-
-	log.SetLevel(ll)
-
-	if *logFormat == "text" {
-		log.SetFormatter(&log.TextFormatter{})
-	} else {
-		log.SetFormatter(&log.JSONFormatter{})
-	}
-}
-
-func loadConfig() *config.Config {
+func loadConfig(logger log.Logger) *config.Config {
 	var (
 		cfg *config.Config
 		err error
@@ -126,7 +112,8 @@ func loadConfig() *config.Config {
 	}
 
 	if err != nil {
-		log.Errorf("Could not load config: %v", err)
+		_ = level.Error(logger).Log("msg", "could not load config", "error", err)
+
 		os.Exit(3)
 	}
 
@@ -182,10 +169,10 @@ func loadConfigFromFlags() (*config.Config, error) {
 	}, nil
 }
 
-func startServer(cfg *config.Config) {
-	h, err := createMetricsHandler(cfg)
+func startServer(cfg *config.Config, logger log.Logger) {
+	h, err := createMetricsHandler(cfg, logger)
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 
 	http.Handle(*metricsPath, h)
@@ -209,14 +196,14 @@ func startServer(cfg *config.Config) {
 		ReadTimeout:  serverTimeout,
 		WriteTimeout: serverTimeout,
 	}
-	log.Fatal(web.ListenAndServe(srv, &web.FlagConfig{
+	level.Error(logger).Log(web.ListenAndServe(srv, &web.FlagConfig{
 		WebListenAddresses: &[]string{*port},
 		WebConfigFile:      webConfig,
-	}, loggerBridge{}))
+	}, logger))
 }
 
-func createMetricsHandler(cfg *config.Config) (http.Handler, error) {
-	collector, err := collector.NewCollector(cfg)
+func createMetricsHandler(cfg *config.Config, logger log.Logger) (http.Handler, error) {
+	collector, err := collector.NewCollector(cfg, logger)
 	if err != nil {
 		return nil, fmt.Errorf("create collector error: %w", err)
 	}
@@ -237,7 +224,7 @@ func createMetricsHandler(cfg *config.Config) (http.Handler, error) {
 
 	return promhttp.HandlerFor(registry,
 		promhttp.HandlerOpts{
-			ErrorLog:      log.New(),
+			ErrorLog:      loggerBridge{logger},
 			ErrorHandling: promhttp.ContinueOnError,
 		}), nil
 }
@@ -251,16 +238,22 @@ func updateConfigFromFlags(cfg *config.Config) {
 	})
 }
 
-type loggerBridge struct{}
-
-func (l loggerBridge) Log(keyvals ...interface{}) error {
-	fields := make(log.Fields, len(keyvals)/2)
-
-	for idx := 0; idx < len(keyvals); idx += 2 {
-		fields[fmt.Sprintf("%s", keyvals[idx])] = keyvals[idx+1]
-	}
-
-	log.WithFields(fields).Info("web")
-
-	return nil
+type loggerBridge struct {
+	logger log.Logger
 }
+
+func (l loggerBridge) Println(v ...interface{}) {
+	_ = level.Info(l.logger).Log(v...)
+}
+
+// func (l loggerBridge) Log(keyvals ...interface{}) error {
+// 	fields := make(log.Fields, len(keyvals)/2)
+
+// 	for idx := 0; idx < len(keyvals); idx += 2 {
+// 		fields[fmt.Sprintf("%s", keyvals[idx])] = keyvals[idx+1]
+// 	}
+
+// 	log.WithFields(fields).Info("web")
+
+// 	return nil
+// }

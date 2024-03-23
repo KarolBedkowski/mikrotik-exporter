@@ -16,10 +16,11 @@ import (
 	"mikrotik-exporter/config"
 
 	"github.com/KarolBedkowski/routeros-go-client"
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	"github.com/hashicorp/go-multierror"
 	"github.com/miekg/dns"
 	"github.com/prometheus/client_golang/prometheus"
-	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -63,14 +64,13 @@ type deviceCollector struct {
 type collector struct {
 	devices    []*deviceCollector
 	collectors map[string]routerOSCollector
+	logger     log.Logger
 	connLock   sync.Mutex
 }
 
 // NewCollector creates a collector instance.
-func NewCollector(cfg *config.Config) (prometheus.Collector, error) {
-	log.WithFields(log.Fields{
-		"numDevices": len(cfg.Devices),
-	}).Info("setting up collector for devices")
+func NewCollector(cfg *config.Config, logger log.Logger) (prometheus.Collector, error) {
+	_ = level.Info(logger).Log("msg", "setting up collector for devices", "numDevices", len(cfg.Devices))
 
 	dcs := make([]*deviceCollector, 0, len(cfg.Devices))
 
@@ -84,12 +84,14 @@ func NewCollector(cfg *config.Config) (prometheus.Collector, error) {
 		dc := &deviceCollector{d, featNames, nil, d.Srv != nil}
 		dcs = append(dcs, dc)
 
-		log.WithFields(log.Fields{"device": &dc.device, "feat": featNames}).Debug("new device")
+		_ = level.Debug(logger).Log("msg", "new device", "device",
+			fmt.Sprintf("%#v", &dc.device), "feat", fmt.Sprintf("%v", featNames))
 	}
 
 	c := &collector{
 		devices:    dcs,
-		collectors: newCollectors(cfg),
+		collectors: newCollectors(cfg, logger),
+		logger:     logger,
 	}
 
 	return c, nil
@@ -113,7 +115,7 @@ func (c *collector) srvToDevice(devCol *deviceCollector) []*deviceCollector {
 
 	if dev.Srv.DNS != nil {
 		dnsServer = net.JoinHostPort(dev.Srv.DNS.Address, strconv.Itoa(dev.Srv.DNS.Port))
-		log.WithFields(log.Fields{"DNSServer": dnsServer}).Info("Custom DNS config detected")
+		_ = level.Info(c.logger).Log("msg", "Custom DNS config detected", "DNSServer", dnsServer)
 	}
 
 	dnsMsg := new(dns.Msg)
@@ -141,10 +143,7 @@ func (c *collector) srvToDevice(devCol *deviceCollector) []*deviceCollector {
 			ndc := &deviceCollector{d, devCol.collectors, nil, true}
 
 			if err := c.getIdentity(ndc); err != nil {
-				log.WithFields(log.Fields{
-					"device": devCol.device.Name,
-					"error":  err,
-				}).Error("error fetching identity")
+				_ = level.Error(c.logger).Log("msg", "error fetching identity", "device", devCol.device.Name, "error", err)
 			}
 
 			realDevices = append(realDevices, ndc)
@@ -162,7 +161,7 @@ func (c *collector) Collect(ch chan<- prometheus.Metric) {
 
 	for _, dc := range c.devices {
 		if dc.isSrv {
-			log.WithFields(log.Fields{"SRV": dc.device.Srv.Record}).Info("SRV configuration detected")
+			_ = level.Info(c.logger).Log("msg", "SRV configuration detected", "SRV", dc.device.Srv.Record)
 			realDevices = append(realDevices, c.srvToDevice(dc)...)
 		} else {
 			realDevices = append(realDevices, dc)
@@ -203,18 +202,19 @@ func (c *collector) getIdentity(devCol *deviceCollector) error {
 
 func (c *collector) collectForDevice(d *deviceCollector, ch chan<- prometheus.Metric) {
 	name := d.device.Name
-	log.WithFields(log.Fields{"device": name}).Debug("start collect for device")
+	logger := log.With(c.logger, "device", name)
+	_ = level.Debug(logger).Log("msg", "start collect for device")
 
 	begin := time.Now()
-	err := c.connectAndCollect(d, ch)
+	err := c.connectAndCollect(d, ch, logger)
 	duration := time.Since(begin)
 
 	success := 0.0
 
 	if err != nil {
-		log.WithField("device", name).Errorf("ERROR: collector failed after %fs: %s", duration.Seconds(), err)
+		_ = level.Error(logger).Log("msg", fmt.Sprintf("ERROR: collector failed after %fs", duration.Seconds()), "err", err)
 	} else {
-		log.WithField("device", name).Debugf("OK: collector succeeded after %fs.", duration.Seconds())
+		_ = level.Debug(logger).Log("msg", fmt.Sprintf("OK: collector succeeded after %fs", duration.Seconds()))
 
 		success = 1
 	}
@@ -223,7 +223,9 @@ func (c *collector) collectForDevice(d *deviceCollector, ch chan<- prometheus.Me
 	ch <- prometheus.MustNewConstMetric(scrapeSuccessDesc, prometheus.GaugeValue, success, name)
 }
 
-func (c *collector) connectAndCollect(devCollector *deviceCollector, ch chan<- prometheus.Metric) error {
+func (c *collector) connectAndCollect(devCollector *deviceCollector, ch chan<- prometheus.Metric,
+	logger log.Logger,
+) error {
 	client, err := c.getConnection(devCollector)
 	if err != nil {
 		return fmt.Errorf("connect error: %w", err)
@@ -238,8 +240,8 @@ func (c *collector) connectAndCollect(devCollector *deviceCollector, ch chan<- p
 
 	for _, coName := range devCollector.collectors {
 		co := c.collectors[coName]
-		ctx := newCollectorContext(ch, &devCollector.device, client, coName)
-		log.WithFields(ctx.fields()).Debug("collect")
+		ctx := newCollectorContext(ch, &devCollector.device, client, coName, logger)
+		_ = level.Debug(logger).Log("msg", "collect", "device", devCollector.device.Name, "collector", coName)
 
 		if err = co.collect(ctx); err != nil {
 			result = multierror.Append(result, fmt.Errorf("collecting by %s error: %w", coName, err))
@@ -272,7 +274,7 @@ func (c *collector) getConnection(devCol *deviceCollector) (*routeros.Client, er
 		devCol.cl.Close()
 		devCol.cl = nil
 
-		log.WithFields(log.Fields{"device": devCol.device.Name}).Info("reconnecting")
+		_ = level.Info(c.logger).Log("msg", "reconnecting", "device", devCol.device.Name)
 	}
 
 	client, err := c.connect(&devCol.device)
@@ -366,21 +368,22 @@ func (c *collector) login(device *config.Device, client *routeros.Client) error 
 }
 
 func (c *collector) connect(dev *config.Device) (*routeros.Client, error) {
-	log.WithField("device", dev.Name).Debug("trying to Dial")
+	logger := log.With(c.logger, "device", dev.Name)
+	_ = level.Debug(logger).Log("msg", "trying to Dial")
 
 	conn, err := c.dial(dev)
 	if err != nil {
 		return nil, err
 	}
 
-	log.WithField("device", dev.Name).Debug("done dialing")
+	_ = level.Debug(logger).Log("msg", "done dialing")
 
 	client, err := routeros.NewClient(conn)
 	if err != nil {
 		return nil, fmt.Errorf("create client error: %w", err)
 	}
 
-	log.WithField("device", dev.Name).Debug("got client, trying to login")
+	_ = level.Debug(logger).Log("msg", "got client, trying to login")
 
 	if err := c.login(dev, client); err != nil {
 		client.Close()
@@ -388,7 +391,7 @@ func (c *collector) connect(dev *config.Device) (*routeros.Client, error) {
 		return nil, err
 	}
 
-	log.WithField("device", dev.Name).Debug("done wth login")
+	_ = level.Debug(logger).Log("msg", "done wth login")
 
 	return client, nil
 }
@@ -402,7 +405,7 @@ func challengeResponse(cha []byte, password string) string {
 	return fmt.Sprintf("00%x", h.Sum(nil))
 }
 
-func newCollectors(cfg *config.Config) map[string]routerOSCollector {
+func newCollectors(cfg *config.Config, logger log.Logger) map[string]routerOSCollector {
 	collectors := make(map[string]routerOSCollector)
 
 	uniqueNames := make(map[string]struct{})
@@ -432,7 +435,7 @@ func newCollectors(cfg *config.Config) map[string]routerOSCollector {
 
 	for k := range uniqueNames {
 		collectors[k] = instanateCollector(k)
-		log.WithFields(log.Fields{"collector": k}).Debug("new collector")
+		level.Debug(logger).Log("msg", "new collector", "collector", k)
 	}
 
 	return collectors

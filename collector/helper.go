@@ -9,11 +9,13 @@ import (
 	"strings"
 	"time"
 
+	"mikrotik-exporter/config"
+
 	"github.com/KarolBedkowski/routeros-go-client"
 	"github.com/KarolBedkowski/routeros-go-client/proto"
+	"github.com/go-kit/log/level"
 	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
-	log "github.com/sirupsen/logrus"
 )
 
 var (
@@ -152,12 +154,8 @@ func (p *propertyCollector) collect(reply *proto.Sentence,
 ) error {
 	propertyVal, ok := reply.Map[p.property]
 	if !ok {
-		log.WithFields(log.Fields{
-			"collector": ctx.collector,
-			"device":    ctx.device.Name,
-			"property":  p.property,
-			"labels":    ctx.labels,
-		}).Debugf("property %s value not found", p.property)
+		_ = level.Debug(ctx.logger).Log("msg", fmt.Sprintf("property %s value not found", p.property),
+			"property", p.property, "labels", ctx.labels)
 
 		return nil
 	}
@@ -197,12 +195,8 @@ func (p *propertyRxTxCollector) collect(reply *proto.Sentence,
 ) error {
 	propertyVal, ok := reply.Map[p.property]
 	if !ok {
-		log.WithFields(log.Fields{
-			"collector": ctx.collector,
-			"device":    ctx.device.Name,
-			"property":  p.property,
-			"labels":    ctx.labels,
-		}).Debugf("property %s not found value", p.property)
+		_ = level.Debug(ctx.logger).Log("msg", fmt.Sprintf("property %s value not found", p.property),
+			"property", p.property, "labels", ctx.labels)
 
 		return nil
 	}
@@ -326,14 +320,14 @@ func (p *propertyMetricBuilder) build() propertyMetricCollector {
 		p.rxTxValueConverter = splitStringToFloatsOnComma
 	}
 
-	log.WithFields(log.Fields{
-		"name":     metricName,
-		"help":     metricHelp,
-		"prefix":   p.prefix,
-		"labels":   p.labels,
-		"type":     p.metricType,
-		"property": p.property,
-	}).Debug("build metric")
+	level.Debug(config.GlobalLogger).Log("msg", "build metric",
+		"name", metricName,
+		"help", metricHelp,
+		"prefix", p.prefix,
+		"labels", fmt.Sprintf("%v", p.labels),
+		"type", p.metricType,
+		"property", p.property,
+	)
 
 	switch p.metricType {
 	case metricCounter:
@@ -412,14 +406,14 @@ func (r *retMetricBuilder) build() retMetricCollector {
 		valueConverter = r.valueConverter
 	}
 
-	log.WithFields(log.Fields{
-		"name":     metricName,
-		"help":     metricHelp,
-		"prefix":   r.prefix,
-		"labels":   r.labels,
-		"type":     r.metricType,
-		"property": r.property,
-	}).Debug("build metric")
+	level.Debug(config.GlobalLogger).Log("msg", "build metric",
+		"name", metricName,
+		"help", metricHelp,
+		"prefix", r.prefix,
+		"labels", fmt.Sprintf("%v", r.labels),
+		"type", r.metricType,
+		"property", r.property,
+	)
 
 	if r.metricType == metricGauge {
 		desc := descriptionForPropertyNameHelpText(r.prefix, metricName, r.labels, metricHelp)

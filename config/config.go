@@ -4,8 +4,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"slices"
 	"strings"
+
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
+	"github.com/go-kit/log/term"
 
 	"github.com/hashicorp/go-multierror"
 	yaml "gopkg.in/yaml.v2"
@@ -15,6 +20,8 @@ var (
 	ErrUnknownDevice  = errors.New("unknown device")
 	ErrUnknownProfile = errors.New("unknown profile")
 )
+
+var GlobalLogger log.Logger
 
 type UnknownFeatureError string
 
@@ -144,4 +151,60 @@ func (c *Config) FindDevice(deviceName string) (*Device, error) {
 	}
 
 	return nil, ErrUnknownDevice
+}
+
+func ConfigureLog(logLevel, logFormat string) log.Logger {
+	var logger log.Logger
+
+	w := log.NewSyncWriter(os.Stdout)
+
+	if logFormat == "json" {
+		logger = term.NewLogger(w, log.NewJSONLogger, logColorFunc)
+	} else {
+		fmt.Println("isTerm", term.IsTerminal(w))
+		logger = term.NewLogger(w, log.NewLogfmtLogger, logColorFunc)
+	}
+
+	logger = level.NewFilter(logger, level.Allow(level.ParseDefault(logLevel, level.DebugValue())))
+	logger = log.With(logger, "caller", log.DefaultCaller)
+
+	nlogger := log.LoggerFunc(func(keyvals ...interface{}) error {
+		if err := logger.Log(keyvals...); err != nil {
+			panic(err)
+		}
+
+		return nil
+	})
+
+	GlobalLogger = nlogger
+
+	return nlogger
+}
+
+func logColorFunc(keyvals ...interface{}) term.FgBgColor {
+	for i := 0; i < len(keyvals)-1; i += 2 {
+		if keyvals[i] != "level" {
+			continue
+		}
+
+		level, ok := keyvals[i+1].(level.Value)
+		if !ok {
+			continue
+		}
+
+		switch level.String() {
+		case "debug":
+			return term.FgBgColor{Fg: term.DarkGray}
+		case "info":
+			return term.FgBgColor{Fg: term.Gray}
+		case "warn":
+			return term.FgBgColor{Fg: term.Yellow}
+		case "error":
+			return term.FgBgColor{Fg: term.Red}
+		default:
+			return term.FgBgColor{}
+		}
+	}
+
+	return term.FgBgColor{}
 }
