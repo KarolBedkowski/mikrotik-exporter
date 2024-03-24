@@ -44,6 +44,8 @@ var (
 	webConfig   = flag.String("web-config", "", "web config file to load")
 
 	listCollectors = flag.Bool("list-collectors", false, "list available collectors")
+
+	withAllCollectors = flag.Bool("with-all", false, "enable all collectors")
 )
 
 func init() {
@@ -140,6 +142,15 @@ func loadConfigFromFlags() (*config.Config, error) {
 		return nil, ErrMissingParam
 	}
 
+	features := make(config.Features)
+	features["resource"] = true
+
+	if *withAllCollectors {
+		for _, c := range collectors.AvailableCollectorsNames() {
+			features[c] = true
+		}
+	}
+
 	return &config.Config{
 		Devices: []config.Device{
 			{
@@ -153,7 +164,7 @@ func loadConfigFromFlags() (*config.Config, error) {
 				Timeout:  *timeout,
 			},
 		},
-		Features: make(config.Features),
+		Features: features,
 	}, nil
 }
 
@@ -234,7 +245,7 @@ func createMetricsHandler(cfg *config.Config, logger log.Logger) (http.Handler, 
 
 func updateConfigFromFlags(cfg *config.Config) {
 	flag.Visit(func(f *flag.Flag) {
-		if strings.HasPrefix(f.Name, "with-") {
+		if strings.HasPrefix(f.Name, "with-") && f.Name != "with-all" {
 			feat := strings.TrimPrefix(f.Name, "with-")
 			cfg.Features[feat] = true
 		}
