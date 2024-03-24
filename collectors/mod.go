@@ -86,7 +86,7 @@ func NewCollectorContext(ch chan<- prometheus.Metric, device *config.Device, cli
 		client:    client,
 		collector: collector,
 		labels:    []string{device.Name, device.Address},
-		logger:    log.With(logger, "device", device.Name, "collector", collector),
+		logger:    logger,
 	}
 }
 

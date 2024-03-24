@@ -166,7 +166,7 @@ func ConfigureLog(logLevel, logFormat string) log.Logger {
 	}
 
 	logger = level.NewFilter(logger, level.Allow(level.ParseDefault(logLevel, level.DebugValue())))
-	logger = log.With(logger, "caller", log.DefaultCaller)
+	logger = log.WithSuffix(logger, "caller", log.DefaultCaller)
 
 	nlogger := log.LoggerFunc(func(keyvals ...interface{}) error {
 		if err := logger.Log(keyvals...); err != nil {
