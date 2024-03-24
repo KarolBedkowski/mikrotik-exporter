@@ -37,7 +37,7 @@ var (
 	password    = flag.String("password", "", "password for authentication for single device")
 	deviceport  = flag.String("deviceport", "8728", "port for single device")
 	port        = flag.String("port", ":9436", "port number to listen on")
-	timeout     = flag.Uint("timeout", DefaultTimeout, "timeout when connecting to devices")
+	timeout     = flag.Uint("timeout", config.DefaultTimeout, "timeout when connecting to devices")
 	tlsEnabled  = flag.Bool("tls", false, "use tls to connect to routers")
 	user        = flag.String("user", "", "user for authentication with single device")
 	ver         = flag.Bool("version", false, "find the version of binary")

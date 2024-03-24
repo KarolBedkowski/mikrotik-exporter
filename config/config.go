@@ -16,6 +16,16 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
+const (
+	Namespace  = "mikrotik"
+	APIPort    = "8728"
+	APIPortTLS = "8729"
+	DNSPort    = 53
+
+	// DefaultTimeout defines the default timeout when connecting to a router.
+	DefaultTimeout = 5
+)
+
 var (
 	ErrUnknownDevice  = errors.New("unknown device")
 	ErrUnknownProfile = errors.New("unknown profile")

@@ -18,13 +18,14 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-const (
-	namespace = "mikrotik"
-)
-
 var (
 	durationRegex *regexp.Regexp
 	durationParts [6]time.Duration
+)
+
+var (
+	ErrEmptyValue      = errors.New("empty value")
+	ErrInvalidDuration = errors.New("invalid duration value sent to regex")
 )
 
 func init() {
@@ -46,7 +47,7 @@ func descriptionForPropertyNameHelpText(prefix, property string,
 	labelNames []string, helpText string,
 ) *prometheus.Desc {
 	return prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, prefix, metricStringCleanup(property)),
+		prometheus.BuildFQName(config.Namespace, prefix, metricStringCleanup(property)),
 		helpText,
 		labelNames,
 		nil,
@@ -55,14 +56,12 @@ func descriptionForPropertyNameHelpText(prefix, property string,
 
 func description(prefix, name, helpText string, labelNames []string) *prometheus.Desc {
 	return prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, prefix, metricStringCleanup(name)),
+		prometheus.BuildFQName(config.Namespace, prefix, metricStringCleanup(name)),
 		helpText,
 		labelNames,
 		nil,
 	)
 }
-
-var ErrEmptyValue = errors.New("empty value")
 
 func splitStringToFloatsOnComma(metric string) (float64, float64, error) {
 	return splitStringToFloats(metric, ",")
@@ -90,8 +89,6 @@ func splitStringToFloats(metric string, separator string) (float64, float64, err
 
 	return m1, m2, nil
 }
-
-var ErrInvalidDuration = errors.New("invalid duration value sent to regex")
 
 func metricFromDuration(duration string) (float64, error) {
 	var totalDur time.Duration
