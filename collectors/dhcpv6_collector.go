@@ -1,4 +1,4 @@
-package collector
+package collectors
 
 import (
 	"fmt"
@@ -15,7 +15,7 @@ type dhcpv6Collector struct {
 	bindingCount retMetricCollector
 }
 
-func newDHCPv6Collector() routerOSCollector {
+func newDHCPv6Collector() RouterOSCollector {
 	const prefix = "dhcpv6"
 
 	labelNames := []string{"name", "address", "server"}
@@ -28,11 +28,11 @@ func newDHCPv6Collector() routerOSCollector {
 	return c
 }
 
-func (c *dhcpv6Collector) describe(ch chan<- *prometheus.Desc) {
+func (c *dhcpv6Collector) Describe(ch chan<- *prometheus.Desc) {
 	c.bindingCount.describe(ch)
 }
 
-func (c *dhcpv6Collector) collect(ctx *collectorContext) error {
+func (c *dhcpv6Collector) Collect(ctx *CollectorContext) error {
 	if ctx.device.IPv6Disabled {
 		return nil
 	}
@@ -55,7 +55,7 @@ func (c *dhcpv6Collector) collect(ctx *collectorContext) error {
 	return errs.ErrorOrNil()
 }
 
-func (c *dhcpv6Collector) colllectForDHCPServer(ctx *collectorContext, dhcpServer string) error {
+func (c *dhcpv6Collector) colllectForDHCPServer(ctx *CollectorContext, dhcpServer string) error {
 	reply, err := ctx.client.Run("/ipv6/dhcp-server/binding/print",
 		"?server="+dhcpServer, "=count-only=")
 	if err != nil {

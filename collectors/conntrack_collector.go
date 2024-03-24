@@ -1,4 +1,4 @@
-package collector
+package collectors
 
 import (
 	"fmt"
@@ -17,7 +17,7 @@ type conntrackCollector struct {
 	maxEntries   propertyMetricCollector
 }
 
-func newConntrackCollector() routerOSCollector {
+func newConntrackCollector() RouterOSCollector {
 	const prefix = "conntrack"
 
 	labelNames := []string{"name", "address"}
@@ -30,12 +30,12 @@ func newConntrackCollector() routerOSCollector {
 	}
 }
 
-func (c *conntrackCollector) describe(ch chan<- *prometheus.Desc) {
+func (c *conntrackCollector) Describe(ch chan<- *prometheus.Desc) {
 	c.totalEntries.describe(ch)
 	c.maxEntries.describe(ch)
 }
 
-func (c *conntrackCollector) collect(ctx *collectorContext) error {
+func (c *conntrackCollector) Collect(ctx *CollectorContext) error {
 	reply, err := ctx.client.Run("/ip/firewall/connection/tracking/print",
 		"=.proplist=total-entries,max-entries")
 	if err != nil {

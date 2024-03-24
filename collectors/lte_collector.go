@@ -1,4 +1,4 @@
-package collector
+package collectors
 
 import (
 	"fmt"
@@ -18,7 +18,7 @@ type lteCollector struct {
 	metrics propertyMetricList
 }
 
-func newLteCollector() routerOSCollector {
+func newLteCollector() RouterOSCollector {
 	const prefix = "lte_interface"
 
 	labelNames := []string{"name", "address", "interface", "cell_id", "primary_band"}
@@ -35,11 +35,11 @@ func newLteCollector() routerOSCollector {
 	}
 }
 
-func (c *lteCollector) describe(ch chan<- *prometheus.Desc) {
+func (c *lteCollector) Describe(ch chan<- *prometheus.Desc) {
 	c.metrics.describe(ch)
 }
 
-func (c *lteCollector) collect(ctx *collectorContext) error {
+func (c *lteCollector) Collect(ctx *CollectorContext) error {
 	reply, err := ctx.client.Run("/interface/lte/print", "?disabled=false", "=.proplist=name")
 	if err != nil {
 		return fmt.Errorf("fetch lte interface names error: %w", err)
@@ -58,7 +58,7 @@ func (c *lteCollector) collect(ctx *collectorContext) error {
 	return errs.ErrorOrNil()
 }
 
-func (c *lteCollector) collectForInterface(iface string, ctx *collectorContext) error {
+func (c *lteCollector) collectForInterface(iface string, ctx *CollectorContext) error {
 	reply, err := ctx.client.Run("/interface/lte/monitor", "=number="+iface, "=once=",
 		"=.proplist=current-cellid,primary-band,rssi,rsrp,rsrq,sinr,status")
 	if err != nil {

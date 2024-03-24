@@ -1,4 +1,4 @@
-package collector
+package collectors
 
 import (
 	"fmt"
@@ -17,7 +17,7 @@ type monitorCollector struct {
 	metrics propertyMetricList
 }
 
-func newMonitorCollector() routerOSCollector {
+func newMonitorCollector() RouterOSCollector {
 	labelNames := []string{"name", "address", "interface"}
 
 	const prefix = "monitor"
@@ -33,11 +33,11 @@ func newMonitorCollector() routerOSCollector {
 	return c
 }
 
-func (c *monitorCollector) describe(ch chan<- *prometheus.Desc) {
+func (c *monitorCollector) Describe(ch chan<- *prometheus.Desc) {
 	c.metrics.describe(ch)
 }
 
-func (c *monitorCollector) collect(ctx *collectorContext) error {
+func (c *monitorCollector) Collect(ctx *CollectorContext) error {
 	reply, err := ctx.client.Run("/interface/ethernet/print", "=.proplist=name")
 	if err != nil {
 		return fmt.Errorf("fetch ethernet error: %w", err)
@@ -48,7 +48,7 @@ func (c *monitorCollector) collect(ctx *collectorContext) error {
 	return c.collectForMonitor(eths, ctx)
 }
 
-func (c *monitorCollector) collectForMonitor(eths []string, ctx *collectorContext) error {
+func (c *monitorCollector) collectForMonitor(eths []string, ctx *CollectorContext) error {
 	reply, err := ctx.client.Run("/interface/ethernet/monitor",
 		"=numbers="+strings.Join(eths, ","),
 		"=once=",

@@ -1,4 +1,4 @@
-package collector
+package collectors
 
 import (
 	"fmt"
@@ -17,7 +17,7 @@ type dhcpLeaseCollector struct {
 	leases propertyMetricCollector
 }
 
-func newDHCPLCollector() routerOSCollector {
+func newDHCPLCollector() RouterOSCollector {
 	labelNames := []string{
 		"name", "address", "activemacaddress", "server", "status", "activeaddress",
 		"hostname", "comment",
@@ -30,11 +30,11 @@ func newDHCPLCollector() routerOSCollector {
 	}
 }
 
-func (c *dhcpLeaseCollector) describe(ch chan<- *prometheus.Desc) {
+func (c *dhcpLeaseCollector) Describe(ch chan<- *prometheus.Desc) {
 	c.leases.describe(ch)
 }
 
-func (c *dhcpLeaseCollector) collect(ctx *collectorContext) error {
+func (c *dhcpLeaseCollector) Collect(ctx *CollectorContext) error {
 	reply, err := ctx.client.Run("/ip/dhcp-server/lease/print", "?status=bound",
 		"=.proplist=active-mac-address,server,status,active-address,host-name,comment")
 	if err != nil {
@@ -52,7 +52,7 @@ func (c *dhcpLeaseCollector) collect(ctx *collectorContext) error {
 	return errs.ErrorOrNil()
 }
 
-func (c *dhcpLeaseCollector) collectMetric(ctx *collectorContext, re *proto.Sentence) error {
+func (c *dhcpLeaseCollector) collectMetric(ctx *CollectorContext, re *proto.Sentence) error {
 	ctx = ctx.withLabels(
 		re.Map["active-mac-address"], re.Map["server"], re.Map["status"],
 		re.Map["active-address"], cleanHostName(re.Map["host-name"]),

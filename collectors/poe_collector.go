@@ -1,4 +1,4 @@
-package collector
+package collectors
 
 import (
 	"fmt"
@@ -16,7 +16,7 @@ type poeCollector struct {
 	metrics propertyMetricList
 }
 
-func newPOECollector() routerOSCollector {
+func newPOECollector() RouterOSCollector {
 	const prefix = "poe"
 
 	labelNames := []string{"name", "address", "interface"}
@@ -33,11 +33,11 @@ func newPOECollector() routerOSCollector {
 	}
 }
 
-func (c *poeCollector) describe(ch chan<- *prometheus.Desc) {
+func (c *poeCollector) Describe(ch chan<- *prometheus.Desc) {
 	c.metrics.describe(ch)
 }
 
-func (c *poeCollector) collect(ctx *collectorContext) error {
+func (c *poeCollector) Collect(ctx *CollectorContext) error {
 	reply, err := ctx.client.Run("/interface/ethernet/poe/print", "=.proplist=name")
 	if err != nil {
 		return fmt.Errorf("fetch ethernet poe error: %w", err)
@@ -55,7 +55,7 @@ func (c *poeCollector) collect(ctx *collectorContext) error {
 	return c.collectPOEMetricsForInterfaces(ifaces, ctx)
 }
 
-func (c *poeCollector) collectPOEMetricsForInterfaces(ifaces []string, ctx *collectorContext) error {
+func (c *poeCollector) collectPOEMetricsForInterfaces(ifaces []string, ctx *CollectorContext) error {
 	reply, err := ctx.client.Run("/interface/ethernet/poe/monitor",
 		"=numbers="+strings.Join(ifaces, ","), "=once=",
 		"=.proplist=poe-out-current,poe-out-voltage,poe-out-power")

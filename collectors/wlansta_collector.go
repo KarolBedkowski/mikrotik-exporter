@@ -1,4 +1,4 @@
-package collector
+package collectors
 
 import (
 	"fmt"
@@ -16,7 +16,7 @@ type wlanSTACollector struct {
 	metrics propertyMetricList
 }
 
-func newWlanSTACollector() routerOSCollector {
+func newWlanSTACollector() RouterOSCollector {
 	const prefix = "wlan_station"
 
 	labelNames := []string{"name", "address", "interface", "mac_address"}
@@ -32,11 +32,11 @@ func newWlanSTACollector() routerOSCollector {
 	}
 }
 
-func (c *wlanSTACollector) describe(ch chan<- *prometheus.Desc) {
+func (c *wlanSTACollector) Describe(ch chan<- *prometheus.Desc) {
 	c.metrics.describe(ch)
 }
 
-func (c *wlanSTACollector) collect(ctx *collectorContext) error {
+func (c *wlanSTACollector) Collect(ctx *CollectorContext) error {
 	reply, err := ctx.client.Run("/interface/wireless/registration-table/print",
 		"=.proplist=interface,mac-address,signal-to-noise,signal-strength,packets,bytes,frames")
 	if err != nil {

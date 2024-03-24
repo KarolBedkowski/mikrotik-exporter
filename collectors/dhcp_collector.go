@@ -1,4 +1,4 @@
-package collector
+package collectors
 
 import (
 	"fmt"
@@ -15,7 +15,7 @@ type dhcpCollector struct {
 	leasesActiveCount retMetricCollector
 }
 
-func newDHCPCollector() routerOSCollector {
+func newDHCPCollector() RouterOSCollector {
 	const prefix = "dhcp"
 
 	labelNames := []string{"name", "address", "server"}
@@ -26,11 +26,11 @@ func newDHCPCollector() routerOSCollector {
 	}
 }
 
-func (c *dhcpCollector) describe(ch chan<- *prometheus.Desc) {
+func (c *dhcpCollector) Describe(ch chan<- *prometheus.Desc) {
 	c.leasesActiveCount.describe(ch)
 }
 
-func (c *dhcpCollector) collect(ctx *collectorContext) error {
+func (c *dhcpCollector) Collect(ctx *CollectorContext) error {
 	reply, err := ctx.client.Run("/ip/dhcp-server/print", "=.proplist=name")
 	if err != nil {
 		return fmt.Errorf("fetch dhcp-server error: %w", err)
@@ -49,7 +49,7 @@ func (c *dhcpCollector) collect(ctx *collectorContext) error {
 	return errs.ErrorOrNil()
 }
 
-func (c *dhcpCollector) colllectForDHCPServer(ctx *collectorContext, dhcpServer string) error {
+func (c *dhcpCollector) colllectForDHCPServer(ctx *CollectorContext, dhcpServer string) error {
 	reply, err := ctx.client.Run("/ip/dhcp-server/lease/print", "?server="+dhcpServer, "=active=", "=count-only=")
 	if err != nil {
 		return fmt.Errorf("fetch lease for %s  error: %w", dhcpServer, err)

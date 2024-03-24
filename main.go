@@ -11,14 +11,14 @@ import (
 	"strings"
 	"time"
 
-	"mikrotik-exporter/collector"
+	"mikrotik-exporter/collectors"
 	"mikrotik-exporter/config"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/collectors"
+	pcollectors "github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/collectors/version"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	common_version "github.com/prometheus/common/version"
@@ -37,7 +37,7 @@ var (
 	password    = flag.String("password", "", "password for authentication for single device")
 	deviceport  = flag.String("deviceport", "8728", "port for single device")
 	port        = flag.String("port", ":9436", "port number to listen on")
-	timeout     = flag.Uint("timeout", collector.DefaultTimeout, "timeout when connecting to devices")
+	timeout     = flag.Uint("timeout", DefaultTimeout, "timeout when connecting to devices")
 	tlsEnabled  = flag.Bool("tls", false, "use tls to connect to routers")
 	user        = flag.String("user", "", "user for authentication with single device")
 	ver         = flag.Bool("version", false, "find the version of binary")
@@ -51,7 +51,7 @@ func init() {
 }
 
 func main() {
-	for _, c := range collector.AvailableCollectors() {
+	for _, c := range collectors.AvailableCollectors() {
 		flag.Bool("with-"+c.Name, false, c.Description)
 	}
 
@@ -65,15 +65,15 @@ func main() {
 	if *listCollectors {
 		fmt.Printf("\nAvailable collectors:\n")
 
-		var collectors []string
-		for _, c := range collector.AvailableCollectors() {
-			collectors = append(collectors,
+		var colls []string
+		for _, c := range collectors.AvailableCollectors() {
+			colls = append(colls,
 				fmt.Sprintf(" - %-12s %s", c.Name, c.Description))
 		}
 
-		sort.Strings(collectors)
+		sort.Strings(colls)
 
-		for _, c := range collectors {
+		for _, c := range colls {
 			fmt.Println(c)
 		}
 
@@ -102,7 +102,7 @@ func loadConfig(logger log.Logger) *config.Config {
 	if err != nil {
 		_ = level.Error(logger).Log("msg", "could not load config", "error", err)
 
-		os.Exit(3)
+		os.Exit(3) //nolint:gomnd
 	}
 
 	updateConfigFromFlags(cfg)
@@ -116,7 +116,7 @@ func loadConfigFromFile() (*config.Config, error) {
 		return nil, fmt.Errorf("read file error: %w", err)
 	}
 
-	cfg, err := config.Load(bytes.NewReader(b), collector.AvailableCollectorsNames())
+	cfg, err := config.Load(bytes.NewReader(b), collectors.AvailableCollectorsNames())
 	if err != nil {
 		return nil, fmt.Errorf("load error: %w", err)
 	}
@@ -184,35 +184,38 @@ func startServer(cfg *config.Config, logger log.Logger) {
 
 		landingPage, err := web.NewLandingPage(landingConfig)
 		if err != nil {
-			level.Error(logger).Log("err", err)
+			_ = level.Error(logger).Log("err", err)
+
 			os.Exit(1)
 		}
 
 		http.Handle("/", landingPage)
 	}
 
-	serverTimeout := time.Duration(2**timeout) * time.Second
+	serverTimeout := time.Duration(2**timeout) * time.Second //nolint:gomnd
 	srv := &http.Server{
 		ReadTimeout:  serverTimeout,
 		WriteTimeout: serverTimeout,
 	}
-	level.Error(logger).Log(web.ListenAndServe(srv, &web.FlagConfig{
+
+	if err := web.ListenAndServe(srv, &web.FlagConfig{
 		WebListenAddresses: &[]string{*port},
 		WebConfigFile:      webConfig,
-	}, logger))
+	}, logger); err != nil {
+		_ = level.Error(logger).Log("err", err)
+
+		os.Exit(1)
+	}
 }
 
 func createMetricsHandler(cfg *config.Config, logger log.Logger) (http.Handler, error) {
-	collector, err := collector.NewCollector(cfg, logger)
-	if err != nil {
-		return nil, fmt.Errorf("create collector error: %w", err)
-	}
+	collector := NewCollector(cfg, logger)
 
 	promhttp.Handler()
 
 	registry := prometheus.NewRegistry()
 
-	err = registry.Register(collectors.NewGoCollector())
+	err := registry.Register(pcollectors.NewGoCollector())
 	if err != nil {
 		return nil, fmt.Errorf("register gocollector error: %w", err)
 	}

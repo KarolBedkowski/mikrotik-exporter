@@ -170,7 +170,7 @@ func ConfigureLog(logLevel, logFormat string) log.Logger {
 
 	nlogger := log.LoggerFunc(func(keyvals ...interface{}) error {
 		if err := logger.Log(keyvals...); err != nil {
-			panic(err)
+			panic(fmt.Errorf("%v: %w", keyvals, err))
 		}
 
 		return nil

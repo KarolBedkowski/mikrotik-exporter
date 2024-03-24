@@ -1,4 +1,4 @@
-package collector
+package collectors
 
 import (
 	"fmt"
@@ -19,7 +19,7 @@ type routesCollector struct {
 	countProtocol retMetricCollector
 }
 
-func newRoutesCollector() routerOSCollector {
+func newRoutesCollector() RouterOSCollector {
 	const prefix = "routes"
 
 	labelNames := []string{"name", "address", "ip_version"}
@@ -33,12 +33,12 @@ func newRoutesCollector() routerOSCollector {
 	}
 }
 
-func (c *routesCollector) describe(ch chan<- *prometheus.Desc) {
+func (c *routesCollector) Describe(ch chan<- *prometheus.Desc) {
 	c.count.describe(ch)
 	c.countProtocol.describe(ch)
 }
 
-func (c *routesCollector) collect(ctx *collectorContext) error {
+func (c *routesCollector) Collect(ctx *CollectorContext) error {
 	errs := multierror.Append(nil, c.colllectForIPVersion("4", "ip", ctx))
 
 	if !ctx.device.IPv6Disabled {
@@ -48,7 +48,7 @@ func (c *routesCollector) collect(ctx *collectorContext) error {
 	return errs.ErrorOrNil()
 }
 
-func (c *routesCollector) colllectForIPVersion(ipVersion, topic string, ctx *collectorContext) error {
+func (c *routesCollector) colllectForIPVersion(ipVersion, topic string, ctx *CollectorContext) error {
 	if err := c.colllectCount(ipVersion, topic, ctx); err != nil {
 		return err
 	}
@@ -62,7 +62,7 @@ func (c *routesCollector) colllectForIPVersion(ipVersion, topic string, ctx *col
 	return nil
 }
 
-func (c *routesCollector) colllectCount(ipVersion, topic string, ctx *collectorContext) error {
+func (c *routesCollector) colllectCount(ipVersion, topic string, ctx *CollectorContext) error {
 	reply, err := ctx.client.Run("/"+topic+"/route/print", "?disabled=false", "=count-only=")
 	if err != nil {
 		return fmt.Errorf("fetch route %s error: %w", topic, err)
@@ -77,7 +77,7 @@ func (c *routesCollector) colllectCount(ipVersion, topic string, ctx *collectorC
 	return nil
 }
 
-func (c *routesCollector) colllectCountProtcol(ipVersion, topic, protocol string, ctx *collectorContext) error {
+func (c *routesCollector) colllectCountProtcol(ipVersion, topic, protocol string, ctx *CollectorContext) error {
 	reply, err := ctx.client.Run("/"+topic+"/route/print", "?disabled=false", "?"+protocol, "=count-only=")
 	if err != nil {
 		return fmt.Errorf("fetch route %s error: %w", topic, err)

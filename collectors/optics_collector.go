@@ -1,4 +1,4 @@
-package collector
+package collectors
 
 import (
 	"fmt"
@@ -19,7 +19,7 @@ type opticsCollector struct {
 	metrics propertyMetricList
 }
 
-func newOpticsCollector() routerOSCollector {
+func newOpticsCollector() RouterOSCollector {
 	const prefix = "optics"
 
 	labelNames := []string{"name", "address", "interface"}
@@ -43,11 +43,11 @@ func newOpticsCollector() routerOSCollector {
 	}
 }
 
-func (c *opticsCollector) describe(ch chan<- *prometheus.Desc) {
+func (c *opticsCollector) Describe(ch chan<- *prometheus.Desc) {
 	c.metrics.describe(ch)
 }
 
-func (c *opticsCollector) collect(ctx *collectorContext) error {
+func (c *opticsCollector) Collect(ctx *CollectorContext) error {
 	reply, err := ctx.client.Run("/interface/ethernet/print", "=.proplist=name,default-name")
 	if err != nil {
 		return fmt.Errorf("fetch ethernet error: %w", err)
@@ -69,7 +69,7 @@ func (c *opticsCollector) collect(ctx *collectorContext) error {
 	return c.collectOpticalMetricsForInterfaces(ifaces, ctx)
 }
 
-func (c *opticsCollector) collectOpticalMetricsForInterfaces(ifaces []string, ctx *collectorContext) error {
+func (c *opticsCollector) collectOpticalMetricsForInterfaces(ifaces []string, ctx *CollectorContext) error {
 	reply, err := ctx.client.Run("/interface/ethernet/monitor",
 		"=numbers="+strings.Join(ifaces, ","),
 		"=once=",

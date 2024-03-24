@@ -1,4 +1,4 @@
-package collector
+package collectors
 
 import (
 	"errors"
@@ -17,7 +17,7 @@ type netwatchCollector struct {
 	statusDesc *prometheus.Desc
 }
 
-func newNetwatchCollector() routerOSCollector {
+func newNetwatchCollector() RouterOSCollector {
 	labelNames := []string{"name", "address", "host", "comment", "status"}
 
 	return &netwatchCollector{
@@ -25,11 +25,11 @@ func newNetwatchCollector() routerOSCollector {
 	}
 }
 
-func (c *netwatchCollector) describe(ch chan<- *prometheus.Desc) {
+func (c *netwatchCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.statusDesc
 }
 
-func (c *netwatchCollector) collect(ctx *collectorContext) error {
+func (c *netwatchCollector) Collect(ctx *CollectorContext) error {
 	reply, err := ctx.client.Run("/tool/netwatch/print", "?disabled=false",
 		"=.proplist=host,comment,status")
 	if err != nil {
@@ -50,7 +50,7 @@ func (c *netwatchCollector) collect(ctx *collectorContext) error {
 var ErrUnexpectedStatus = errors.New("unexpected netwatch status value")
 
 func (c *netwatchCollector) collectStatus(
-	host, comment string, re *proto.Sentence, ctx *collectorContext,
+	host, comment string, re *proto.Sentence, ctx *CollectorContext,
 ) error {
 	if value := re.Map["status"]; value != "" {
 		var upVal, downVal, unknownVal float64

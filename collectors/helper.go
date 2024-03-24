@@ -1,4 +1,4 @@
-package collector
+package collectors
 
 import (
 	"errors"
@@ -16,6 +16,10 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
+)
+
+const (
+	namespace = "mikrotik"
 )
 
 var (
@@ -116,7 +120,7 @@ func metricFromDuration(duration string) (float64, error) {
 type ValueConverter func(value string) (float64, error)
 
 func metricFromString(value string) (float64, error) {
-	return strconv.ParseFloat(value, 64)
+	return strconv.ParseFloat(value, 64) //nolint:wrapcheck
 }
 
 func metricFromBool(value string) (float64, error) {
@@ -135,7 +139,7 @@ func metricConstantValue(value string) (float64, error) {
 
 type propertyMetricCollector interface {
 	describe(ch chan<- *prometheus.Desc)
-	collect(reply *proto.Sentence, ctx *collectorContext) error
+	collect(reply *proto.Sentence, ctx *CollectorContext) error
 }
 
 type propertyCollector struct {
@@ -150,7 +154,7 @@ func (p *propertyCollector) describe(ch chan<- *prometheus.Desc) {
 }
 
 func (p *propertyCollector) collect(reply *proto.Sentence,
-	ctx *collectorContext,
+	ctx *CollectorContext,
 ) error {
 	propertyVal, ok := reply.Map[p.property]
 	if !ok {
@@ -191,7 +195,7 @@ func (p *propertyRxTxCollector) describe(ch chan<- *prometheus.Desc) {
 }
 
 func (p *propertyRxTxCollector) collect(reply *proto.Sentence,
-	ctx *collectorContext,
+	ctx *CollectorContext,
 ) error {
 	propertyVal, ok := reply.Map[p.property]
 	if !ok {
@@ -320,7 +324,7 @@ func (p *propertyMetricBuilder) build() propertyMetricCollector {
 		p.rxTxValueConverter = splitStringToFloatsOnComma
 	}
 
-	level.Debug(config.GlobalLogger).Log("msg", "build metric",
+	_ = level.Debug(config.GlobalLogger).Log("msg", "build metric",
 		"name", metricName,
 		"help", metricHelp,
 		"prefix", p.prefix,
@@ -406,7 +410,7 @@ func (r *retMetricBuilder) build() retMetricCollector {
 		valueConverter = r.valueConverter
 	}
 
-	level.Debug(config.GlobalLogger).Log("msg", "build metric",
+	_ = level.Debug(config.GlobalLogger).Log("msg", "build metric",
 		"name", metricName,
 		"help", metricHelp,
 		"prefix", r.prefix,
@@ -426,7 +430,7 @@ func (r *retMetricBuilder) build() retMetricCollector {
 
 type retMetricCollector interface {
 	describe(ch chan<- *prometheus.Desc)
-	collect(reply *routeros.Reply, ctx *collectorContext) error
+	collect(reply *routeros.Reply, ctx *CollectorContext) error
 }
 
 type retGaugeCollector struct {
@@ -440,7 +444,7 @@ func (r *retGaugeCollector) describe(ch chan<- *prometheus.Desc) {
 }
 
 func (r *retGaugeCollector) collect(reply *routeros.Reply,
-	ctx *collectorContext,
+	ctx *CollectorContext,
 ) error {
 	propertyVal := reply.Done.Map["ret"]
 	if propertyVal == "" {
@@ -469,7 +473,7 @@ func (p propertyMetricList) describe(ch chan<- *prometheus.Desc) {
 	}
 }
 
-func (p propertyMetricList) collect(re *proto.Sentence, ctx *collectorContext) error {
+func (p propertyMetricList) collect(re *proto.Sentence, ctx *CollectorContext) error {
 	var errs *multierror.Error
 
 	for _, m := range p {

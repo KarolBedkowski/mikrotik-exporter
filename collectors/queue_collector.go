@@ -1,4 +1,4 @@
-package collector
+package collectors
 
 import (
 	"fmt"
@@ -19,7 +19,7 @@ type queueCollector struct {
 	monitorQueuedPackets propertyMetricCollector
 }
 
-func newQueueCollector() routerOSCollector {
+func newQueueCollector() RouterOSCollector {
 	monitorLabelNames := []string{"name", "address"}
 	labelNames := []string{"name", "address", "simple_queue_name", "queue", "comment"}
 
@@ -39,13 +39,13 @@ func newQueueCollector() routerOSCollector {
 	}
 }
 
-func (c *queueCollector) describe(ch chan<- *prometheus.Desc) {
+func (c *queueCollector) Describe(ch chan<- *prometheus.Desc) {
 	c.metrics.describe(ch)
 	c.monitorQueuedBytes.describe(ch)
 	c.monitorQueuedPackets.describe(ch)
 }
 
-func (c *queueCollector) collect(ctx *collectorContext) error {
+func (c *queueCollector) Collect(ctx *CollectorContext) error {
 	return multierror.Append(nil,
 		c.collectQueue(ctx),
 		c.collectSimpleQueue(ctx),
@@ -56,7 +56,7 @@ func metricFromQueueTxRx(value string) (float64, float64, error) {
 	return splitStringToFloats(value, "/")
 }
 
-func (c *queueCollector) collectQueue(ctx *collectorContext) error {
+func (c *queueCollector) collectQueue(ctx *CollectorContext) error {
 	reply, err := ctx.client.Run("/queue/monitor", "=once=", "=.proplist=queued-packets,queued-bytes")
 	if err != nil {
 		return fmt.Errorf("fetch queue monitor error: %w", err)
@@ -79,7 +79,7 @@ func (c *queueCollector) collectQueue(ctx *collectorContext) error {
 	return nil
 }
 
-func (c *queueCollector) collectSimpleQueue(ctx *collectorContext) error {
+func (c *queueCollector) collectSimpleQueue(ctx *CollectorContext) error {
 	reply, err := ctx.client.Run("/queue/simple/print",
 		"=.proplist=name,queue,comment,disabled,bytes,packets,queued-bytes,queued-packets")
 	if err != nil {

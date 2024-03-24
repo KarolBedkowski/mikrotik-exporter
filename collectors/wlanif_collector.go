@@ -1,4 +1,4 @@
-package collector
+package collectors
 
 import (
 	"fmt"
@@ -19,7 +19,7 @@ type wlanIFCollector struct {
 	frequencyDesc *prometheus.Desc
 }
 
-func newWlanIFCollector() routerOSCollector {
+func newWlanIFCollector() RouterOSCollector {
 	const prefix = "wlan_interface"
 
 	labelNames := []string{"name", "address", "interface", "channel"}
@@ -35,12 +35,12 @@ func newWlanIFCollector() routerOSCollector {
 	}
 }
 
-func (c *wlanIFCollector) describe(ch chan<- *prometheus.Desc) {
+func (c *wlanIFCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.frequencyDesc
 	c.metrics.describe(ch)
 }
 
-func (c *wlanIFCollector) collect(ctx *collectorContext) error {
+func (c *wlanIFCollector) Collect(ctx *CollectorContext) error {
 	names, err := c.fetchInterfaceNames(ctx)
 	if err != nil {
 		return err
@@ -55,7 +55,7 @@ func (c *wlanIFCollector) collect(ctx *collectorContext) error {
 	return nil
 }
 
-func (c *wlanIFCollector) fetchInterfaceNames(ctx *collectorContext) ([]string, error) {
+func (c *wlanIFCollector) fetchInterfaceNames(ctx *CollectorContext) ([]string, error) {
 	reply, err := ctx.client.Run("/interface/wireless/print", "=.proplist=name")
 	if err != nil {
 		return nil, fmt.Errorf("fetch wireless error: %w", err)
@@ -64,7 +64,7 @@ func (c *wlanIFCollector) fetchInterfaceNames(ctx *collectorContext) ([]string, 
 	return extractPropertyFromReplay(reply, "name"), nil
 }
 
-func (c *wlanIFCollector) collectForInterface(iface string, ctx *collectorContext) error {
+func (c *wlanIFCollector) collectForInterface(iface string, ctx *CollectorContext) error {
 	reply, err := ctx.client.Run("/interface/wireless/monitor", "=numbers="+iface, "=once=",
 		"=.proplist=registered-clients,noise-floor,overall-tx-ccq,channel")
 	if err != nil {
@@ -86,7 +86,7 @@ func (c *wlanIFCollector) collectForInterface(iface string, ctx *collectorContex
 	return c.collectMetricForFreq(iface, re, ctx)
 }
 
-func (c *wlanIFCollector) collectMetricForFreq(iface string, re *proto.Sentence, ctx *collectorContext) error {
+func (c *wlanIFCollector) collectMetricForFreq(iface string, re *proto.Sentence, ctx *CollectorContext) error {
 	channel := re.Map["channel"]
 
 	for idx, part := range strings.Split(channel, "+") {

@@ -1,4 +1,4 @@
-package collector
+package collectors
 
 import (
 	"fmt"
@@ -19,7 +19,7 @@ type resourceCollector struct {
 	versionDesc *prometheus.Desc
 }
 
-func newResourceCollector() routerOSCollector {
+func newResourceCollector() RouterOSCollector {
 	const prefix = "system"
 
 	labelNames := []string{"name", "address"}
@@ -43,12 +43,12 @@ func newResourceCollector() routerOSCollector {
 	}
 }
 
-func (c *resourceCollector) describe(ch chan<- *prometheus.Desc) {
+func (c *resourceCollector) Describe(ch chan<- *prometheus.Desc) {
 	c.metrics.describe(ch)
 	ch <- c.versionDesc
 }
 
-func (c *resourceCollector) collect(ctx *collectorContext) error {
+func (c *resourceCollector) Collect(ctx *CollectorContext) error {
 	reply, err := ctx.client.Run("/system/resource/print",
 		"=.proplist=free-memory,total-memory,cpu-load,free-hdd-space,total-hdd-space,"+
 			"cpu-frequency,bad-blocks,uptime,cpu-count,board-name,version")
@@ -67,7 +67,7 @@ func (c *resourceCollector) collect(ctx *collectorContext) error {
 	return errs.ErrorOrNil()
 }
 
-func (c *resourceCollector) collectForStat(reply *proto.Sentence, ctx *collectorContext) error {
+func (c *resourceCollector) collectForStat(reply *proto.Sentence, ctx *CollectorContext) error {
 	boardname := reply.Map["board-name"]
 	version := reply.Map["version"]
 

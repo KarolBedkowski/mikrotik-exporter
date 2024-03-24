@@ -1,4 +1,4 @@
-package collector
+package collectors
 
 import (
 	"fmt"
@@ -15,7 +15,7 @@ type poolCollector struct {
 	usedCount retMetricCollector
 }
 
-func newPoolCollector() routerOSCollector {
+func newPoolCollector() RouterOSCollector {
 	const prefix = "ip_pool"
 
 	labelNames := []string{"name", "address", "ip_version", "pool"}
@@ -26,11 +26,11 @@ func newPoolCollector() routerOSCollector {
 	}
 }
 
-func (c *poolCollector) describe(ch chan<- *prometheus.Desc) {
+func (c *poolCollector) Describe(ch chan<- *prometheus.Desc) {
 	c.usedCount.describe(ch)
 }
 
-func (c *poolCollector) collect(ctx *collectorContext) error {
+func (c *poolCollector) Collect(ctx *CollectorContext) error {
 	errs := multierror.Append(nil, c.colllectForIPVersion("4", "ip", ctx))
 
 	if !ctx.device.IPv6Disabled {
@@ -40,7 +40,7 @@ func (c *poolCollector) collect(ctx *collectorContext) error {
 	return errs.ErrorOrNil()
 }
 
-func (c *poolCollector) colllectForIPVersion(ipVersion, topic string, ctx *collectorContext) error {
+func (c *poolCollector) colllectForIPVersion(ipVersion, topic string, ctx *CollectorContext) error {
 	reply, err := ctx.client.Run("/"+topic+"/pool/print", "=.proplist=name")
 	if err != nil {
 		return fmt.Errorf("fetch %s pool error: %w", topic, err)
@@ -59,7 +59,7 @@ func (c *poolCollector) colllectForIPVersion(ipVersion, topic string, ctx *colle
 	return errs.ErrorOrNil()
 }
 
-func (c *poolCollector) collectForPool(ipVersion, topic, pool string, ctx *collectorContext) error {
+func (c *poolCollector) collectForPool(ipVersion, topic, pool string, ctx *CollectorContext) error {
 	reply, err := ctx.client.Run("/"+topic+"/pool/used/print", "?pool="+pool, "=count-only=")
 	if err != nil {
 		return fmt.Errorf("fetch used ip pool %s error: %w", pool, err)

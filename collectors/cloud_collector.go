@@ -1,4 +1,4 @@
-package collector
+package collectors
 
 import (
 	"fmt"
@@ -16,7 +16,7 @@ type cloudCollector struct {
 	ifaceStatusDesc *prometheus.Desc
 }
 
-func newCloudCollector() routerOSCollector {
+func newCloudCollector() RouterOSCollector {
 	labelNames := []string{"name", "address", "status"}
 
 	return &cloudCollector{
@@ -24,11 +24,11 @@ func newCloudCollector() routerOSCollector {
 	}
 }
 
-func (c *cloudCollector) describe(ch chan<- *prometheus.Desc) {
+func (c *cloudCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.ifaceStatusDesc
 }
 
-func (c *cloudCollector) collect(ctx *collectorContext) error {
+func (c *cloudCollector) Collect(ctx *CollectorContext) error {
 	reply, err := ctx.client.Run("/ip/cloud/print")
 	if err != nil {
 		return fmt.Errorf("get cloud error: %w", err)

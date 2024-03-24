@@ -1,4 +1,4 @@
-package collector
+package collectors
 
 import (
 	"fmt"
@@ -18,7 +18,7 @@ type capsmanCollector struct {
 	radiosProvisionedDesc propertyMetricCollector
 }
 
-func newCapsmanCollector() routerOSCollector {
+func newCapsmanCollector() RouterOSCollector {
 	const prefix = "capsman_station"
 
 	labelNames := []string{"name", "address", "interface", "mac_address", "ssid", "eap_identity", "comment"}
@@ -43,19 +43,19 @@ func newCapsmanCollector() routerOSCollector {
 	return collector
 }
 
-func (c *capsmanCollector) describe(ch chan<- *prometheus.Desc) {
+func (c *capsmanCollector) Describe(ch chan<- *prometheus.Desc) {
 	c.radiosProvisionedDesc.describe(ch)
 	c.metrics.describe(ch)
 }
 
-func (c *capsmanCollector) collect(ctx *collectorContext) error {
+func (c *capsmanCollector) Collect(ctx *CollectorContext) error {
 	return multierror.Append(nil,
 		c.collectRegistrations(ctx),
 		c.collectRadiosProvisioned(ctx),
 	).ErrorOrNil()
 }
 
-func (c *capsmanCollector) collectRegistrations(ctx *collectorContext) error {
+func (c *capsmanCollector) collectRegistrations(ctx *CollectorContext) error {
 	reply, err := ctx.client.Run("/caps-man/registration-table/print",
 		"=.proplist=interface,mac-address,ssid,uptime,tx-signal,rx-signal,packets,bytes,eap-identity,comment")
 	if err != nil {
@@ -76,7 +76,7 @@ func (c *capsmanCollector) collectRegistrations(ctx *collectorContext) error {
 	return errs.ErrorOrNil()
 }
 
-func (c *capsmanCollector) collectRadiosProvisioned(ctx *collectorContext) error {
+func (c *capsmanCollector) collectRadiosProvisioned(ctx *CollectorContext) error {
 	reply, err := ctx.client.Run("/caps-man/radio/print",
 		"=.proplist=interface,radio-mac,remote-cap-identity,remote-cap-name,provisioned")
 	if err != nil {

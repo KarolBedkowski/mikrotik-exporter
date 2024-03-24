@@ -1,4 +1,4 @@
-package collector
+package collectors
 
 import (
 	"fmt"
@@ -14,7 +14,7 @@ type firmwareCollector struct {
 	description *prometheus.Desc
 }
 
-func newFirmwareCollector() routerOSCollector {
+func newFirmwareCollector() RouterOSCollector {
 	labelNames := []string{"devicename", "name", "disabled", "version", "build_time"}
 	c := &firmwareCollector{
 		description: description("system", "package", "system packages version", labelNames),
@@ -23,11 +23,11 @@ func newFirmwareCollector() routerOSCollector {
 	return c
 }
 
-func (c *firmwareCollector) describe(ch chan<- *prometheus.Desc) {
+func (c *firmwareCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.description
 }
 
-func (c *firmwareCollector) collect(ctx *collectorContext) error {
+func (c *firmwareCollector) Collect(ctx *CollectorContext) error {
 	reply, err := ctx.client.Run("/system/package/getall")
 	if err != nil {
 		return fmt.Errorf("fetch package error: %w", err)

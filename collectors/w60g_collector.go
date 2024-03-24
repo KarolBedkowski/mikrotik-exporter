@@ -1,4 +1,4 @@
-package collector
+package collectors
 
 import (
 	"fmt"
@@ -19,7 +19,7 @@ type w60gInterfaceCollector struct {
 	metrics propertyMetricList
 }
 
-func neww60gInterfaceCollector() routerOSCollector {
+func neww60gInterfaceCollector() RouterOSCollector {
 	const prefix = "w60ginterface"
 
 	labelNames := []string{"name", "address", "interface"}
@@ -38,11 +38,11 @@ func neww60gInterfaceCollector() routerOSCollector {
 	}
 }
 
-func (c *w60gInterfaceCollector) describe(ch chan<- *prometheus.Desc) {
+func (c *w60gInterfaceCollector) Describe(ch chan<- *prometheus.Desc) {
 	c.metrics.describe(ch)
 }
 
-func (c *w60gInterfaceCollector) collect(ctx *collectorContext) error {
+func (c *w60gInterfaceCollector) Collect(ctx *CollectorContext) error {
 	reply, err := ctx.client.Run("/interface/w60g/print", "=.proplist=name")
 	if err != nil {
 		return fmt.Errorf("fetch w60g error: %w", err)
@@ -56,7 +56,7 @@ func (c *w60gInterfaceCollector) collect(ctx *collectorContext) error {
 	return c.collectw60gMetricsForInterfaces(ifaces, ctx)
 }
 
-func (c *w60gInterfaceCollector) collectw60gMetricsForInterfaces(ifaces []string, ctx *collectorContext) error {
+func (c *w60gInterfaceCollector) collectw60gMetricsForInterfaces(ifaces []string, ctx *CollectorContext) error {
 	reply, err := ctx.client.Run("/interface/w60g/monitor",
 		"=numbers="+strings.Join(ifaces, ","),
 		"=once=",

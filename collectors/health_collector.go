@@ -1,4 +1,4 @@
-package collector
+package collectors
 
 import (
 	"fmt"
@@ -15,7 +15,7 @@ type healthCollector struct {
 	metrics propertyMetricList
 }
 
-func newhealthCollector() routerOSCollector {
+func newhealthCollector() RouterOSCollector {
 	const prefix = "health"
 
 	labelNames := []string{"name", "address"}
@@ -32,11 +32,11 @@ func newhealthCollector() routerOSCollector {
 	}
 }
 
-func (c *healthCollector) describe(ch chan<- *prometheus.Desc) {
+func (c *healthCollector) Describe(ch chan<- *prometheus.Desc) {
 	c.metrics.describe(ch)
 }
 
-func (c *healthCollector) collect(ctx *collectorContext) error {
+func (c *healthCollector) Collect(ctx *CollectorContext) error {
 	reply, err := ctx.client.Run("/system/health/print")
 	if err != nil {
 		return fmt.Errorf("fetch health error: %w", err)

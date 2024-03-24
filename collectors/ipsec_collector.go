@@ -1,4 +1,4 @@
-package collector
+package collectors
 
 import (
 	"fmt"
@@ -16,7 +16,7 @@ type ipsecCollector struct {
 	activePeers propertyMetricList
 }
 
-func newIpsecCollector() routerOSCollector {
+func newIpsecCollector() RouterOSCollector {
 	const (
 		prefix      = "ipsec"
 		prefixPeers = "ipsec_active_peers"
@@ -48,19 +48,19 @@ func newIpsecCollector() routerOSCollector {
 	}
 }
 
-func (c *ipsecCollector) describe(ch chan<- *prometheus.Desc) {
+func (c *ipsecCollector) Describe(ch chan<- *prometheus.Desc) {
 	c.metrics.describe(ch)
 	c.activePeers.describe(ch)
 }
 
-func (c *ipsecCollector) collect(ctx *collectorContext) error {
+func (c *ipsecCollector) Collect(ctx *CollectorContext) error {
 	return multierror.Append(nil,
 		c.collectPolicy(ctx),
 		c.collectActivePeers(ctx),
 	).ErrorOrNil()
 }
 
-func (c *ipsecCollector) collectPolicy(ctx *collectorContext) error {
+func (c *ipsecCollector) collectPolicy(ctx *CollectorContext) error {
 	reply, err := ctx.client.Run("/ip/ipsec/policy/print", "?disabled=false", "?dynamic=false",
 		"=.proplist=src-address,dst-address,comment,ph2-state,invalid,active")
 	if err != nil {
@@ -79,7 +79,7 @@ func (c *ipsecCollector) collectPolicy(ctx *collectorContext) error {
 	return errs.ErrorOrNil()
 }
 
-func (c *ipsecCollector) collectActivePeers(ctx *collectorContext) error {
+func (c *ipsecCollector) collectActivePeers(ctx *CollectorContext) error {
 	reply, err := ctx.client.Run("/ip/ipsec/active-peers/print",
 		"=.proplist=src-address,dst-address,comment,side,rx-bytes,tx-bytes,"+
 			"rx-packets,tx-packets,state,uptime,last-seen,responder")

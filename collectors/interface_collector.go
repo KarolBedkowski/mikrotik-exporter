@@ -1,4 +1,4 @@
-package collector
+package collectors
 
 import (
 	"fmt"
@@ -15,7 +15,7 @@ type interfaceCollector struct {
 	metrics propertyMetricList
 }
 
-func newInterfaceCollector() routerOSCollector {
+func newInterfaceCollector() RouterOSCollector {
 	const prefix = "interface"
 
 	labelNames := []string{"name", "address", "interface", "type", "disabled", "comment", "running", "slave"}
@@ -37,11 +37,11 @@ func newInterfaceCollector() routerOSCollector {
 	}
 }
 
-func (c *interfaceCollector) describe(ch chan<- *prometheus.Desc) {
+func (c *interfaceCollector) Describe(ch chan<- *prometheus.Desc) {
 	c.metrics.describe(ch)
 }
 
-func (c *interfaceCollector) collect(ctx *collectorContext) error {
+func (c *interfaceCollector) Collect(ctx *CollectorContext) error {
 	reply, err := ctx.client.Run("/interface/print",
 		"=.proplist=name,type,disabled,comment,slave,actual-mtu,running,rx-byte,tx-byte,"+
 			"rx-packet,tx-packet,rx-error,tx-error,rx-drop,tx-drop,link-downs")
