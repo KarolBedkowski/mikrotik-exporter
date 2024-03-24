@@ -8,7 +8,8 @@ import (
 )
 
 func init() {
-	registerCollector("conntrack", newConntrackCollector)
+	registerCollector("conntrack", newConntrackCollector,
+		"retrieves connection tracking information")
 }
 
 type conntrackCollector struct {

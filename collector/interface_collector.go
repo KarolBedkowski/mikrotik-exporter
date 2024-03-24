@@ -8,7 +8,7 @@ import (
 )
 
 func init() {
-	registerCollector("interface", newInterfaceCollector)
+	registerCollector("interface", newInterfaceCollector, "retrieves interfaces metrics")
 }
 
 type interfaceCollector struct {

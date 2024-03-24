@@ -8,7 +8,8 @@ import (
 )
 
 func init() {
-	registerCollector("wlansta", newWlanSTACollector)
+	registerCollector("wlansta", newWlanSTACollector,
+		"retrieves connecten WLAN station metrics")
 }
 
 type wlanSTACollector struct {

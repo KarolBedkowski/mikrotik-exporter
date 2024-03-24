@@ -8,7 +8,8 @@ import (
 )
 
 func init() {
-	registerCollector("routes", newRoutesCollector)
+	registerCollector("routes", newRoutesCollector,
+		"retrieves routing table information")
 }
 
 type routesCollector struct {

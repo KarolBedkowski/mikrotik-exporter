@@ -11,7 +11,8 @@ import (
 // TODO: need check
 
 func init() {
-	registerCollector("w60g", neww60gInterfaceCollector)
+	registerCollector("w60g", neww60gInterfaceCollector,
+		"retrieves W60G interface metrics")
 }
 
 type w60gInterfaceCollector struct {

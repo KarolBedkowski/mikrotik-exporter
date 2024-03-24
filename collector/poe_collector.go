@@ -9,7 +9,7 @@ import (
 )
 
 func init() {
-	registerCollector("poe", newPOECollector)
+	registerCollector("poe", newPOECollector, "retrieves POE metrics")
 }
 
 type poeCollector struct {

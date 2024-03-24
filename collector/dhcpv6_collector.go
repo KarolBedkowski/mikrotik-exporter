@@ -8,7 +8,7 @@ import (
 )
 
 func init() {
-	registerCollector("dhcpv6", newDHCPv6Collector)
+	registerCollector("dhcpv6", newDHCPv6Collector, "retrieves DHCPv6 server metrics")
 }
 
 type dhcpv6Collector struct {

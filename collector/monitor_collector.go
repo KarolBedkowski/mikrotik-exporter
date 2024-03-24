@@ -9,7 +9,8 @@ import (
 )
 
 func init() {
-	registerCollector("monitor", newMonitorCollector)
+	registerCollector("monitor", newMonitorCollector,
+		"retrieves ethernet interfaces monitor metrics")
 }
 
 type monitorCollector struct {

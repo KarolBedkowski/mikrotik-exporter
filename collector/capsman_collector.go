@@ -8,7 +8,8 @@ import (
 )
 
 func init() {
-	registerCollector("capsman", newCapsmanCollector)
+	registerCollector("capsman", newCapsmanCollector,
+		"retrieves CapsMan station metrics")
 }
 
 type capsmanCollector struct {

@@ -8,7 +8,7 @@ import (
 )
 
 func init() {
-	registerCollector("dhcp", newDHCPCollector)
+	registerCollector("dhcp", newDHCPCollector, "retrieves DHCP server metrics")
 }
 
 type dhcpCollector struct {

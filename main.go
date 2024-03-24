@@ -51,26 +51,9 @@ func init() {
 }
 
 func main() {
-	flag.Bool("with-capsman", false, "retrieves capsman station metrics")
-	flag.Bool("with-cloud", false, "retrieves cloud routing infrormation")
-	flag.Bool("with-conntrack", false, "retrieves connection tracking metrics")
-	flag.Bool("with-dhcp", false, "retrieves DHCP server metrics")
-	flag.Bool("with-dhcpl", false, "retrieves DHCP server lease metrics")
-	flag.Bool("with-dhcpv6", false, "retrieves DHCPv6 server metrics")
-	flag.Bool("with-firmware", false, "retrieves firmware versions")
-	flag.Bool("with-health", false, "retrieves board Health metrics")
-	flag.Bool("with-ipsec", false, "retrieves ipsec metrics")
-	flag.Bool("with-lte", false, "retrieves lte metrics")
-	flag.Bool("with-monitor", false, "retrieves ethernet interface monitor info")
-	flag.Bool("with-netwatch", false, "retrieves netwatch metrics")
-	flag.Bool("with-optics", false, "retrieves optical diagnostic metrics")
-	flag.Bool("with-poe", false, "retrieves PoE metrics")
-	flag.Bool("with-pools", false, "retrieves IP(v6) pool metrics")
-	flag.Bool("with-queue", false, "retrieves queue metrics")
-	flag.Bool("with-routes", false, "retrieves routing table information")
-	flag.Bool("with-w60g", false, "retrieves w60g interface metrics")
-	flag.Bool("with-wlanif", false, "retrieves wlan interface metrics")
-	flag.Bool("with-wlansta", false, "retrieves connected wlan station metrics")
+	for _, c := range collector.AvailableCollectors() {
+		flag.Bool("with-"+c.Name, false, c.Description)
+	}
 
 	flag.Parse()
 
@@ -82,11 +65,16 @@ func main() {
 	if *listCollectors {
 		fmt.Printf("\nAvailable collectors:\n")
 
-		collectors := collector.AvailableCollectors()
+		var collectors []string
+		for _, c := range collector.AvailableCollectors() {
+			collectors = append(collectors,
+				fmt.Sprintf(" - %-12s %s", c.Name, c.Description))
+		}
+
 		sort.Strings(collectors)
 
 		for _, c := range collectors {
-			fmt.Printf(" - %s\n", c)
+			fmt.Println(c)
 		}
 
 		fmt.Println()
@@ -128,7 +116,7 @@ func loadConfigFromFile() (*config.Config, error) {
 		return nil, fmt.Errorf("read file error: %w", err)
 	}
 
-	cfg, err := config.Load(bytes.NewReader(b), collector.AvailableCollectors())
+	cfg, err := config.Load(bytes.NewReader(b), collector.AvailableCollectorsNames())
 	if err != nil {
 		return nil, fmt.Errorf("load error: %w", err)
 	}
@@ -257,15 +245,3 @@ type loggerBridge struct {
 func (l loggerBridge) Println(v ...interface{}) {
 	_ = level.Info(l.logger).Log(v...)
 }
-
-// func (l loggerBridge) Log(keyvals ...interface{}) error {
-// 	fields := make(log.Fields, len(keyvals)/2)
-
-// 	for idx := 0; idx < len(keyvals); idx += 2 {
-// 		fields[fmt.Sprintf("%s", keyvals[idx])] = keyvals[idx+1]
-// 	}
-
-// 	log.WithFields(fields).Info("web")
-
-// 	return nil
-// }

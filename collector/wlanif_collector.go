@@ -10,7 +10,7 @@ import (
 )
 
 func init() {
-	registerCollector("wlanif", newWlanIFCollector)
+	registerCollector("wlanif", newWlanIFCollector, "retrieves WLAN interface metrics")
 }
 
 type wlanIFCollector struct {

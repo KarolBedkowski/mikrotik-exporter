@@ -9,7 +9,8 @@ import (
 )
 
 func init() {
-	registerCollector("dhcpl", newDHCPLCollector)
+	registerCollector("dhcpl", newDHCPLCollector,
+		"retrieves DHCP server lease information")
 }
 
 type dhcpLeaseCollector struct {

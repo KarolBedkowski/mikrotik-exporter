@@ -11,7 +11,8 @@ import (
 // TODO: need check
 
 func init() {
-	registerCollector("optics", newOpticsCollector)
+	registerCollector("optics", newOpticsCollector,
+		"retrieves optical diagnostic metrics")
 }
 
 type opticsCollector struct {

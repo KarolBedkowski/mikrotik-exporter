@@ -9,7 +9,8 @@ import (
 )
 
 func init() {
-	registerCollector("resource", newResourceCollector)
+	registerCollector("resource", newResourceCollector,
+		"retrieves RouterOS system resource metrics")
 }
 
 type resourceCollector struct {

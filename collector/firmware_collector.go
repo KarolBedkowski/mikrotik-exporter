@@ -7,7 +7,7 @@ import (
 )
 
 func init() {
-	registerCollector("firmware", newFirmwareCollector)
+	registerCollector("firmware", newFirmwareCollector, "retrieves firmware version")
 }
 
 type firmwareCollector struct {

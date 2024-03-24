@@ -8,7 +8,8 @@ import (
 )
 
 func init() {
-	registerCollector("queue", newQueueCollector)
+	registerCollector("queue", newQueueCollector,
+		"retrieves Simple Queue and queue monitor metrics")
 }
 
 type queueCollector struct {

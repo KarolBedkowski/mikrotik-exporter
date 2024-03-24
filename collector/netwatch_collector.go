@@ -10,7 +10,7 @@ import (
 )
 
 func init() {
-	registerCollector("netwatch", newNetwatchCollector)
+	registerCollector("netwatch", newNetwatchCollector, "retrieves Netwatch status")
 }
 
 type netwatchCollector struct {

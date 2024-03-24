@@ -8,7 +8,7 @@ import (
 )
 
 func init() {
-	registerCollector("ipsec", newIpsecCollector)
+	registerCollector("ipsec", newIpsecCollector, "retrieves IPsec metrics")
 }
 
 type ipsecCollector struct {

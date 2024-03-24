@@ -8,7 +8,8 @@ import (
 )
 
 func init() {
-	registerCollector("cloud", newCloudCollector)
+	registerCollector("cloud", newCloudCollector,
+		"retrieves cloud services information")
 }
 
 type cloudCollector struct {

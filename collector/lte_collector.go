@@ -11,7 +11,7 @@ import (
 // TODO: need check
 
 func init() {
-	registerCollector("lte", newLteCollector)
+	registerCollector("lte", newLteCollector, "retrieves LTE interfaces metrics")
 }
 
 type lteCollector struct {

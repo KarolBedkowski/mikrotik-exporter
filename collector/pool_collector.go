@@ -8,7 +8,7 @@ import (
 )
 
 func init() {
-	registerCollector("pools", newPoolCollector)
+	registerCollector("pools", newPoolCollector, "retrieves IP/IPv6 pool metrics")
 }
 
 type poolCollector struct {

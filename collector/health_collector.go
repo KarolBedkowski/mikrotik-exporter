@@ -8,7 +8,7 @@ import (
 )
 
 func init() {
-	registerCollector("health", newhealthCollector)
+	registerCollector("health", newhealthCollector, "retrieves board Health metrics")
 }
 
 type healthCollector struct {
