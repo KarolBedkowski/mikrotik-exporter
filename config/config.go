@@ -122,13 +122,15 @@ func Load(r io.Reader, collectors []string) (*Config, error) {
 		return nil, fmt.Errorf("validate features error: %w", err)
 	}
 
+	// always enabled
+	cfg.Features["resource"] = true
+
 	for name, features := range cfg.Profiles {
 		if err := features.validate(collectors); err != nil {
 			return nil, fmt.Errorf("invalid profile '%s': %w", name, err)
 		}
 
 		// always enabled
-		features["interface"] = true
 		features["resource"] = true
 	}
 
@@ -171,7 +173,6 @@ func ConfigureLog(logLevel, logFormat string) log.Logger {
 	if logFormat == "json" {
 		logger = term.NewLogger(w, log.NewJSONLogger, logColorFunc)
 	} else {
-		fmt.Println("isTerm", term.IsTerminal(w))
 		logger = term.NewLogger(w, log.NewLogfmtLogger, logColorFunc)
 	}
 
