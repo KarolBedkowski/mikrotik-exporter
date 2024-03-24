@@ -15,7 +15,7 @@ func init() {
 }
 
 type lteCollector struct {
-	metrics propertyMetricList
+	metrics PropertyMetricList
 }
 
 func newLteCollector() RouterOSCollector {
@@ -24,19 +24,19 @@ func newLteCollector() RouterOSCollector {
 	labelNames := []string{"name", "address", "interface", "cell_id", "primary_band"}
 
 	return &lteCollector{
-		metrics: propertyMetricList{
-			newPropertyGaugeMetric(prefix, "rssi", labelNames).build(),
-			newPropertyGaugeMetric(prefix, "rsrp", labelNames).build(),
-			newPropertyGaugeMetric(prefix, "rsrq", labelNames).build(),
-			newPropertyGaugeMetric(prefix, "sinr", labelNames).build(),
-			newPropertyGaugeMetric(prefix, "status", labelNames).
-				withName("connected").withConverter(metricFromLTEStatus).build(),
+		metrics: PropertyMetricList{
+			NewPropertyGaugeMetric(prefix, "rssi", labelNames).Build(),
+			NewPropertyGaugeMetric(prefix, "rsrp", labelNames).Build(),
+			NewPropertyGaugeMetric(prefix, "rsrq", labelNames).Build(),
+			NewPropertyGaugeMetric(prefix, "sinr", labelNames).Build(),
+			NewPropertyGaugeMetric(prefix, "status", labelNames).
+				WithName("connected").WithConverter(metricFromLTEStatus).Build(),
 		},
 	}
 }
 
 func (c *lteCollector) Describe(ch chan<- *prometheus.Desc) {
-	c.metrics.describe(ch)
+	c.metrics.Describe(ch)
 }
 
 func (c *lteCollector) Collect(ctx *CollectorContext) error {
@@ -78,7 +78,7 @@ func (c *lteCollector) collectForInterface(iface string, ctx *CollectorContext) 
 
 	ctx = ctx.withLabels(iface, re.Map["current-cellid"], primaryband)
 
-	if err := c.metrics.collect(re, ctx); err != nil {
+	if err := c.metrics.Collect(re, ctx); err != nil {
 		return fmt.Errorf("collect ltr for %s error: %w", iface, err)
 	}
 

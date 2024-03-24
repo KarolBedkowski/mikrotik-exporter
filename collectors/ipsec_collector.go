@@ -12,8 +12,8 @@ func init() {
 }
 
 type ipsecCollector struct {
-	metrics     propertyMetricList
-	activePeers propertyMetricList
+	metrics     PropertyMetricList
+	activePeers PropertyMetricList
 }
 
 func newIpsecCollector() RouterOSCollector {
@@ -26,31 +26,31 @@ func newIpsecCollector() RouterOSCollector {
 	labelsPeers := []string{"src_address", "dst_address", "comment", "side"}
 
 	return &ipsecCollector{
-		metrics: propertyMetricList{
-			newPropertyGaugeMetric(prefix, "ph2-state", labels).withConverter(metricFromState).build(),
-			newPropertyGaugeMetric(prefix, "invalid", labels).withConverter(metricFromBool).build(),
-			newPropertyGaugeMetric(prefix, "active", labels).withConverter(metricFromBool).build(),
+		metrics: PropertyMetricList{
+			NewPropertyGaugeMetric(prefix, "ph2-state", labels).WithConverter(metricFromState).Build(),
+			NewPropertyGaugeMetric(prefix, "invalid", labels).WithConverter(metricFromBool).Build(),
+			NewPropertyGaugeMetric(prefix, "active", labels).WithConverter(metricFromBool).Build(),
 		},
-		activePeers: propertyMetricList{
-			newPropertyGaugeMetric(prefixPeers, "rx-bytes", labelsPeers).build(),
-			newPropertyGaugeMetric(prefixPeers, "tx-bytes", labelsPeers).build(),
-			newPropertyGaugeMetric(prefixPeers, "rx-packets", labelsPeers).build(),
-			newPropertyGaugeMetric(prefixPeers, "tx-packets", labelsPeers).build(),
-			newPropertyGaugeMetric(prefixPeers, "state", labelsPeers).withConverter(metricFromState).
-				withName("established").build(),
-			newPropertyGaugeMetric(prefixPeers, "uptime", labelsPeers).withConverter(metricFromDuration).
-				withName("uptime_seconds").build(),
-			newPropertyGaugeMetric(prefixPeers, "last-seen", labelsPeers).withConverter(metricFromDuration).
-				withName("last_seen_seconds").build(),
-			newPropertyGaugeMetric(prefixPeers, "responder", labelsPeers).withConverter(metricFromBool).
-				build(),
+		activePeers: PropertyMetricList{
+			NewPropertyGaugeMetric(prefixPeers, "rx-bytes", labelsPeers).Build(),
+			NewPropertyGaugeMetric(prefixPeers, "tx-bytes", labelsPeers).Build(),
+			NewPropertyGaugeMetric(prefixPeers, "rx-packets", labelsPeers).Build(),
+			NewPropertyGaugeMetric(prefixPeers, "tx-packets", labelsPeers).Build(),
+			NewPropertyGaugeMetric(prefixPeers, "state", labelsPeers).WithConverter(metricFromState).
+				WithName("established").Build(),
+			NewPropertyGaugeMetric(prefixPeers, "uptime", labelsPeers).WithConverter(metricFromDuration).
+				WithName("uptime_seconds").Build(),
+			NewPropertyGaugeMetric(prefixPeers, "last-seen", labelsPeers).WithConverter(metricFromDuration).
+				WithName("last_seen_seconds").Build(),
+			NewPropertyGaugeMetric(prefixPeers, "responder", labelsPeers).WithConverter(metricFromBool).
+				Build(),
 		},
 	}
 }
 
 func (c *ipsecCollector) Describe(ch chan<- *prometheus.Desc) {
-	c.metrics.describe(ch)
-	c.activePeers.describe(ch)
+	c.metrics.Describe(ch)
+	c.activePeers.Describe(ch)
 }
 
 func (c *ipsecCollector) Collect(ctx *CollectorContext) error {
@@ -71,7 +71,7 @@ func (c *ipsecCollector) collectPolicy(ctx *CollectorContext) error {
 
 	for _, re := range reply.Re {
 		ctx = ctx.withLabels(re.Map["comment"])
-		if err := c.metrics.collect(re, ctx); err != nil {
+		if err := c.metrics.Collect(re, ctx); err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("collect policy error %w", err))
 		}
 	}
@@ -91,7 +91,7 @@ func (c *ipsecCollector) collectActivePeers(ctx *CollectorContext) error {
 
 	for _, re := range reply.Re {
 		ctx = ctx.withLabels(re.Map["comment"], re.Map["side"])
-		if err := c.activePeers.collect(re, ctx); err != nil {
+		if err := c.activePeers.Collect(re, ctx); err != nil {
 			errs = multierror.Append(errs,
 				fmt.Errorf("collect active peers error %w", err))
 		}

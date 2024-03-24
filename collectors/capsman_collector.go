@@ -13,9 +13,9 @@ func init() {
 }
 
 type capsmanCollector struct {
-	metrics propertyMetricList
+	metrics PropertyMetricList
 
-	radiosProvisionedDesc propertyMetricCollector
+	radiosProvisionedDesc PropertyMetric
 }
 
 func newCapsmanCollector() RouterOSCollector {
@@ -25,27 +25,27 @@ func newCapsmanCollector() RouterOSCollector {
 	radioLabelNames := []string{"name", "address", "interface", "radio_mac", "remote_cap_identity", "remote_cap_name"}
 
 	collector := &capsmanCollector{
-		metrics: propertyMetricList{
-			newPropertyCounterMetric(prefix, "uptime", labelNames).withConverter(metricFromDuration).
-				withName("uptime_seconds").build(),
-			newPropertyGaugeMetric(prefix, "tx-signal", labelNames).build(),
-			newPropertyGaugeMetric(prefix, "rx-signal", labelNames).build(),
-			newPropertyRxTxMetric(prefix, "packets", labelNames).build(),
-			newPropertyRxTxMetric(prefix, "bytes", labelNames).build(),
+		metrics: PropertyMetricList{
+			NewPropertyCounterMetric(prefix, "uptime", labelNames).WithConverter(metricFromDuration).
+				WithName("uptime_seconds").Build(),
+			NewPropertyGaugeMetric(prefix, "tx-signal", labelNames).Build(),
+			NewPropertyGaugeMetric(prefix, "rx-signal", labelNames).Build(),
+			NewPropertyRxTxMetric(prefix, "packets", labelNames).Build(),
+			NewPropertyRxTxMetric(prefix, "bytes", labelNames).Build(),
 		},
 
-		radiosProvisionedDesc: newPropertyGaugeMetric("capsman", "provisioned", radioLabelNames).
-			withName("radio_provisioned").withHelp("Status of provision remote radios").
-			withConverter(metricFromBool).
-			build(),
+		radiosProvisionedDesc: NewPropertyGaugeMetric("capsman", "provisioned", radioLabelNames).
+			WithName("radio_provisioned").WithHelp("Status of provision remote radios").
+			WithConverter(metricFromBool).
+			Build(),
 	}
 
 	return collector
 }
 
 func (c *capsmanCollector) Describe(ch chan<- *prometheus.Desc) {
-	c.radiosProvisionedDesc.describe(ch)
-	c.metrics.describe(ch)
+	c.radiosProvisionedDesc.Describe(ch)
+	c.metrics.Describe(ch)
 }
 
 func (c *capsmanCollector) Collect(ctx *CollectorContext) error {
@@ -68,7 +68,7 @@ func (c *capsmanCollector) collectRegistrations(ctx *CollectorContext) error {
 		ctx = ctx.withLabels(re.Map["interface"], re.Map["mac-address"], re.Map["ssid"],
 			re.Map["eap-identity"], re.Map["comment"])
 
-		if err := c.metrics.collect(re, ctx); err != nil {
+		if err := c.metrics.Collect(re, ctx); err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("collect registrations error: %w", err))
 		}
 	}
@@ -89,7 +89,7 @@ func (c *capsmanCollector) collectRadiosProvisioned(ctx *CollectorContext) error
 		ctx = ctx.withLabels(re.Map["interface"], re.Map["radio-mac"], re.Map["remote-cap-identity"],
 			re.Map["remote-cap-name"])
 
-		if err := c.radiosProvisionedDesc.collect(re, ctx); err != nil {
+		if err := c.radiosProvisionedDesc.Collect(re, ctx); err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("collect provisions error: %w", err))
 		}
 	}

@@ -14,7 +14,7 @@ func init() {
 }
 
 type resourceCollector struct {
-	metrics propertyMetricList
+	metrics PropertyMetricList
 
 	versionDesc *prometheus.Desc
 }
@@ -25,17 +25,17 @@ func newResourceCollector() RouterOSCollector {
 	labelNames := []string{"name", "address"}
 
 	return &resourceCollector{
-		metrics: propertyMetricList{
-			newPropertyGaugeMetric(prefix, "free-memory", labelNames).build(),
-			newPropertyGaugeMetric(prefix, "total-memory", labelNames).build(),
-			newPropertyGaugeMetric(prefix, "cpu-load", labelNames).build(),
-			newPropertyGaugeMetric(prefix, "free-hdd-space", labelNames).build(),
-			newPropertyGaugeMetric(prefix, "total-hdd-space", labelNames).build(),
-			newPropertyGaugeMetric(prefix, "cpu-frequency", labelNames).build(),
-			newPropertyGaugeMetric(prefix, "bad-blocks", labelNames).build(),
-			newPropertyCounterMetric(prefix, "uptime", labelNames).
-				withName("uptime_seconds").withConverter(metricFromDuration).build(),
-			newPropertyGaugeMetric(prefix, "cpu-count", labelNames).build(),
+		metrics: PropertyMetricList{
+			NewPropertyGaugeMetric(prefix, "free-memory", labelNames).Build(),
+			NewPropertyGaugeMetric(prefix, "total-memory", labelNames).Build(),
+			NewPropertyGaugeMetric(prefix, "cpu-load", labelNames).Build(),
+			NewPropertyGaugeMetric(prefix, "free-hdd-space", labelNames).Build(),
+			NewPropertyGaugeMetric(prefix, "total-hdd-space", labelNames).Build(),
+			NewPropertyGaugeMetric(prefix, "cpu-frequency", labelNames).Build(),
+			NewPropertyGaugeMetric(prefix, "bad-blocks", labelNames).Build(),
+			NewPropertyCounterMetric(prefix, "uptime", labelNames).
+				WithName("uptime_seconds").WithConverter(metricFromDuration).Build(),
+			NewPropertyGaugeMetric(prefix, "cpu-count", labelNames).Build(),
 		},
 
 		versionDesc: description("system", "routeros", "Board and system version",
@@ -44,7 +44,7 @@ func newResourceCollector() RouterOSCollector {
 }
 
 func (c *resourceCollector) Describe(ch chan<- *prometheus.Desc) {
-	c.metrics.describe(ch)
+	c.metrics.Describe(ch)
 	ch <- c.versionDesc
 }
 
@@ -74,7 +74,7 @@ func (c *resourceCollector) collectForStat(reply *proto.Sentence, ctx *Collector
 	ctx.ch <- prometheus.MustNewConstMetric(c.versionDesc, prometheus.GaugeValue, 1,
 		ctx.device.Name, ctx.device.Address, boardname, version)
 
-	if err := c.metrics.collect(reply, ctx); err != nil {
+	if err := c.metrics.Collect(reply, ctx); err != nil {
 		return fmt.Errorf("collect error: %w", err)
 	}
 

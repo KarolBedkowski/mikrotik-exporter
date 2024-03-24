@@ -14,7 +14,7 @@ func init() {
 }
 
 type dhcpLeaseCollector struct {
-	leases propertyMetricCollector
+	leases PropertyMetric
 }
 
 func newDHCPLCollector() RouterOSCollector {
@@ -24,14 +24,14 @@ func newDHCPLCollector() RouterOSCollector {
 	}
 
 	return &dhcpLeaseCollector{
-		leases: newPropertyGaugeMetric("dhcp", "status", labelNames).
-			withName("leases_metrics").withHelp("number of metrics").
-			withConverter(metricConstantValue).build(),
+		leases: NewPropertyGaugeMetric("dhcp", "status", labelNames).
+			WithName("leases_metrics").WithHelp("number of metrics").
+			WithConverter(metricConstantValue).Build(),
 	}
 }
 
 func (c *dhcpLeaseCollector) Describe(ch chan<- *prometheus.Desc) {
-	c.leases.describe(ch)
+	c.leases.Describe(ch)
 }
 
 func (c *dhcpLeaseCollector) Collect(ctx *CollectorContext) error {
@@ -59,7 +59,7 @@ func (c *dhcpLeaseCollector) collectMetric(ctx *CollectorContext, re *proto.Sent
 		re.Map["comment"],
 	)
 
-	if err := c.leases.collect(re, ctx); err != nil {
+	if err := c.leases.Collect(re, ctx); err != nil {
 		return fmt.Errorf("collect error: %w", err)
 	}
 

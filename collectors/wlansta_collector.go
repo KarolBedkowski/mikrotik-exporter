@@ -13,7 +13,7 @@ func init() {
 }
 
 type wlanSTACollector struct {
-	metrics propertyMetricList
+	metrics PropertyMetricList
 }
 
 func newWlanSTACollector() RouterOSCollector {
@@ -22,18 +22,18 @@ func newWlanSTACollector() RouterOSCollector {
 	labelNames := []string{"name", "address", "interface", "mac_address"}
 
 	return &wlanSTACollector{
-		metrics: propertyMetricList{
-			newPropertyGaugeMetric(prefix, "signal-to-noise", labelNames).build(),
-			newPropertyGaugeMetric(prefix, "signal-strength", labelNames).build(),
-			newPropertyRxTxMetric(prefix, "packets", labelNames).build(),
-			newPropertyRxTxMetric(prefix, "bytes", labelNames).build(),
-			newPropertyRxTxMetric(prefix, "frames", labelNames).build(),
+		metrics: PropertyMetricList{
+			NewPropertyGaugeMetric(prefix, "signal-to-noise", labelNames).Build(),
+			NewPropertyGaugeMetric(prefix, "signal-strength", labelNames).Build(),
+			NewPropertyRxTxMetric(prefix, "packets", labelNames).Build(),
+			NewPropertyRxTxMetric(prefix, "bytes", labelNames).Build(),
+			NewPropertyRxTxMetric(prefix, "frames", labelNames).Build(),
 		},
 	}
 }
 
 func (c *wlanSTACollector) Describe(ch chan<- *prometheus.Desc) {
-	c.metrics.describe(ch)
+	c.metrics.Describe(ch)
 }
 
 func (c *wlanSTACollector) Collect(ctx *CollectorContext) error {
@@ -48,7 +48,7 @@ func (c *wlanSTACollector) Collect(ctx *CollectorContext) error {
 	for _, re := range reply.Re {
 		ctx = ctx.withLabels(re.Map["interface"], re.Map["mac-address"])
 
-		if err := c.metrics.collect(re, ctx); err != nil {
+		if err := c.metrics.Collect(re, ctx); err != nil {
 			errs = multierror.Append(errs, err)
 		}
 	}

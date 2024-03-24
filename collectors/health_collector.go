@@ -12,7 +12,7 @@ func init() {
 }
 
 type healthCollector struct {
-	metrics propertyMetricList
+	metrics PropertyMetricList
 }
 
 func newhealthCollector() RouterOSCollector {
@@ -21,19 +21,19 @@ func newhealthCollector() RouterOSCollector {
 	labelNames := []string{"name", "address"}
 
 	return &healthCollector{
-		metrics: propertyMetricList{
-			newPropertyGaugeMetric(prefix, "voltage", labelNames).
-				withHelp("Input voltage to the RouterOS board, in volts").build(),
-			newPropertyGaugeMetric(prefix, "temperature", labelNames).
-				withHelp("Temperature of RouterOS board, in degrees Celsius").build(),
-			newPropertyGaugeMetric(prefix, "cpu-temperature", labelNames).
-				withHelp("Temperature of RouterOS CPU, in degrees Celsius").build(),
+		metrics: PropertyMetricList{
+			NewPropertyGaugeMetric(prefix, "voltage", labelNames).
+				WithHelp("Input voltage to the RouterOS board, in volts").Build(),
+			NewPropertyGaugeMetric(prefix, "temperature", labelNames).
+				WithHelp("Temperature of RouterOS board, in degrees Celsius").Build(),
+			NewPropertyGaugeMetric(prefix, "cpu-temperature", labelNames).
+				WithHelp("Temperature of RouterOS CPU, in degrees Celsius").Build(),
 		},
 	}
 }
 
 func (c *healthCollector) Describe(ch chan<- *prometheus.Desc) {
-	c.metrics.describe(ch)
+	c.metrics.Describe(ch)
 }
 
 func (c *healthCollector) Collect(ctx *CollectorContext) error {
@@ -53,7 +53,7 @@ func (c *healthCollector) Collect(ctx *CollectorContext) error {
 			}
 		}
 
-		if err := c.metrics.collect(re, ctx); err != nil {
+		if err := c.metrics.Collect(re, ctx); err != nil {
 			errs = multierror.Append(errs, err)
 		}
 	}

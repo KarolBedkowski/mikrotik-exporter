@@ -15,8 +15,8 @@ func init() {
 type routesCollector struct {
 	protocols []string
 
-	count         retMetricCollector
-	countProtocol retMetricCollector
+	count         RetMetric
+	countProtocol RetMetric
 }
 
 func newRoutesCollector() RouterOSCollector {
@@ -25,17 +25,17 @@ func newRoutesCollector() RouterOSCollector {
 	labelNames := []string{"name", "address", "ip_version"}
 
 	return &routesCollector{
-		count: newRetGaugeMetric("", prefix, labelNames).
-			withHelp("number of routes in RIB").build(),
-		countProtocol: newRetGaugeMetric(prefix, "protocol", append(labelNames, "protocol")).
-			withHelp("number of routes per protocol in RIB").build(),
+		count: NewRetGaugeMetric("", prefix, labelNames).
+			WithHelp("number of routes in RIB").Build(),
+		countProtocol: NewRetGaugeMetric(prefix, "protocol", append(labelNames, "protocol")).
+			WithHelp("number of routes per protocol in RIB").Build(),
 		protocols: []string{"bgp", "static", "ospf", "dynamic", "connect", "rip"},
 	}
 }
 
 func (c *routesCollector) Describe(ch chan<- *prometheus.Desc) {
-	c.count.describe(ch)
-	c.countProtocol.describe(ch)
+	c.count.Describe(ch)
+	c.countProtocol.Describe(ch)
 }
 
 func (c *routesCollector) Collect(ctx *CollectorContext) error {
@@ -70,7 +70,7 @@ func (c *routesCollector) colllectCount(ipVersion, topic string, ctx *CollectorC
 
 	ctx = ctx.withLabels(ipVersion)
 
-	if err := c.count.collect(reply, ctx); err != nil {
+	if err := c.count.Collect(reply, ctx); err != nil {
 		return fmt.Errorf("collect router %s %s error: %w", topic, ipVersion, err)
 	}
 
@@ -85,7 +85,7 @@ func (c *routesCollector) colllectCountProtcol(ipVersion, topic, protocol string
 
 	ctx = ctx.withLabels(ipVersion, protocol)
 
-	if err := c.countProtocol.collect(reply, ctx); err != nil {
+	if err := c.countProtocol.Collect(reply, ctx); err != nil {
 		return fmt.Errorf("collect count protocol %s %s error: %w", topic, protocol, err)
 	}
 

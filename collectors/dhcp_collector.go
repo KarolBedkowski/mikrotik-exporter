@@ -12,7 +12,7 @@ func init() {
 }
 
 type dhcpCollector struct {
-	leasesActiveCount retMetricCollector
+	leasesActiveCount RetMetric
 }
 
 func newDHCPCollector() RouterOSCollector {
@@ -21,13 +21,13 @@ func newDHCPCollector() RouterOSCollector {
 	labelNames := []string{"name", "address", "server"}
 
 	return &dhcpCollector{
-		leasesActiveCount: newRetGaugeMetric(prefix, "leases_active", labelNames).
-			withHelp("number of active leases per DHCP server").build(),
+		leasesActiveCount: NewRetGaugeMetric(prefix, "leases_active", labelNames).
+			WithHelp("number of active leases per DHCP server").Build(),
 	}
 }
 
 func (c *dhcpCollector) Describe(ch chan<- *prometheus.Desc) {
-	c.leasesActiveCount.describe(ch)
+	c.leasesActiveCount.Describe(ch)
 }
 
 func (c *dhcpCollector) Collect(ctx *CollectorContext) error {
@@ -57,7 +57,7 @@ func (c *dhcpCollector) colllectForDHCPServer(ctx *CollectorContext, dhcpServer 
 
 	ctx = ctx.withLabels(dhcpServer)
 
-	if err := c.leasesActiveCount.collect(reply, ctx); err != nil {
+	if err := c.leasesActiveCount.Collect(reply, ctx); err != nil {
 		return fmt.Errorf("collect active leases for %s error: %w", dhcpServer, err)
 	}
 

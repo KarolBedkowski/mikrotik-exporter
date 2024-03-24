@@ -16,7 +16,7 @@ func init() {
 }
 
 type opticsCollector struct {
-	metrics propertyMetricList
+	metrics PropertyMetricList
 }
 
 func newOpticsCollector() RouterOSCollector {
@@ -25,26 +25,26 @@ func newOpticsCollector() RouterOSCollector {
 	labelNames := []string{"name", "address", "interface"}
 
 	return &opticsCollector{
-		metrics: propertyMetricList{
-			newPropertyGaugeMetric(prefix, "sfp-rx-loss", labelNames).
-				withHelp("RX status").withConverter(metricFromBool).build(),
-			newPropertyGaugeMetric(prefix, "sfp-tx-fault", labelNames).
-				withHelp("TX status").withConverter(metricFromBool).build(),
-			newPropertyGaugeMetric(prefix, "sfp-rx-power", labelNames).
-				withHelp("RX power in dBM").build(),
-			newPropertyGaugeMetric(prefix, "sfp-tx-power", labelNames).
-				withHelp("TX power in dBM").build(),
-			newPropertyGaugeMetric(prefix, "sfp-temperature", labelNames).
-				withHelp("temperature in degree celsius").build(),
-			newPropertyGaugeMetric(prefix, "sfp-tx-bias-current", labelNames).
-				withHelp("bias is milliamps").build(),
-			newPropertyGaugeMetric(prefix, "sfp-supply-voltage", labelNames).build(),
+		metrics: PropertyMetricList{
+			NewPropertyGaugeMetric(prefix, "sfp-rx-loss", labelNames).
+				WithHelp("RX status").WithConverter(metricFromBool).Build(),
+			NewPropertyGaugeMetric(prefix, "sfp-tx-fault", labelNames).
+				WithHelp("TX status").WithConverter(metricFromBool).Build(),
+			NewPropertyGaugeMetric(prefix, "sfp-rx-power", labelNames).
+				WithHelp("RX power in dBM").Build(),
+			NewPropertyGaugeMetric(prefix, "sfp-tx-power", labelNames).
+				WithHelp("TX power in dBM").Build(),
+			NewPropertyGaugeMetric(prefix, "sfp-temperature", labelNames).
+				WithHelp("temperature in degree celsius").Build(),
+			NewPropertyGaugeMetric(prefix, "sfp-tx-bias-current", labelNames).
+				WithHelp("bias is milliamps").Build(),
+			NewPropertyGaugeMetric(prefix, "sfp-supply-voltage", labelNames).Build(),
 		},
 	}
 }
 
 func (c *opticsCollector) Describe(ch chan<- *prometheus.Desc) {
-	c.metrics.describe(ch)
+	c.metrics.Describe(ch)
 }
 
 func (c *opticsCollector) Collect(ctx *CollectorContext) error {
@@ -85,7 +85,7 @@ func (c *opticsCollector) collectOpticalMetricsForInterfaces(ifaces []string, ct
 		if name, ok := se.Map["name"]; ok {
 			ctx = ctx.withLabels(name)
 
-			if err := c.metrics.collect(se, ctx); err != nil {
+			if err := c.metrics.Collect(se, ctx); err != nil {
 				errs = multierror.Append(errs, fmt.Errorf("collect %s error: %w", name, err))
 			}
 		}

@@ -13,8 +13,8 @@ func init() {
 }
 
 type conntrackCollector struct {
-	totalEntries propertyMetricCollector
-	maxEntries   propertyMetricCollector
+	totalEntries PropertyMetric
+	maxEntries   PropertyMetric
 }
 
 func newConntrackCollector() RouterOSCollector {
@@ -23,16 +23,16 @@ func newConntrackCollector() RouterOSCollector {
 	labelNames := []string{"name", "address"}
 
 	return &conntrackCollector{
-		totalEntries: newPropertyGaugeMetric(prefix, "total-entries", labelNames).
-			withHelp("Number of tracked connections").build(),
-		maxEntries: newPropertyGaugeMetric(prefix, "max-entries", labelNames).
-			withHelp("Conntrack table capacity").build(),
+		totalEntries: NewPropertyGaugeMetric(prefix, "total-entries", labelNames).
+			WithHelp("Number of tracked connections").Build(),
+		maxEntries: NewPropertyGaugeMetric(prefix, "max-entries", labelNames).
+			WithHelp("Conntrack table capacity").Build(),
 	}
 }
 
 func (c *conntrackCollector) Describe(ch chan<- *prometheus.Desc) {
-	c.totalEntries.describe(ch)
-	c.maxEntries.describe(ch)
+	c.totalEntries.Describe(ch)
+	c.maxEntries.Describe(ch)
 }
 
 func (c *conntrackCollector) Collect(ctx *CollectorContext) error {
@@ -47,12 +47,12 @@ func (c *conntrackCollector) Collect(ctx *CollectorContext) error {
 	if len(reply.Re) > 0 {
 		re := reply.Re[0]
 
-		if err := c.totalEntries.collect(re, ctx); err != nil {
+		if err := c.totalEntries.Collect(re, ctx); err != nil {
 			errs = multierror.Append(errs,
 				fmt.Errorf("collect total entries error: %w", err))
 		}
 
-		if err := c.maxEntries.collect(re, ctx); err != nil {
+		if err := c.maxEntries.Collect(re, ctx); err != nil {
 			errs = multierror.Append(errs,
 				fmt.Errorf("collect max entries error: %w", err))
 		}

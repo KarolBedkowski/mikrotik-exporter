@@ -14,7 +14,7 @@ func init() {
 }
 
 type monitorCollector struct {
-	metrics propertyMetricList
+	metrics PropertyMetricList
 }
 
 func newMonitorCollector() RouterOSCollector {
@@ -23,10 +23,10 @@ func newMonitorCollector() RouterOSCollector {
 	const prefix = "monitor"
 
 	c := &monitorCollector{
-		metrics: propertyMetricList{
-			newPropertyGaugeMetric(prefix, "status", labelNames).withConverter(metricFromLinkStatus).build(),
-			newPropertyGaugeMetric(prefix, "rate", labelNames).withConverter(metricFromRate).build(),
-			newPropertyGaugeMetric(prefix, "full-duplex", labelNames).withConverter(metricFromBool).build(),
+		metrics: PropertyMetricList{
+			NewPropertyGaugeMetric(prefix, "status", labelNames).WithConverter(metricFromLinkStatus).Build(),
+			NewPropertyGaugeMetric(prefix, "rate", labelNames).WithConverter(metricFromRate).Build(),
+			NewPropertyGaugeMetric(prefix, "full-duplex", labelNames).WithConverter(metricFromBool).Build(),
 		},
 	}
 
@@ -34,7 +34,7 @@ func newMonitorCollector() RouterOSCollector {
 }
 
 func (c *monitorCollector) Describe(ch chan<- *prometheus.Desc) {
-	c.metrics.describe(ch)
+	c.metrics.Describe(ch)
 }
 
 func (c *monitorCollector) Collect(ctx *CollectorContext) error {
@@ -63,7 +63,7 @@ func (c *monitorCollector) collectForMonitor(eths []string, ctx *CollectorContex
 		name := e.Map["name"]
 		ctx = ctx.withLabels(name)
 
-		if err := c.metrics.collect(e, ctx); err != nil {
+		if err := c.metrics.Collect(e, ctx); err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("collect %v error: %w", name, err))
 		}
 	}

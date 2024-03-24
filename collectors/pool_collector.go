@@ -12,7 +12,7 @@ func init() {
 }
 
 type poolCollector struct {
-	usedCount retMetricCollector
+	usedCount RetMetric
 }
 
 func newPoolCollector() RouterOSCollector {
@@ -21,13 +21,13 @@ func newPoolCollector() RouterOSCollector {
 	labelNames := []string{"name", "address", "ip_version", "pool"}
 
 	return &poolCollector{
-		usedCount: newRetGaugeMetric(prefix, "pool_used", labelNames).
-			withHelp("number of used IP/prefixes in a pool").build(),
+		usedCount: NewRetGaugeMetric(prefix, "pool_used", labelNames).
+			WithHelp("number of used IP/prefixes in a pool").Build(),
 	}
 }
 
 func (c *poolCollector) Describe(ch chan<- *prometheus.Desc) {
-	c.usedCount.describe(ch)
+	c.usedCount.Describe(ch)
 }
 
 func (c *poolCollector) Collect(ctx *CollectorContext) error {
@@ -67,7 +67,7 @@ func (c *poolCollector) collectForPool(ipVersion, topic, pool string, ctx *Colle
 
 	ctx = ctx.withLabels(ipVersion, pool)
 
-	if err := c.usedCount.collect(reply, ctx); err != nil {
+	if err := c.usedCount.Collect(reply, ctx); err != nil {
 		return fmt.Errorf("collect ip pool %s error: %w", pool, err)
 	}
 

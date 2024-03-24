@@ -16,7 +16,7 @@ func init() {
 }
 
 type w60gInterfaceCollector struct {
-	metrics propertyMetricList
+	metrics PropertyMetricList
 }
 
 func neww60gInterfaceCollector() RouterOSCollector {
@@ -25,21 +25,21 @@ func neww60gInterfaceCollector() RouterOSCollector {
 	labelNames := []string{"name", "address", "interface"}
 
 	return &w60gInterfaceCollector{
-		metrics: propertyMetricList{
-			newPropertyGaugeMetric(prefix, "signal", labelNames).build(),
-			newPropertyGaugeMetric(prefix, "rssi", labelNames).build(),
-			newPropertyGaugeMetric(prefix, "tx-mcs", labelNames).build(),
-			newPropertyGaugeMetric(prefix, "frequency", labelNames).build(),
-			newPropertyGaugeMetric(prefix, "tx-phy-rate", labelNames).build(),
-			newPropertyGaugeMetric(prefix, "tx-sector", labelNames).build(),
-			newPropertyGaugeMetric(prefix, "distance", labelNames).build(),
-			newPropertyGaugeMetric(prefix, "tx-packet-error-rate", labelNames).build(),
+		metrics: PropertyMetricList{
+			NewPropertyGaugeMetric(prefix, "signal", labelNames).Build(),
+			NewPropertyGaugeMetric(prefix, "rssi", labelNames).Build(),
+			NewPropertyGaugeMetric(prefix, "tx-mcs", labelNames).Build(),
+			NewPropertyGaugeMetric(prefix, "frequency", labelNames).Build(),
+			NewPropertyGaugeMetric(prefix, "tx-phy-rate", labelNames).Build(),
+			NewPropertyGaugeMetric(prefix, "tx-sector", labelNames).Build(),
+			NewPropertyGaugeMetric(prefix, "distance", labelNames).Build(),
+			NewPropertyGaugeMetric(prefix, "tx-packet-error-rate", labelNames).Build(),
 		},
 	}
 }
 
 func (c *w60gInterfaceCollector) Describe(ch chan<- *prometheus.Desc) {
-	c.metrics.describe(ch)
+	c.metrics.Describe(ch)
 }
 
 func (c *w60gInterfaceCollector) Collect(ctx *CollectorContext) error {
@@ -71,7 +71,7 @@ func (c *w60gInterfaceCollector) collectw60gMetricsForInterfaces(ifaces []string
 		if name, ok := se.Map["name"]; ok {
 			ctx = ctx.withLabels(name)
 
-			if err := c.metrics.collect(se, ctx); err != nil {
+			if err := c.metrics.Collect(se, ctx); err != nil {
 				errs = multierror.Append(errs, fmt.Errorf("collect %v error: %w", name, err))
 			}
 		}

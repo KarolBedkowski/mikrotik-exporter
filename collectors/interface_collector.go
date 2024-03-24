@@ -12,7 +12,7 @@ func init() {
 }
 
 type interfaceCollector struct {
-	metrics propertyMetricList
+	metrics PropertyMetricList
 }
 
 func newInterfaceCollector() RouterOSCollector {
@@ -21,24 +21,24 @@ func newInterfaceCollector() RouterOSCollector {
 	labelNames := []string{"name", "address", "interface", "type", "disabled", "comment", "running", "slave"}
 
 	return &interfaceCollector{
-		metrics: propertyMetricList{
-			newPropertyGaugeMetric(prefix, "actual-mtu", labelNames).build(),
-			newPropertyGaugeMetric(prefix, "running", labelNames).withConverter(metricFromBool).build(),
-			newPropertyCounterMetric(prefix, "rx-byte", labelNames).build(),
-			newPropertyCounterMetric(prefix, "tx-byte", labelNames).build(),
-			newPropertyCounterMetric(prefix, "rx-packet", labelNames).build(),
-			newPropertyCounterMetric(prefix, "tx-packet", labelNames).build(),
-			newPropertyCounterMetric(prefix, "rx-error", labelNames).build(),
-			newPropertyCounterMetric(prefix, "tx-error", labelNames).build(),
-			newPropertyCounterMetric(prefix, "rx-drop", labelNames).build(),
-			newPropertyCounterMetric(prefix, "tx-drop", labelNames).build(),
-			newPropertyCounterMetric(prefix, "link-downs", labelNames).build(),
+		metrics: PropertyMetricList{
+			NewPropertyGaugeMetric(prefix, "actual-mtu", labelNames).Build(),
+			NewPropertyGaugeMetric(prefix, "running", labelNames).WithConverter(metricFromBool).Build(),
+			NewPropertyCounterMetric(prefix, "rx-byte", labelNames).Build(),
+			NewPropertyCounterMetric(prefix, "tx-byte", labelNames).Build(),
+			NewPropertyCounterMetric(prefix, "rx-packet", labelNames).Build(),
+			NewPropertyCounterMetric(prefix, "tx-packet", labelNames).Build(),
+			NewPropertyCounterMetric(prefix, "rx-error", labelNames).Build(),
+			NewPropertyCounterMetric(prefix, "tx-error", labelNames).Build(),
+			NewPropertyCounterMetric(prefix, "rx-drop", labelNames).Build(),
+			NewPropertyCounterMetric(prefix, "tx-drop", labelNames).Build(),
+			NewPropertyCounterMetric(prefix, "link-downs", labelNames).Build(),
 		},
 	}
 }
 
 func (c *interfaceCollector) Describe(ch chan<- *prometheus.Desc) {
-	c.metrics.describe(ch)
+	c.metrics.Describe(ch)
 }
 
 func (c *interfaceCollector) Collect(ctx *CollectorContext) error {
@@ -57,7 +57,7 @@ func (c *interfaceCollector) Collect(ctx *CollectorContext) error {
 			re.Map["comment"], re.Map["running"], re.Map["slave"],
 		)
 
-		if err := c.metrics.collect(re, ctx); err != nil {
+		if err := c.metrics.Collect(re, ctx); err != nil {
 			errs = multierror.Append(errs, err)
 		}
 	}

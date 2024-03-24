@@ -13,7 +13,7 @@ func init() {
 }
 
 type poeCollector struct {
-	metrics propertyMetricList
+	metrics PropertyMetricList
 }
 
 func newPOECollector() RouterOSCollector {
@@ -22,19 +22,19 @@ func newPOECollector() RouterOSCollector {
 	labelNames := []string{"name", "address", "interface"}
 
 	return &poeCollector{
-		metrics: propertyMetricList{
-			newPropertyGaugeMetric(prefix, "current", labelNames).
-				withHelp("current in mA").build(),
-			newPropertyGaugeMetric(prefix, "wattage", labelNames).
-				withHelp("power in W").build(),
-			newPropertyGaugeMetric(prefix, "voltage", labelNames).
-				withHelp("voltage in V").build(),
+		metrics: PropertyMetricList{
+			NewPropertyGaugeMetric(prefix, "current", labelNames).
+				WithHelp("current in mA").Build(),
+			NewPropertyGaugeMetric(prefix, "wattage", labelNames).
+				WithHelp("power in W").Build(),
+			NewPropertyGaugeMetric(prefix, "voltage", labelNames).
+				WithHelp("voltage in V").Build(),
 		},
 	}
 }
 
 func (c *poeCollector) Describe(ch chan<- *prometheus.Desc) {
-	c.metrics.describe(ch)
+	c.metrics.Describe(ch)
 }
 
 func (c *poeCollector) Collect(ctx *CollectorContext) error {
@@ -69,7 +69,7 @@ func (c *poeCollector) collectPOEMetricsForInterfaces(ifaces []string, ctx *Coll
 		if name, ok := se.Map["name"]; ok {
 			ctx = ctx.withLabels(name)
 
-			if err := c.metrics.collect(se, ctx); err != nil {
+			if err := c.metrics.Collect(se, ctx); err != nil {
 				errs = multierror.Append(errs, fmt.Errorf("collect %v error: %w", name, err))
 			}
 		}

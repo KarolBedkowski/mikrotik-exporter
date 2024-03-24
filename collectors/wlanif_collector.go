@@ -14,7 +14,7 @@ func init() {
 }
 
 type wlanIFCollector struct {
-	metrics propertyMetricList
+	metrics PropertyMetricList
 
 	frequencyDesc *prometheus.Desc
 }
@@ -25,10 +25,10 @@ func newWlanIFCollector() RouterOSCollector {
 	labelNames := []string{"name", "address", "interface", "channel"}
 
 	return &wlanIFCollector{
-		metrics: propertyMetricList{
-			newPropertyGaugeMetric(prefix, "registered-clients", labelNames).build(),
-			newPropertyGaugeMetric(prefix, "noise-floor", labelNames).build(),
-			newPropertyGaugeMetric(prefix, "overall-tx-ccq", labelNames).build(),
+		metrics: PropertyMetricList{
+			NewPropertyGaugeMetric(prefix, "registered-clients", labelNames).Build(),
+			NewPropertyGaugeMetric(prefix, "noise-floor", labelNames).Build(),
+			NewPropertyGaugeMetric(prefix, "overall-tx-ccq", labelNames).Build(),
 		},
 		frequencyDesc: description(prefix, "frequency", "WiFi frequency",
 			[]string{"name", "address", "interface", "freqidx"}),
@@ -37,7 +37,7 @@ func newWlanIFCollector() RouterOSCollector {
 
 func (c *wlanIFCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.frequencyDesc
-	c.metrics.describe(ch)
+	c.metrics.Describe(ch)
 }
 
 func (c *wlanIFCollector) Collect(ctx *CollectorContext) error {
@@ -79,7 +79,7 @@ func (c *wlanIFCollector) collectForInterface(iface string, ctx *CollectorContex
 
 	ctx = ctx.withLabels(iface, re.Map["channel"])
 
-	if err := c.metrics.collect(re, ctx); err != nil {
+	if err := c.metrics.Collect(re, ctx); err != nil {
 		return fmt.Errorf("collect %s error: %w", iface, err)
 	}
 

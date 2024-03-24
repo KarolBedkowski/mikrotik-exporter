@@ -35,6 +35,13 @@ func init() {
 	}
 }
 
+type (
+	ValueConverter     func(value string) (float64, error)
+	TXRXValueConverter func(value string) (float64, float64, error)
+)
+
+// --------------------------------------------
+
 func metricStringCleanup(in string) string {
 	return strings.ReplaceAll(in, "-", "_")
 }
@@ -62,6 +69,22 @@ func description(prefix, name, helpText string, labelNames []string) *prometheus
 		nil,
 	)
 }
+
+func cleanHostName(hostname string) string {
+	if hostname != "" {
+		if hostname[0] == '"' {
+			hostname = hostname[1 : len(hostname)-1]
+		}
+
+		// QuoteToASCII because of broken DHCP clients
+		hostname = strconv.QuoteToASCII(hostname)
+		hostname = hostname[1 : len(hostname)-1]
+	}
+
+	return hostname
+}
+
+// --------------------------------------------
 
 func splitStringToFloatsOnComma(metric string) (float64, float64, error) {
 	return splitStringToFloats(metric, ",")
@@ -114,8 +137,6 @@ func metricFromDuration(duration string) (float64, error) {
 	return totalDur.Seconds(), nil
 }
 
-type ValueConverter func(value string) (float64, error)
-
 func metricFromString(value string) (float64, error) {
 	return strconv.ParseFloat(value, 64) //nolint:wrapcheck
 }
@@ -134,23 +155,25 @@ func metricConstantValue(value string) (float64, error) {
 	return 1.0, nil
 }
 
-type propertyMetricCollector interface {
-	describe(ch chan<- *prometheus.Desc)
-	collect(reply *proto.Sentence, ctx *CollectorContext) error
+// --------------------------------------
+
+type PropertyMetric interface {
+	Describe(ch chan<- *prometheus.Desc)
+	Collect(reply *proto.Sentence, ctx *CollectorContext) error
 }
 
-type propertyCollector struct {
+type simplePropertyMetric struct {
 	desc           *prometheus.Desc
 	property       string
 	valueConverter ValueConverter
 	valueType      prometheus.ValueType
 }
 
-func (p *propertyCollector) describe(ch chan<- *prometheus.Desc) {
+func (p *simplePropertyMetric) Describe(ch chan<- *prometheus.Desc) {
 	ch <- p.desc
 }
 
-func (p *propertyCollector) collect(reply *proto.Sentence,
+func (p *simplePropertyMetric) Collect(reply *proto.Sentence,
 	ctx *CollectorContext,
 ) error {
 	propertyVal, ok := reply.Map[p.property]
@@ -179,19 +202,19 @@ func (p *propertyCollector) collect(reply *proto.Sentence,
 	return nil
 }
 
-type propertyRxTxCollector struct {
+type RxTxPropertyMetric struct {
 	rxDesc         *prometheus.Desc
 	txDesc         *prometheus.Desc
 	property       string
 	valueConverter TXRXValueConverter
 }
 
-func (p *propertyRxTxCollector) describe(ch chan<- *prometheus.Desc) {
+func (p *RxTxPropertyMetric) Describe(ch chan<- *prometheus.Desc) {
 	ch <- p.rxDesc
 	ch <- p.txDesc
 }
 
-func (p *propertyRxTxCollector) collect(reply *proto.Sentence,
+func (p *RxTxPropertyMetric) Collect(reply *proto.Sentence,
 	ctx *CollectorContext,
 ) error {
 	propertyVal, ok := reply.Map[p.property]
@@ -208,7 +231,7 @@ func (p *propertyRxTxCollector) collect(reply *proto.Sentence,
 
 	tx, rx, err := p.valueConverter(propertyVal)
 	if err != nil {
-		return fmt.Errorf("collect %v for property %s error: %w", propertyVal, p.property, err)
+		return fmt.Errorf("Collect %v for property %s error: %w", propertyVal, p.property, err)
 	}
 
 	labels := ctx.labels
@@ -219,6 +242,8 @@ func (p *propertyRxTxCollector) collect(reply *proto.Sentence,
 	return nil
 }
 
+// --------------------------------------------
+
 type metricType int
 
 const (
@@ -227,9 +252,7 @@ const (
 	metricRxTx
 )
 
-type TXRXValueConverter func(value string) (float64, float64, error)
-
-type propertyMetricBuilder struct {
+type PropertyMetricBuilder struct {
 	prefix             string
 	property           string
 	valueConverter     ValueConverter
@@ -240,8 +263,8 @@ type propertyMetricBuilder struct {
 	labels             []string
 }
 
-func newPropertyCounterMetric(prefix, property string, labels []string) *propertyMetricBuilder {
-	return &propertyMetricBuilder{
+func NewPropertyCounterMetric(prefix, property string, labels []string) *PropertyMetricBuilder {
+	return &PropertyMetricBuilder{
 		prefix:     prefix,
 		property:   property,
 		metricType: metricCounter,
@@ -249,8 +272,8 @@ func newPropertyCounterMetric(prefix, property string, labels []string) *propert
 	}
 }
 
-func newPropertyGaugeMetric(prefix, property string, labels []string) *propertyMetricBuilder {
-	return &propertyMetricBuilder{
+func NewPropertyGaugeMetric(prefix, property string, labels []string) *PropertyMetricBuilder {
+	return &PropertyMetricBuilder{
 		prefix:     prefix,
 		property:   property,
 		metricType: metricGauge,
@@ -258,8 +281,8 @@ func newPropertyGaugeMetric(prefix, property string, labels []string) *propertyM
 	}
 }
 
-func newPropertyRxTxMetric(prefix, property string, labels []string) *propertyMetricBuilder {
-	return &propertyMetricBuilder{
+func NewPropertyRxTxMetric(prefix, property string, labels []string) *PropertyMetricBuilder {
+	return &PropertyMetricBuilder{
 		prefix:     prefix,
 		property:   property,
 		metricType: metricRxTx,
@@ -267,19 +290,19 @@ func newPropertyRxTxMetric(prefix, property string, labels []string) *propertyMe
 	}
 }
 
-func (p *propertyMetricBuilder) withName(name string) *propertyMetricBuilder {
+func (p *PropertyMetricBuilder) WithName(name string) *PropertyMetricBuilder {
 	p.metricName = name
 
 	return p
 }
 
-func (p *propertyMetricBuilder) withHelp(help string) *propertyMetricBuilder {
+func (p *PropertyMetricBuilder) WithHelp(help string) *PropertyMetricBuilder {
 	p.metricHelp = help
 
 	return p
 }
 
-func (p *propertyMetricBuilder) withConverter(vc ValueConverter) *propertyMetricBuilder {
+func (p *PropertyMetricBuilder) WithConverter(vc ValueConverter) *PropertyMetricBuilder {
 	if p.metricType == metricRxTx {
 		panic("can't set ValueConverter for rxtx metric")
 	}
@@ -289,7 +312,7 @@ func (p *propertyMetricBuilder) withConverter(vc ValueConverter) *propertyMetric
 	return p
 }
 
-func (p *propertyMetricBuilder) withRxTxConverter(vc TXRXValueConverter) *propertyMetricBuilder {
+func (p *PropertyMetricBuilder) WithRxTxConverter(vc TXRXValueConverter) *PropertyMetricBuilder {
 	if p.metricType != metricRxTx {
 		panic("can't set TXRXValueConverter for non-rxtx metric")
 	}
@@ -299,7 +322,7 @@ func (p *propertyMetricBuilder) withRxTxConverter(vc TXRXValueConverter) *proper
 	return p
 }
 
-func (p *propertyMetricBuilder) build() propertyMetricCollector {
+func (p *PropertyMetricBuilder) Build() PropertyMetric {
 	metricName := p.metricName
 	if metricName == "" {
 		metricName = p.property
@@ -334,24 +357,26 @@ func (p *propertyMetricBuilder) build() propertyMetricCollector {
 	case metricCounter:
 		desc := descriptionForPropertyNameHelpText(p.prefix, metricName, p.labels, metricHelp)
 
-		return &propertyCollector{desc, p.property, p.valueConverter, prometheus.GaugeValue}
+		return &simplePropertyMetric{desc, p.property, p.valueConverter, prometheus.GaugeValue}
 
 	case metricGauge:
 		desc := descriptionForPropertyNameHelpText(p.prefix, metricName, p.labels, metricHelp)
 
-		return &propertyCollector{desc, p.property, p.valueConverter, prometheus.GaugeValue}
+		return &simplePropertyMetric{desc, p.property, p.valueConverter, prometheus.GaugeValue}
 
 	case metricRxTx:
 		rxDesc := descriptionForPropertyNameHelpText(p.prefix, "rx_"+metricName, p.labels, metricHelp+" (RX)")
 		txDesc := descriptionForPropertyNameHelpText(p.prefix, "tx_"+metricName, p.labels, metricHelp+" (TX)")
 
-		return &propertyRxTxCollector{rxDesc, txDesc, p.property, p.rxTxValueConverter}
+		return &RxTxPropertyMetric{rxDesc, txDesc, p.property, p.rxTxValueConverter}
 	}
 
 	panic("unknown metric type")
 }
 
-type retMetricBuilder struct {
+// --------------------------------------
+
+type RetMetricBuilder struct {
 	prefix         string
 	property       string
 	valueConverter ValueConverter
@@ -361,8 +386,8 @@ type retMetricBuilder struct {
 	labels         []string
 }
 
-func newRetGaugeMetric(prefix, property string, labels []string) *retMetricBuilder {
-	return &retMetricBuilder{
+func NewRetGaugeMetric(prefix, property string, labels []string) *RetMetricBuilder {
+	return &RetMetricBuilder{
 		prefix:     prefix,
 		property:   property,
 		metricType: metricGauge,
@@ -370,25 +395,25 @@ func newRetGaugeMetric(prefix, property string, labels []string) *retMetricBuild
 	}
 }
 
-func (r *retMetricBuilder) withName(name string) *retMetricBuilder { //nolint:unused
+func (r *RetMetricBuilder) WithName(name string) *RetMetricBuilder { //nolint:unused
 	r.metricName = name
 
 	return r
 }
 
-func (r *retMetricBuilder) withHelp(help string) *retMetricBuilder {
+func (r *RetMetricBuilder) WithHelp(help string) *RetMetricBuilder {
 	r.metricHelp = help
 
 	return r
 }
 
-func (r *retMetricBuilder) withConverter(vc ValueConverter) *retMetricBuilder { //nolint:unused
+func (r *RetMetricBuilder) WithConverter(vc ValueConverter) *RetMetricBuilder {
 	r.valueConverter = vc
 
 	return r
 }
 
-func (r *retMetricBuilder) build() retMetricCollector {
+func (r *RetMetricBuilder) Build() RetMetric {
 	metricName := r.metricName
 	if metricName == "" {
 		metricName = r.property
@@ -425,9 +450,11 @@ func (r *retMetricBuilder) build() retMetricCollector {
 	panic("unknown metric type")
 }
 
-type retMetricCollector interface {
-	describe(ch chan<- *prometheus.Desc)
-	collect(reply *routeros.Reply, ctx *CollectorContext) error
+// --------------------------------------
+
+type RetMetric interface {
+	Describe(ch chan<- *prometheus.Desc)
+	Collect(reply *routeros.Reply, ctx *CollectorContext) error
 }
 
 type retGaugeCollector struct {
@@ -436,11 +463,11 @@ type retGaugeCollector struct {
 	valueConverter ValueConverter
 }
 
-func (r *retGaugeCollector) describe(ch chan<- *prometheus.Desc) {
+func (r *retGaugeCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- r.desc
 }
 
-func (r *retGaugeCollector) collect(reply *routeros.Reply,
+func (r *retGaugeCollector) Collect(reply *routeros.Reply,
 	ctx *CollectorContext,
 ) error {
 	propertyVal := reply.Done.Map["ret"]
@@ -462,25 +489,29 @@ func (r *retGaugeCollector) collect(reply *routeros.Reply,
 	return nil
 }
 
-type propertyMetricList []propertyMetricCollector
+// --------------------------------------
 
-func (p propertyMetricList) describe(ch chan<- *prometheus.Desc) {
+type PropertyMetricList []PropertyMetric
+
+func (p PropertyMetricList) Describe(ch chan<- *prometheus.Desc) {
 	for _, m := range p {
-		m.describe(ch)
+		m.Describe(ch)
 	}
 }
 
-func (p propertyMetricList) collect(re *proto.Sentence, ctx *CollectorContext) error {
+func (p PropertyMetricList) Collect(re *proto.Sentence, ctx *CollectorContext) error {
 	var errs *multierror.Error
 
 	for _, m := range p {
-		if err := m.collect(re, ctx); err != nil {
+		if err := m.Collect(re, ctx); err != nil {
 			errs = multierror.Append(errs, err)
 		}
 	}
 
 	return errs.ErrorOrNil()
 }
+
+// --------------------------------------------
 
 func extractPropertyFromReplay(reply *routeros.Reply, name string) []string { //nolint:unparam
 	values := make([]string, 0, len(reply.Re))
@@ -490,18 +521,4 @@ func extractPropertyFromReplay(reply *routeros.Reply, name string) []string { //
 	}
 
 	return values
-}
-
-func cleanHostName(hostname string) string {
-	if hostname != "" {
-		if hostname[0] == '"' {
-			hostname = hostname[1 : len(hostname)-1]
-		}
-
-		// QuoteToASCII because of broken DHCP clients
-		hostname = strconv.QuoteToASCII(hostname)
-		hostname = hostname[1 : len(hostname)-1]
-	}
-
-	return hostname
 }

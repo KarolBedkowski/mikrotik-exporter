@@ -13,10 +13,10 @@ func init() {
 }
 
 type queueCollector struct {
-	metrics propertyMetricList
+	metrics PropertyMetricList
 
-	monitorQueuedBytes   propertyMetricCollector
-	monitorQueuedPackets propertyMetricCollector
+	monitorQueuedBytes   PropertyMetric
+	monitorQueuedPackets PropertyMetric
 }
 
 func newQueueCollector() RouterOSCollector {
@@ -26,23 +26,23 @@ func newQueueCollector() RouterOSCollector {
 	const sqPrefix = "simple_queue"
 
 	return &queueCollector{
-		monitorQueuedBytes:   newPropertyGaugeMetric("queue", "queued-bytes", monitorLabelNames).build(),
-		monitorQueuedPackets: newPropertyGaugeMetric("queue", "queued-packets", monitorLabelNames).build(),
+		monitorQueuedBytes:   NewPropertyGaugeMetric("queue", "queued-bytes", monitorLabelNames).Build(),
+		monitorQueuedPackets: NewPropertyGaugeMetric("queue", "queued-packets", monitorLabelNames).Build(),
 
-		metrics: propertyMetricList{
-			newPropertyGaugeMetric(sqPrefix, "disabled", labelNames).withConverter(metricFromBool).build(),
-			newPropertyRxTxMetric(sqPrefix, "packets", labelNames).withRxTxConverter(metricFromQueueTxRx).build(),
-			newPropertyRxTxMetric(sqPrefix, "bytes", labelNames).withRxTxConverter(metricFromQueueTxRx).build(),
-			newPropertyRxTxMetric(sqPrefix, "queued-packets", labelNames).withRxTxConverter(metricFromQueueTxRx).build(),
-			newPropertyRxTxMetric(sqPrefix, "queued-bytes", labelNames).withRxTxConverter(metricFromQueueTxRx).build(),
+		metrics: PropertyMetricList{
+			NewPropertyGaugeMetric(sqPrefix, "disabled", labelNames).WithConverter(metricFromBool).Build(),
+			NewPropertyRxTxMetric(sqPrefix, "packets", labelNames).WithRxTxConverter(metricFromQueueTxRx).Build(),
+			NewPropertyRxTxMetric(sqPrefix, "bytes", labelNames).WithRxTxConverter(metricFromQueueTxRx).Build(),
+			NewPropertyRxTxMetric(sqPrefix, "queued-packets", labelNames).WithRxTxConverter(metricFromQueueTxRx).Build(),
+			NewPropertyRxTxMetric(sqPrefix, "queued-bytes", labelNames).WithRxTxConverter(metricFromQueueTxRx).Build(),
 		},
 	}
 }
 
 func (c *queueCollector) Describe(ch chan<- *prometheus.Desc) {
-	c.metrics.describe(ch)
-	c.monitorQueuedBytes.describe(ch)
-	c.monitorQueuedPackets.describe(ch)
+	c.metrics.Describe(ch)
+	c.monitorQueuedBytes.Describe(ch)
+	c.monitorQueuedPackets.Describe(ch)
 }
 
 func (c *queueCollector) Collect(ctx *CollectorContext) error {
@@ -68,11 +68,11 @@ func (c *queueCollector) collectQueue(ctx *CollectorContext) error {
 
 	re := reply.Re[0]
 
-	if err := c.monitorQueuedBytes.collect(re, ctx); err != nil {
+	if err := c.monitorQueuedBytes.Collect(re, ctx); err != nil {
 		return fmt.Errorf("collect queue monitor error: %w", err)
 	}
 
-	if err := c.monitorQueuedPackets.collect(re, ctx); err != nil {
+	if err := c.monitorQueuedPackets.Collect(re, ctx); err != nil {
 		return fmt.Errorf("collect queue monitor error: %w", err)
 	}
 
@@ -93,7 +93,7 @@ func (c *queueCollector) collectSimpleQueue(ctx *CollectorContext) error {
 		queue := reply.Map["queue"]
 		ctx = ctx.withLabels(name, queue, reply.Map["comment"])
 
-		if err := c.metrics.collect(reply, ctx); err != nil {
+		if err := c.metrics.Collect(reply, ctx); err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("collect %v/%v error: %w", name, queue, err))
 		}
 	}
