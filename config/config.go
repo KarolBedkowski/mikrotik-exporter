@@ -96,6 +96,44 @@ type Device struct {
 	FWCollectorSettings map[string][]string `yaml:"fw_collector_settings"`
 }
 
+func (d *Device) validate(profiles map[string]Features) error {
+	var errs *multierror.Error
+
+	if d.Srv == nil {
+		if d.Name == "" {
+			errs = multierror.Append(errs, fmt.Errorf("missing `name`"))
+		}
+
+		if d.Address == "" {
+			errs = multierror.Append(errs, fmt.Errorf("missing `addres`"))
+		}
+	} else if d.Srv.Record == "" {
+		errs = multierror.Append(errs, fmt.Errorf("missing `srv.record`"))
+	}
+
+	if d.User == "" {
+		errs = multierror.Append(errs, fmt.Errorf("missing `user`"))
+	}
+
+	if d.Password == "" {
+		errs = multierror.Append(errs, fmt.Errorf("missing `password`"))
+	}
+
+	for f := range d.FWCollectorSettings {
+		if f != "filter" && f != "nat" && f != "mangle" {
+			errs = multierror.Append(errs, fmt.Errorf("invalid firewall name %s", f))
+		}
+	}
+
+	if d.Profile != "" {
+		if _, ok := profiles[d.Profile]; !ok {
+			errs = multierror.Append(errs, fmt.Errorf("unknown profile `%s`", d.Profile))
+		}
+	}
+
+	return errs.ErrorOrNil()
+}
+
 type SrvRecord struct {
 	Record string `yaml:"record"`
 	/// DNS is additional dns server used to resolved `Record`
@@ -134,6 +172,19 @@ func Load(r io.Reader, collectors []string) (*Config, error) {
 
 		// always enabled
 		features["resource"] = true
+	}
+
+	var errs *multierror.Error
+
+	for idx, d := range cfg.Devices {
+		if err := d.validate(cfg.Profiles); err != nil {
+			errs = multierror.Append(errs,
+				fmt.Errorf("invalid device %d configuration: %w", idx, err))
+		}
+	}
+
+	if err := errs.ErrorOrNil(); err != nil {
+		return nil, err
 	}
 
 	return cfg, nil
