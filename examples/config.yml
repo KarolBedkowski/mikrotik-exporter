@@ -8,6 +8,15 @@ devices:
     profile: router
     # disable ipv6 metrics for this device
     ipv6_disabled: true
+
+    # configuration for firewall collector
+    fw_collector_settings:
+      # collect metric from `filter`
+      filter:
+        # and from chain `input`
+        - input
+      nat:
+        - srcnat
   - name: dev2
     address: 192.168.0.2
     # enable ssl
@@ -26,6 +35,7 @@ devices:
     # use default profile
     # profile: basic
 
+
 # default features (profile)
 features:
   cloud: true
@@ -33,6 +43,7 @@ features:
   dhcp: true
   dhcpl: true
   dhcpv6: true
+  firewall: true
   firmware: true
   health: true
   routes: true
@@ -62,6 +73,7 @@ profiles:
     capsman: true
     conntrack: true
     health: true
+    firewall: true
     monitor: true
     wlanif: true
     netwatch: true

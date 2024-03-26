@@ -92,6 +92,8 @@ type Device struct {
 	Timeout  uint `yaml:"timeout,omitempty"`
 	TLS      bool `yaml:"tls,omitempty"`
 	Insecure bool `yaml:"insecure,omitempty"`
+
+	FWCollectorSettings map[string][]string `yaml:"fw_collector_settings"`
 }
 
 type SrvRecord struct {
