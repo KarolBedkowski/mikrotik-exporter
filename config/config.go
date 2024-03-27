@@ -26,17 +26,35 @@ const (
 	DefaultTimeout = 5
 )
 
-var (
-	ErrUnknownDevice  = errors.New("unknown device")
-	ErrUnknownProfile = errors.New("unknown profile")
-)
-
 var GlobalLogger log.Logger
+
+var ErrUnknownDevice = errors.New("unknown device")
+
+type MissingFieldError string
+
+func (m MissingFieldError) Error() string {
+	return "missing `" + string(m) + "`"
+}
 
 type UnknownFeatureError string
 
 func (e UnknownFeatureError) Error() string {
 	return "unknown feature: " + string(e)
+}
+
+type UnknownProfileError string
+
+func (e UnknownProfileError) Error() string {
+	return "unknown profile: " + string(e)
+}
+
+type InvalidFieldValueError struct {
+	field string
+	value string
+}
+
+func (i InvalidFieldValueError) Error() string {
+	return "invalid value of `" + i.field + "`: `" + i.value + "`"
 }
 
 type Features map[string]bool
@@ -101,33 +119,33 @@ func (d *Device) validate(profiles map[string]Features) error {
 
 	if d.Srv == nil {
 		if d.Name == "" {
-			errs = multierror.Append(errs, fmt.Errorf("missing `name`"))
+			errs = multierror.Append(errs, MissingFieldError("name"))
 		}
 
 		if d.Address == "" {
-			errs = multierror.Append(errs, fmt.Errorf("missing `addres`"))
+			errs = multierror.Append(errs, MissingFieldError("address"))
 		}
 	} else if d.Srv.Record == "" {
-		errs = multierror.Append(errs, fmt.Errorf("missing `srv.record`"))
+		errs = multierror.Append(errs, MissingFieldError("srv.record"))
 	}
 
 	if d.User == "" {
-		errs = multierror.Append(errs, fmt.Errorf("missing `user`"))
+		errs = multierror.Append(errs, MissingFieldError("user"))
 	}
 
 	if d.Password == "" {
-		errs = multierror.Append(errs, fmt.Errorf("missing `password`"))
+		errs = multierror.Append(errs, MissingFieldError("password"))
 	}
 
 	for f := range d.FWCollectorSettings {
-		if f != "filter" && f != "nat" && f != "mangle" {
-			errs = multierror.Append(errs, fmt.Errorf("invalid firewall name %s", f))
+		if f != "filter" && f != "nat" && f != "mangle" && f != "raw" {
+			errs = multierror.Append(errs, InvalidFieldValueError{"firewall name", f})
 		}
 	}
 
 	if d.Profile != "" {
 		if _, ok := profiles[d.Profile]; !ok {
-			errs = multierror.Append(errs, fmt.Errorf("unknown profile `%s`", d.Profile))
+			errs = multierror.Append(errs, UnknownProfileError(d.Profile))
 		}
 	}
 
@@ -179,7 +197,8 @@ func Load(r io.Reader, collectors []string) (*Config, error) {
 	for idx, d := range cfg.Devices {
 		if err := d.validate(cfg.Profiles); err != nil {
 			errs = multierror.Append(errs,
-				fmt.Errorf("invalid device %d configuration: %w", idx, err))
+				fmt.Errorf("invalid device %d (%s) configuration: %w",
+					idx, d.Name, err))
 		}
 	}
 
@@ -201,7 +220,7 @@ func (c *Config) DeviceFeatures(deviceName string) (*Features, error) {
 				return &f, nil
 			}
 
-			return nil, ErrUnknownProfile
+			return nil, UnknownProfileError(d.Profile)
 		}
 	}
 
