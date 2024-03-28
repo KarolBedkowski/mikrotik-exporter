@@ -2,6 +2,7 @@ package config
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"strings"
 	"testing"
@@ -92,5 +93,75 @@ func assertNotFeature(name string, f Features, t *testing.T) {
 	name = strings.ToLower(name)
 	if v, ok := f[name]; ok && v {
 		t.Fatalf("expected feature %s to be disabled", name)
+	}
+}
+
+func TestValidatorsDevice(t *testing.T) {
+	config := []byte(`
+devices:
+  - name: test1
+    address: 192.168.1.1
+    profile: test
+    `)
+
+	_, err := Load(bytes.NewReader(config), nil)
+	if err == nil {
+		t.Fatalf("expected error")
+	}
+
+	t.Logf("errors: %s", err)
+
+	if !errors.Is(err, MissingFieldError("user")) {
+		t.Fatalf("no error: missing field user")
+	}
+	if !errors.Is(err, MissingFieldError("password")) {
+		t.Fatalf("no error: missing field password")
+	}
+	if !errors.Is(err, UnknownProfileError("test")) {
+		t.Fatalf("no error: unknown profile test")
+	}
+
+	config = []byte(`
+devices:
+  - profile: test
+    user: test
+    password: 1234
+    `)
+
+	_, err = Load(bytes.NewReader(config), nil)
+	if err == nil {
+		t.Fatalf("expected error")
+	}
+
+	t.Logf("errors: %s", err)
+
+	if !errors.Is(err, MissingFieldError("name")) {
+		t.Fatalf("no error: missing field name")
+	}
+	if !errors.Is(err, MissingFieldError("address")) {
+		t.Fatalf("no error: missing field address")
+	}
+}
+
+func TestValidatorsDeviceSrv(t *testing.T) {
+	config := []byte(`
+devices:
+  - srv:
+      record:
+    user: test
+    `)
+
+	_, err := Load(bytes.NewReader(config), nil)
+	if err == nil {
+		t.Fatalf("expected error")
+	}
+
+	t.Logf("errors: %s", err)
+
+	if !errors.Is(err, MissingFieldError("password")) {
+		t.Fatalf("no error: missing field password")
+	}
+	if !errors.Is(err, MissingFieldError("srv.record")) {
+		t.Fatalf("no error: missing field password")
 	}
 }

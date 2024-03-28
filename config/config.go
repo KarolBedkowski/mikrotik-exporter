@@ -182,6 +182,10 @@ func Load(r io.Reader, collectors []string) (*Config, error) {
 		return nil, fmt.Errorf("validate features error: %w", err)
 	}
 
+	if cfg.Features == nil {
+		cfg.Features = make(Features)
+	}
+
 	// always enabled
 	cfg.Features["resource"] = true
 
