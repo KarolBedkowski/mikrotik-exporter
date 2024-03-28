@@ -111,6 +111,8 @@ type Device struct {
 	TLS      bool `yaml:"tls,omitempty"`
 	Insecure bool `yaml:"insecure,omitempty"`
 
+	Disabled bool `yaml:"disabled,omitempty"`
+
 	FWCollectorSettings map[string][]string `yaml:"fw_collector_settings"`
 }
 
@@ -191,6 +193,17 @@ func Load(r io.Reader, collectors []string) (*Config, error) {
 		// always enabled
 		features["resource"] = true
 	}
+
+	// remove disabled devices
+	devs := make([]Device, 0, len(cfg.Devices))
+
+	for _, d := range cfg.Devices {
+		if !d.Disabled {
+			devs = append(devs, d)
+		}
+	}
+
+	cfg.Devices = devs
 
 	var errs *multierror.Error
 

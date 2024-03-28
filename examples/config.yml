@@ -8,6 +8,8 @@ devices:
     profile: router
     # disable ipv6 metrics for this device
     ipv6_disabled: true
+    # by default device is enabled
+    disabled: false
 
     # configuration for firewall collector
     fw_collector_settings:
@@ -28,6 +30,8 @@ devices:
     user: ro
     password: ro
     profile: basic
+    # device is disabled
+    disabled: true
   - name: dev3
     address: dev3
     user: ro
