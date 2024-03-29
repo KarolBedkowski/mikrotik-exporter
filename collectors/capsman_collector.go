@@ -13,8 +13,8 @@ func init() {
 }
 
 type capsmanCollector struct {
-	metrics PropertyMetricList
-
+	metrics               PropertyMetricList
+	interfaces            PropertyMetricList
 	radiosProvisionedDesc PropertyMetric
 }
 
@@ -23,6 +23,7 @@ func newCapsmanCollector() RouterOSCollector {
 
 	labelNames := []string{"name", "address", "interface", "mac_address", "ssid", "eap_identity", "comment"}
 	radioLabelNames := []string{"name", "address", "interface", "radio_mac", "remote_cap_identity", "remote_cap_name"}
+	ifaceLabelNames := []string{"name", "address", "interface", "mac_address", "configuration", "current_state", "master_interface"}
 
 	collector := &capsmanCollector{
 		metrics: PropertyMetricList{
@@ -32,6 +33,10 @@ func newCapsmanCollector() RouterOSCollector {
 			NewPropertyGaugeMetric(prefix, "rx-signal", labelNames).Build(),
 			NewPropertyRxTxMetric(prefix, "packets", labelNames).Build(),
 			NewPropertyRxTxMetric(prefix, "bytes", labelNames).Build(),
+		},
+		interfaces: PropertyMetricList{
+			NewPropertyGaugeMetric("capsman_interface", "current-authorized-clients", ifaceLabelNames).Build(),
+			NewPropertyGaugeMetric("capsman_interface", "current-registered-clients", ifaceLabelNames).Build(),
 		},
 		radiosProvisionedDesc: NewPropertyGaugeMetric("capsman", "provisioned", radioLabelNames).
 			WithName("radio_provisioned").WithHelp("Status of provision remote radios").
@@ -44,12 +49,14 @@ func newCapsmanCollector() RouterOSCollector {
 
 func (c *capsmanCollector) Describe(ch chan<- *prometheus.Desc) {
 	c.radiosProvisionedDesc.Describe(ch)
+	c.interfaces.Describe(ch)
 	c.metrics.Describe(ch)
 }
 
 func (c *capsmanCollector) Collect(ctx *CollectorContext) error {
 	return multierror.Append(nil,
 		c.collectRegistrations(ctx),
+		c.collectInterfaces(ctx),
 		c.collectRadiosProvisioned(ctx),
 	).ErrorOrNil()
 }
@@ -69,6 +76,28 @@ func (c *capsmanCollector) collectRegistrations(ctx *CollectorContext) error {
 
 		if err := c.metrics.Collect(re, &lctx); err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("collect registrations error: %w", err))
+		}
+	}
+
+	return errs.ErrorOrNil()
+}
+
+func (c *capsmanCollector) collectInterfaces(ctx *CollectorContext) error {
+	reply, err := ctx.client.Run("/caps-man/interface/print",
+		"=.proplist=name,mac-address,configuration,current-state,master-interface,"+
+			"current-authorized-clients,current-registered-clients")
+	if err != nil {
+		return fmt.Errorf("fetch capsman interfaces error: %w", err)
+	}
+
+	var errs *multierror.Error
+
+	for _, re := range reply.Re {
+		lctx := ctx.withLabels(re.Map["name"], re.Map["mac-address"], re.Map["configuration"],
+			re.Map["current-state"], re.Map["master-interface"])
+
+		if err := c.interfaces.Collect(re, &lctx); err != nil {
+			errs = multierror.Append(errs, fmt.Errorf("collect interfaces error: %w", err))
 		}
 	}
 
