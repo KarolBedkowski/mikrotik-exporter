@@ -62,9 +62,9 @@ func (c *dhcpv6Collector) colllectForDHCPServer(ctx *CollectorContext, dhcpServe
 		return fmt.Errorf("get dhcpv6 bindings error: %w", err)
 	}
 
-	ctx = ctx.withLabels(dhcpServer)
+	lctx := ctx.withLabels(dhcpServer)
 
-	if err := c.bindingCount.Collect(reply, ctx); err != nil {
+	if err := c.bindingCount.Collect(reply, &lctx); err != nil {
 		return fmt.Errorf("collect error: %w", err)
 	}
 

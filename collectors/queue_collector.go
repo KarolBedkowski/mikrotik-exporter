@@ -91,9 +91,9 @@ func (c *queueCollector) collectSimpleQueue(ctx *CollectorContext) error {
 	for _, reply := range reply.Re {
 		name := reply.Map["name"]
 		queue := reply.Map["queue"]
-		ctx = ctx.withLabels(name, queue, reply.Map["comment"])
+		lctx := ctx.withLabels(name, queue, reply.Map["comment"])
 
-		if err := c.metrics.Collect(reply, ctx); err != nil {
+		if err := c.metrics.Collect(reply, &lctx); err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("collect %v/%v error: %w", name, queue, err))
 		}
 	}

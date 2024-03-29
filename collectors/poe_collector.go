@@ -67,9 +67,9 @@ func (c *poeCollector) collectPOEMetricsForInterfaces(ifaces []string, ctx *Coll
 
 	for _, se := range reply.Re {
 		if name, ok := se.Map["name"]; ok {
-			ctx = ctx.withLabels(name)
+			lctx := ctx.withLabels(name)
 
-			if err := c.metrics.Collect(se, ctx); err != nil {
+			if err := c.metrics.Collect(se, &lctx); err != nil {
 				errs = multierror.Append(errs, fmt.Errorf("collect %v error: %w", name, err))
 			}
 		}

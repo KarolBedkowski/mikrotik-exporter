@@ -55,9 +55,9 @@ func (c *dhcpCollector) colllectForDHCPServer(ctx *CollectorContext, dhcpServer 
 		return fmt.Errorf("fetch lease for %s  error: %w", dhcpServer, err)
 	}
 
-	ctx = ctx.withLabels(dhcpServer)
+	lctx := ctx.withLabels(dhcpServer)
 
-	if err := c.leasesActiveCount.Collect(reply, ctx); err != nil {
+	if err := c.leasesActiveCount.Collect(reply, &lctx); err != nil {
 		return fmt.Errorf("collect active leases for %s error: %w", dhcpServer, err)
 	}
 

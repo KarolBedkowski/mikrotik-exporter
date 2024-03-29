@@ -65,9 +65,9 @@ func (c *poolCollector) collectForPool(ipVersion, topic, pool string, ctx *Colle
 		return fmt.Errorf("fetch used ip pool %s error: %w", pool, err)
 	}
 
-	ctx = ctx.withLabels(ipVersion, pool)
+	lctx := ctx.withLabels(ipVersion, pool)
 
-	if err := c.usedCount.Collect(reply, ctx); err != nil {
+	if err := c.usedCount.Collect(reply, &lctx); err != nil {
 		return fmt.Errorf("collect ip pool %s error: %w", pool, err)
 	}
 

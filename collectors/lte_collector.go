@@ -8,8 +8,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-// TODO: need check
-
 func init() {
 	registerCollector("lte", newLteCollector, "retrieves LTE interfaces metrics")
 }
@@ -76,10 +74,10 @@ func (c *lteCollector) collectForInterface(iface string, ctx *CollectorContext) 
 		primaryband = strings.Fields(primaryband)[0]
 	}
 
-	ctx = ctx.withLabels(iface, re.Map["current-cellid"], primaryband)
+	lctx := ctx.withLabels(iface, re.Map["current-cellid"], primaryband)
 
-	if err := c.metrics.Collect(re, ctx); err != nil {
-		return fmt.Errorf("collect ltr for %s error: %w", iface, err)
+	if err := c.metrics.Collect(re, &lctx); err != nil {
+		return fmt.Errorf("collect lte for %s error: %w", iface, err)
 	}
 
 	return nil

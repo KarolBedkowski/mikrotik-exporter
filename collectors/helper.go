@@ -209,12 +209,12 @@ type RxTxPropertyMetric struct {
 	valueConverter TXRXValueConverter
 }
 
-func (p *RxTxPropertyMetric) Describe(ch chan<- *prometheus.Desc) {
+func (p RxTxPropertyMetric) Describe(ch chan<- *prometheus.Desc) {
 	ch <- p.rxDesc
 	ch <- p.txDesc
 }
 
-func (p *RxTxPropertyMetric) Collect(reply *proto.Sentence,
+func (p RxTxPropertyMetric) Collect(reply *proto.Sentence,
 	ctx *CollectorContext,
 ) error {
 	propertyVal, ok := reply.Map[p.property]
@@ -263,8 +263,8 @@ type PropertyMetricBuilder struct {
 	labels             []string
 }
 
-func NewPropertyCounterMetric(prefix, property string, labels []string) *PropertyMetricBuilder {
-	return &PropertyMetricBuilder{
+func NewPropertyCounterMetric(prefix, property string, labels []string) PropertyMetricBuilder {
+	return PropertyMetricBuilder{
 		prefix:     prefix,
 		property:   property,
 		metricType: metricCounter,
@@ -272,8 +272,8 @@ func NewPropertyCounterMetric(prefix, property string, labels []string) *Propert
 	}
 }
 
-func NewPropertyGaugeMetric(prefix, property string, labels []string) *PropertyMetricBuilder {
-	return &PropertyMetricBuilder{
+func NewPropertyGaugeMetric(prefix, property string, labels []string) PropertyMetricBuilder {
+	return PropertyMetricBuilder{
 		prefix:     prefix,
 		property:   property,
 		metricType: metricGauge,
@@ -281,8 +281,8 @@ func NewPropertyGaugeMetric(prefix, property string, labels []string) *PropertyM
 	}
 }
 
-func NewPropertyRxTxMetric(prefix, property string, labels []string) *PropertyMetricBuilder {
-	return &PropertyMetricBuilder{
+func NewPropertyRxTxMetric(prefix, property string, labels []string) PropertyMetricBuilder {
+	return PropertyMetricBuilder{
 		prefix:     prefix,
 		property:   property,
 		metricType: metricRxTx,
@@ -290,19 +290,19 @@ func NewPropertyRxTxMetric(prefix, property string, labels []string) *PropertyMe
 	}
 }
 
-func (p *PropertyMetricBuilder) WithName(name string) *PropertyMetricBuilder {
+func (p PropertyMetricBuilder) WithName(name string) PropertyMetricBuilder {
 	p.metricName = name
 
 	return p
 }
 
-func (p *PropertyMetricBuilder) WithHelp(help string) *PropertyMetricBuilder {
+func (p PropertyMetricBuilder) WithHelp(help string) PropertyMetricBuilder {
 	p.metricHelp = help
 
 	return p
 }
 
-func (p *PropertyMetricBuilder) WithConverter(vc ValueConverter) *PropertyMetricBuilder {
+func (p PropertyMetricBuilder) WithConverter(vc ValueConverter) PropertyMetricBuilder {
 	if p.metricType == metricRxTx {
 		panic("can't set ValueConverter for rxtx metric")
 	}
@@ -312,7 +312,7 @@ func (p *PropertyMetricBuilder) WithConverter(vc ValueConverter) *PropertyMetric
 	return p
 }
 
-func (p *PropertyMetricBuilder) WithRxTxConverter(vc TXRXValueConverter) *PropertyMetricBuilder {
+func (p PropertyMetricBuilder) WithRxTxConverter(vc TXRXValueConverter) PropertyMetricBuilder {
 	if p.metricType != metricRxTx {
 		panic("can't set TXRXValueConverter for non-rxtx metric")
 	}
@@ -322,7 +322,7 @@ func (p *PropertyMetricBuilder) WithRxTxConverter(vc TXRXValueConverter) *Proper
 	return p
 }
 
-func (p *PropertyMetricBuilder) Build() PropertyMetric {
+func (p PropertyMetricBuilder) Build() PropertyMetric {
 	metricName := p.metricName
 	if metricName == "" {
 		metricName = p.property
@@ -386,8 +386,8 @@ type RetMetricBuilder struct {
 	labels         []string
 }
 
-func NewRetGaugeMetric(prefix, property string, labels []string) *RetMetricBuilder {
-	return &RetMetricBuilder{
+func NewRetGaugeMetric(prefix, property string, labels []string) RetMetricBuilder {
+	return RetMetricBuilder{
 		prefix:     prefix,
 		property:   property,
 		metricType: metricGauge,
@@ -395,25 +395,25 @@ func NewRetGaugeMetric(prefix, property string, labels []string) *RetMetricBuild
 	}
 }
 
-func (r *RetMetricBuilder) WithName(name string) *RetMetricBuilder { //nolint:unused
+func (r RetMetricBuilder) WithName(name string) RetMetricBuilder {
 	r.metricName = name
 
 	return r
 }
 
-func (r *RetMetricBuilder) WithHelp(help string) *RetMetricBuilder {
+func (r RetMetricBuilder) WithHelp(help string) RetMetricBuilder {
 	r.metricHelp = help
 
 	return r
 }
 
-func (r *RetMetricBuilder) WithConverter(vc ValueConverter) *RetMetricBuilder {
+func (r RetMetricBuilder) WithConverter(vc ValueConverter) RetMetricBuilder {
 	r.valueConverter = vc
 
 	return r
 }
 
-func (r *RetMetricBuilder) Build() RetMetric {
+func (r RetMetricBuilder) Build() RetMetric {
 	metricName := r.metricName
 	if metricName == "" {
 		metricName = r.property

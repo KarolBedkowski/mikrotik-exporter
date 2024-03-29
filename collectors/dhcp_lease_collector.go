@@ -53,13 +53,13 @@ func (c *dhcpLeaseCollector) Collect(ctx *CollectorContext) error {
 }
 
 func (c *dhcpLeaseCollector) collectMetric(ctx *CollectorContext, re *proto.Sentence) error {
-	ctx = ctx.withLabels(
+	lctx := ctx.withLabels(
 		re.Map["active-mac-address"], re.Map["server"], re.Map["status"],
 		re.Map["active-address"], cleanHostName(re.Map["host-name"]),
 		re.Map["comment"],
 	)
 
-	if err := c.leases.Collect(re, ctx); err != nil {
+	if err := c.leases.Collect(re, &lctx); err != nil {
 		return fmt.Errorf("collect error: %w", err)
 	}
 

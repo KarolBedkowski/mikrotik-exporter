@@ -79,8 +79,8 @@ type CollectorContext struct {
 
 func NewCollectorContext(ch chan<- prometheus.Metric, device *config.Device, client *routeros.Client,
 	collector string, logger log.Logger,
-) *CollectorContext {
-	return &CollectorContext{
+) CollectorContext {
+	return CollectorContext{
 		ch:        ch,
 		device:    device,
 		client:    client,
@@ -90,8 +90,8 @@ func NewCollectorContext(ch chan<- prometheus.Metric, device *config.Device, cli
 	}
 }
 
-func (c *CollectorContext) withLabels(labels ...string) *CollectorContext {
-	return &CollectorContext{
+func (c CollectorContext) withLabels(labels ...string) CollectorContext {
+	return CollectorContext{
 		ch:        c.ch,
 		device:    c.device,
 		client:    c.client,

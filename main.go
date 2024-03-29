@@ -21,7 +21,7 @@ import (
 	pcollectors "github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/collectors/version"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	common_version "github.com/prometheus/common/version"
+	pcVersion "github.com/prometheus/common/version"
 	"github.com/prometheus/exporter-toolkit/web"
 )
 
@@ -60,7 +60,7 @@ func main() {
 	flag.Parse()
 
 	if *ver {
-		fmt.Printf("\nVersion:   %s\n\n", common_version.Print("mikrotik_exporter"))
+		fmt.Printf("\nVersion:   %s\n\n", pcVersion.Print("mikrotik_exporter"))
 		os.Exit(0)
 	}
 
@@ -184,7 +184,7 @@ func startServer(cfg *config.Config, logger log.Logger) {
 		landingConfig := web.LandingConfig{
 			Name:        "Mikrotik Exporter",
 			Description: "Prometheus Mikrotik Exporter",
-			Version:     common_version.Info(),
+			Version:     pcVersion.Info(),
 			Links: []web.LandingLinks{
 				{
 					Address: *metricsPath,

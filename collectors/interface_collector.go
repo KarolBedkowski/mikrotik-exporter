@@ -52,12 +52,12 @@ func (c *interfaceCollector) Collect(ctx *CollectorContext) error {
 	var errs *multierror.Error
 
 	for _, re := range reply.Re {
-		ctx = ctx.withLabels(
+		lctx := ctx.withLabels(
 			re.Map["name"], re.Map["type"], re.Map["disabled"],
 			re.Map["comment"], re.Map["running"], re.Map["slave"],
 		)
 
-		if err := c.metrics.Collect(re, ctx); err != nil {
+		if err := c.metrics.Collect(re, &lctx); err != nil {
 			errs = multierror.Append(errs, err)
 		}
 	}

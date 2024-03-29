@@ -224,7 +224,7 @@ func (dc *deviceCollector) collect(ch chan<- prometheus.Metric) (int, error) {
 
 		_ = level.Debug(logger).Log("msg", "start collect")
 
-		if err = drc.collector.Collect(ctx); err != nil {
+		if err = drc.collector.Collect(&ctx); err != nil {
 			result = multierror.Append(result, fmt.Errorf("collect %s error: %w", drc.name, err))
 			numFailed++
 		}

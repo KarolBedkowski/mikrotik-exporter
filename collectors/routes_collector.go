@@ -68,9 +68,9 @@ func (c *routesCollector) colllectCount(ipVersion, topic string, ctx *CollectorC
 		return fmt.Errorf("fetch route %s error: %w", topic, err)
 	}
 
-	ctx = ctx.withLabels(ipVersion)
+	lctx := ctx.withLabels(ipVersion)
 
-	if err := c.count.Collect(reply, ctx); err != nil {
+	if err := c.count.Collect(reply, &lctx); err != nil {
 		return fmt.Errorf("collect router %s %s error: %w", topic, ipVersion, err)
 	}
 
@@ -83,9 +83,9 @@ func (c *routesCollector) colllectCountProtcol(ipVersion, topic, protocol string
 		return fmt.Errorf("fetch route %s error: %w", topic, err)
 	}
 
-	ctx = ctx.withLabels(ipVersion, protocol)
+	lctx := ctx.withLabels(ipVersion, protocol)
 
-	if err := c.countProtocol.Collect(reply, ctx); err != nil {
+	if err := c.countProtocol.Collect(reply, &lctx); err != nil {
 		return fmt.Errorf("collect count protocol %s %s error: %w", topic, protocol, err)
 	}
 
