@@ -36,7 +36,7 @@ var (
 	metricsPath = flag.String("path", "/metrics", "path to answer requests on")
 	password    = flag.String("password", "", "password for authentication for single device")
 	deviceport  = flag.String("deviceport", "8728", "port for single device")
-	port        = flag.String("port", ":9436", "port number to listen on")
+	listen      = flag.String("listen-address", ":9436", "address to listen on")
 	timeout     = flag.Uint("timeout", config.DefaultTimeout, "timeout when connecting to devices")
 	tlsEnabled  = flag.Bool("tls", false, "use tls to connect to routers")
 	user        = flag.String("user", "", "user for authentication with single device")
@@ -210,7 +210,7 @@ func startServer(cfg *config.Config, logger log.Logger) {
 	}
 
 	if err := web.ListenAndServe(srv, &web.FlagConfig{
-		WebListenAddresses: &[]string{*port},
+		WebListenAddresses: &[]string{*listen},
 		WebConfigFile:      webConfig,
 	}, logger); err != nil {
 		_ = level.Error(logger).Log("err", err)
@@ -236,10 +236,14 @@ func createMetricsHandler(cfg *config.Config, logger log.Logger) (http.Handler, 
 		return nil, fmt.Errorf("register collector error: %w", err)
 	}
 
+	disableCompression := strings.HasPrefix(*listen, "127.0.0.1:") ||
+		strings.HasPrefix(*listen, "localhost:")
+
 	return promhttp.HandlerFor(registry,
 		promhttp.HandlerOpts{
-			ErrorLog:      loggerBridge{logger},
-			ErrorHandling: promhttp.ContinueOnError,
+			ErrorLog:           loggerBridge{logger},
+			ErrorHandling:      promhttp.ContinueOnError,
+			DisableCompression: disableCompression,
 		}), nil
 }
 

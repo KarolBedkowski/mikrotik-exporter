@@ -3,7 +3,7 @@ testdata_dir = "testdata"
 tmp_dir = "tmp"
 
 [build]
-  bin = "./mikrotik-exporter -log-level debug -log-format logfmt -config-file test-config.yml -with-firmware"
+  bin = "./mikrotik-exporter -log-level debug -log-format logfmt -config-file test-config.yml -with-firmware -listen-address 127.0.0.1:9436"
   cmd = "go build -o ./mikrotik-exporter ."
   delay = 1000
   exclude_dir = ["scripts", "examples"]
