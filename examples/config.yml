@@ -42,6 +42,7 @@ devices:
 
 # default features (profile)
 features:
+  arp: false
   cloud: true
   conntrack: true
   dhcp: true
