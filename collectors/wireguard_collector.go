@@ -44,7 +44,12 @@ func (c *wireguardCollector) Collect(ctx *CollectorContext) error {
 	var errs *multierror.Error
 
 	for _, re := range reply.Re {
-		lctx := ctx.withLabels(re.Map["public_key"], re.Map["comment"], re.Map["disabled"])
+		pubKey := re.Map["public-key"]
+		if pubKey == "" {
+			continue
+		}
+
+		lctx := ctx.withLabels(pubKey, re.Map["comment"], re.Map["disabled"])
 
 		if err := c.metrics.Collect(re, &lctx); err != nil {
 			errs = multierror.Append(errs,
