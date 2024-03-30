@@ -263,7 +263,7 @@ type mikrotikCollector struct {
 	logger     log.Logger
 
 	// prevent parallel collecting
-	lock sync.Mutex
+	locker chan struct{}
 }
 
 // NewCollector creates a collector instance.
@@ -304,7 +304,10 @@ func NewCollector(cfg *config.Config, logger log.Logger) prometheus.Collector {
 		devices:    dcs,
 		collectors: colls,
 		logger:     logger,
+		locker:     make(chan struct{}, 1),
 	}
+
+	c.locker <- struct{}{}
 
 	return c
 }
@@ -370,8 +373,17 @@ func (c *mikrotikCollector) devicesFromSrv(devCol *deviceCollector) ([]*deviceCo
 
 // Collect implements the prometheus.Collector interface.
 func (c *mikrotikCollector) Collect(ch chan<- prometheus.Metric) {
-	c.lock.Lock()
-	defer c.lock.Unlock()
+	select {
+	case <-c.locker:
+	case <-time.After(config.WaitForFinishCollectingTime * time.Second):
+		_ = level.Warn(c.logger).Log("msg", "another collecting in progress")
+
+		return
+	}
+
+	defer func() {
+		c.locker <- struct{}{}
+	}()
 
 	wg := sync.WaitGroup{}
 	realDevices := make([]*deviceCollector, 0, len(c.devices))

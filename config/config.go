@@ -24,6 +24,8 @@ const (
 
 	// DefaultTimeout defines the default timeout when connecting to a router.
 	DefaultTimeout = 5
+
+	WaitForFinishCollectingTime = 5
 )
 
 var GlobalLogger log.Logger
