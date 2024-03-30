@@ -43,6 +43,7 @@ devices:
 # default features (profile)
 features:
   arp: false
+  dns: false
   cloud: true
   conntrack: true
   dhcp: true
