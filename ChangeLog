@@ -1,17 +1,17 @@
-v2.0.0 2024-03-16
+v2.0.0 2024-03-31
 =================
 
 * fix: keep open connection if device is not dynamic (srv-defined); this
-  prevent many login/logout entries in routeros logs
-* fix: change some metrics names to Prometheus standards 
+  prevent many login/logout entries in routeros log
+* fix: change some metrics names to Prometheus standards
 * fix: do not stop reading metrics with one fail (i.e. not available in this
   device); log this errors
-* feat: add possibility to configure profiles with collectors that can be run 
+* feat: add possibility to configure profiles with collectors that can be run
   on specified targets
-* feat: tls and timeout is configurable per device
-* feat: add support for web-config (i.e. configure exporter tls and 
-  authentication) 
-* feat: add --list-collectors flag 
+* feat: TLS and timeout is configurable per device
+* feat: add support for web-config (i.e. configure exporter TLS and
+  authentication)
+* feat: add --list-collectors flag
 * feat: add --with-all to enable all collectors from command line
 * feat: allow user to disable by device configuration collecting IPv6 related
   metrics
@@ -19,20 +19,23 @@ v2.0.0 2024-03-16
 * dev: refactor, clean code; update deps.
 * remove broken bgp collector
 
-Updated collectors 
-* dhcpl: remove unstable labels from metrics 
+Updated collectors:
+* dhcpl: remove unstable labels from metrics
 * wlanif: collect statistics for disabled wifi interfaces
 * wlanif: collect interface frequency
 * capsman: collect provision status
 * system: add cpu-freq, bad-block, cpu-count metrics
 * resource: separate metrics for border name and version
-* lte, queue, wlanif: handle empty api response 
+* lte, queue, wlanif: handle empty api response
 * ipsec: fix collector, add peers metrics
 
 
 New collectors:
-* collector for queue/simplequeue
-* collector for cloud status
+* queue - queue and simple queue
+* cloud - cloud status
+* arp - IPv4 only
+* dns - dns cache statistics
+* scripts - metrics from user-defined scripts (defined per device)
 
 
 v1.x
