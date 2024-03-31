@@ -116,6 +116,8 @@ type Device struct {
 	Disabled bool `yaml:"disabled,omitempty"`
 
 	FWCollectorSettings map[string][]string `yaml:"fw_collector_settings"`
+
+	Scripts []string `yaml:"scripts"`
 }
 
 func (d *Device) validate(profiles map[string]Features) error {

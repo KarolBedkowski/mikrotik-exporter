@@ -19,6 +19,11 @@ devices:
         - input
       nat:
         - srcnat
+
+    # script to run by scripts collector
+    scripts:
+      - script1
+
   - name: dev2
     address: 192.168.0.2
     # enable ssl
@@ -65,9 +70,10 @@ features:
   lte: true
   netwatch: true
   queue: true
+  interface: true
+  scripts: false
   # always captured
   resource: true
-  interface: true
 
 # custom profiles
 profiles:
