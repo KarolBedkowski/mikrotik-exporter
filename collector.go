@@ -18,6 +18,7 @@ import (
 	"mikrotik-exporter/config"
 
 	"github.com/KarolBedkowski/routeros-go-client"
+	"github.com/coreos/go-systemd/v22/daemon"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/hashicorp/go-multierror"
@@ -382,8 +383,11 @@ func (c *mikrotikCollector) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	defer func() {
+		_, _ = daemon.SdNotify(false, "STATUS=waiting")
 		c.locker <- struct{}{}
 	}()
+
+	_, _ = daemon.SdNotify(false, "STATUS=collecting")
 
 	wg := sync.WaitGroup{}
 	realDevices := make([]*deviceCollector, 0, len(c.devices))

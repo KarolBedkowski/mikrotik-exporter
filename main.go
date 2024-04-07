@@ -14,6 +14,7 @@ import (
 	"mikrotik-exporter/collectors"
 	"mikrotik-exporter/config"
 
+	"github.com/coreos/go-systemd/v22/daemon"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 
@@ -169,6 +170,10 @@ func loadConfigFromFlags() (*config.Config, error) {
 }
 
 func startServer(cfg *config.Config, logger log.Logger) {
+	if err := enableSDNotify(); err != nil {
+		_ = level.Warn(logger).Log("msg", "enable systemd watchdog error", "err", err)
+	}
+
 	h, err := createMetricsHandler(cfg, logger)
 	if err != nil {
 		panic(err)
@@ -208,6 +213,9 @@ func startServer(cfg *config.Config, logger log.Logger) {
 		ReadTimeout:  serverTimeout,
 		WriteTimeout: serverTimeout,
 	}
+
+	_, _ = daemon.SdNotify(false, "STATUS=started")
+	_, _ = daemon.SdNotify(false, daemon.SdNotifyReady)
 
 	if err := web.ListenAndServe(srv, &web.FlagConfig{
 		WebListenAddresses: &[]string{*listen},
@@ -262,4 +270,35 @@ type loggerBridge struct {
 
 func (l loggerBridge) Println(v ...interface{}) {
 	_ = level.Info(l.logger).Log(v...)
+}
+
+func enableSDNotify() error {
+	ok, err := daemon.SdNotify(false, "STATUS=starting")
+	if err != nil {
+		return fmt.Errorf("send sd status error: %w", err)
+	}
+
+	// not running under systemd?
+	if !ok {
+		return nil
+	}
+
+	interval, err := daemon.SdWatchdogEnabled(false)
+	if err != nil {
+		return fmt.Errorf("enable sdwatchdog error: %w", err)
+	}
+
+	// watchdog disabled?
+	if interval == 0 {
+		return nil
+	}
+
+	go func(interval time.Duration) {
+		tick := time.Tick(interval)
+		for range tick {
+			_, _ = daemon.SdNotify(false, daemon.SdNotifyWatchdog)
+		}
+	}(interval / 2) //nolint:gomnd
+
+	return nil
 }

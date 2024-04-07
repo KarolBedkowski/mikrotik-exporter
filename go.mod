@@ -6,6 +6,7 @@ toolchain go1.22.1
 
 require (
 	github.com/KarolBedkowski/routeros-go-client v0.1.1
+	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/go-kit/log v0.2.1
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/miekg/dns v1.1.58
@@ -19,7 +20,6 @@ require (
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
-	github.com/coreos/go-systemd/v22 v22.5.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/go-logfmt/logfmt v0.5.1 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
