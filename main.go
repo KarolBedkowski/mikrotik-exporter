@@ -244,14 +244,16 @@ func createMetricsHandler(cfg *config.Config, logger log.Logger) (http.Handler, 
 		return nil, fmt.Errorf("register collector error: %w", err)
 	}
 
-	disableCompression := strings.HasPrefix(*listen, "127.0.0.1:") ||
+	disableCompression := strings.HasPrefix(*listen, "127.") ||
 		strings.HasPrefix(*listen, "localhost:")
 
 	return promhttp.HandlerFor(registry,
 		promhttp.HandlerOpts{
-			ErrorLog:           loggerBridge{logger},
-			ErrorHandling:      promhttp.ContinueOnError,
-			DisableCompression: disableCompression,
+			ErrorLog:            loggerBridge{logger},
+			ErrorHandling:       promhttp.ContinueOnError,
+			DisableCompression:  disableCompression,
+			MaxRequestsInFlight: 1,
+			EnableOpenMetrics:   true,
 		}), nil
 }
 

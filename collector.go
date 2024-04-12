@@ -276,10 +276,7 @@ func NewCollector(cfg *config.Config, logger log.Logger) prometheus.Collector {
 	collectorInstances := createCollectors(cfg, logger)
 
 	for _, dev := range cfg.Devices {
-		feat, err := cfg.DeviceFeatures(dev.Name)
-		if err != nil {
-			panic(err)
-		}
+		feat := cfg.DeviceFeatures(dev.Name)
 
 		var dcols []deviceCollectorRC
 
@@ -465,11 +462,7 @@ func createCollectors(cfg *config.Config, logger log.Logger) map[string]collecto
 		if dev.Profile == "" {
 			applyDefault = true
 		} else {
-			features, err := cfg.DeviceFeatures(dev.Name)
-			if err != nil {
-				panic(err)
-			}
-
+			features := cfg.DeviceFeatures(dev.Name)
 			for _, name := range features.FeatureNames() {
 				uniqueNames[name] = struct{}{}
 			}

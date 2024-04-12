@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"errors"
 	"os"
+	"slices"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -22,36 +24,30 @@ func TestShouldParse(t *testing.T) {
 
 	assertDevice("test1", "192.168.1.1", "foo", "bar", &c.Devices[0], t)
 	assertDevice("test2", "192.168.2.1", "test", "123", &c.Devices[1], t)
-	assertFeature("Conntrack", c.Features, t)
-	assertFeature("DHCP", c.Features, t)
-	assertFeature("DHCPv6", c.Features, t)
-	assertFeature("Pools", c.Features, t)
-	assertFeature("Routes", c.Features, t)
-	assertFeature("Optics", c.Features, t)
-	assertFeature("WlanSTA", c.Features, t)
-	assertFeature("WlanIF", c.Features, t)
-	assertFeature("Ipsec", c.Features, t)
-	assertFeature("Lte", c.Features, t)
-	assertFeature("Netwatch", c.Features, t)
-	assertFeature("Queue", c.Features, t)
 
-	f, _ := c.DeviceFeatures("testProfileMinimal")
+	featuresEnabled := []string{
+		"Conntrack", "DHCP", "DHCPv6", "Pools", "Routes", "Optics", "WlanSTA",
+		"WlanIF", "Ipsec", "Lte", "Netwatch", "Queue",
+	}
+
+	for _, feat := range featuresEnabled {
+		assertFeature(feat, c.Features, t)
+	}
+
+	f := c.DeviceFeatures("testProfileMinimal")
 	assertFeature("Firmware", *f, t)
 	assertFeature("Health", *f, t)
 	assertFeature("Monitor", *f, t)
 
-	if dev, err := c.FindDevice("testDns"); err != nil {
-		t.Fatalf("could not find device: %v", err)
-	} else {
-		if dev.Srv.Record != "record2" {
-			t.Fatalf("expected `record2` service, got %#v", dev.Srv.Record)
-		}
-		if dev.Srv.DNS.Address != "dnsaddress" {
-			t.Fatalf("expected `dnsaddress` dns address, got %#v", dev.Srv.DNS)
-		}
-		if dev.Srv.DNS.Port != 1053 {
-			t.Fatalf("expected `1053` dns port, got %#v", dev.Srv.DNS)
-		}
+	dev := c.FindDevice("testDns")
+	if dev.Srv.Record != "record2" {
+		t.Fatalf("expected `record2` service, got %#v", dev.Srv.Record)
+	}
+	if dev.Srv.DNS.Address != "dnsaddress" {
+		t.Fatalf("expected `dnsaddress` dns address, got %#v", dev.Srv.DNS)
+	}
+	if dev.Srv.DNS.Port != 1053 {
+		t.Fatalf("expected `1053` dns port, got %#v", dev.Srv.DNS)
 	}
 }
 
@@ -97,50 +93,54 @@ func assertNotFeature(name string, f Features, t *testing.T) {
 }
 
 func TestValidatorsDevice(t *testing.T) {
-	config := []byte(`
+	t.Run("errors", func(t *testing.T) {
+		config := []byte(`
 devices:
   - name: test1
     address: 192.168.1.1
     profile: test
     `)
 
-	_, err := Load(bytes.NewReader(config), nil)
-	if err == nil {
-		t.Fatalf("expected error")
-	}
+		_, err := Load(bytes.NewReader(config), nil)
+		if err == nil {
+			t.Fatalf("expected error")
+		}
 
-	t.Logf("errors: %s", err)
+		t.Logf("errors: %s", err)
 
-	if !errors.Is(err, MissingFieldError("user")) {
-		t.Fatalf("no error: missing field user")
-	}
-	if !errors.Is(err, MissingFieldError("password")) {
-		t.Fatalf("no error: missing field password")
-	}
-	if !errors.Is(err, UnknownProfileError("test")) {
-		t.Fatalf("no error: unknown profile test")
-	}
+		if !errors.Is(err, MissingFieldError("user")) {
+			t.Fatalf("no error: missing field user")
+		}
+		if !errors.Is(err, MissingFieldError("password")) {
+			t.Fatalf("no error: missing field password")
+		}
+		if !errors.Is(err, UnknownProfileError("test")) {
+			t.Fatalf("no error: unknown profile test")
+		}
+	})
 
-	config = []byte(`
+	t.Run("error: missing fields", func(t *testing.T) {
+		config := []byte(`
 devices:
   - profile: test
     user: test
     password: 1234
     `)
 
-	_, err = Load(bytes.NewReader(config), nil)
-	if err == nil {
-		t.Fatalf("expected error")
-	}
+		_, err := Load(bytes.NewReader(config), nil)
+		if err == nil {
+			t.Fatalf("expected error")
+		}
 
-	t.Logf("errors: %s", err)
+		t.Logf("errors: %s", err)
 
-	if !errors.Is(err, MissingFieldError("name")) {
-		t.Fatalf("no error: missing field name")
-	}
-	if !errors.Is(err, MissingFieldError("address")) {
-		t.Fatalf("no error: missing field address")
-	}
+		if !errors.Is(err, MissingFieldError("name")) {
+			t.Fatalf("no error: missing field name")
+		}
+		if !errors.Is(err, MissingFieldError("address")) {
+			t.Fatalf("no error: missing field address")
+		}
+	})
 }
 
 func TestValidatorsDeviceSrv(t *testing.T) {
@@ -163,5 +163,103 @@ devices:
 	}
 	if !errors.Is(err, MissingFieldError("srv.record")) {
 		t.Fatalf("no error: missing field password")
+	}
+}
+
+func TestFeatures(t *testing.T) {
+	t.Run("validate", func(t *testing.T) {
+		t.Parallel()
+
+		features := make(Features)
+		features["abc"] = true
+		features["cde"] = true
+		features["fgh"] = true
+
+		collectors := []string{"abc", "cde", "fgh"}
+		if err := features.validate(collectors); err != nil {
+			t.Errorf("error not expected for %v: %s", collectors, err)
+		}
+
+		collectors = []string{"abc", "cde", "fgh", "ijk"}
+		if err := features.validate(collectors); err != nil {
+			t.Errorf("error not expected for %v: %s", collectors, err)
+		}
+
+		collectors = []string{}
+		if err := features.validate(collectors); err != nil {
+			t.Errorf("error not expected for %v: %s", collectors, err)
+		}
+
+		collectors = []string{"abc", "fgh"}
+		if err := features.validate(collectors); !errors.Is(err, UnknownFeatureError("cde")) {
+			t.Errorf("error expected for %v: %s", collectors, err)
+		}
+
+		collectors = []string{"fgh"}
+		if err := features.validate(collectors); !errors.Is(err, UnknownFeatureError("cde")) && !errors.Is(err, UnknownFeatureError("abc")) {
+			t.Errorf("error expected for %v: %s", collectors, err)
+		}
+	})
+
+	t.Run("names", func(t *testing.T) {
+		t.Parallel()
+
+		features := make(Features)
+		features["abc"] = true
+		features["cde"] = true
+		features["fgh"] = true
+
+		names := features.FeatureNames()
+		sort.Strings(names)
+		if slices.Compare(names, []string{"abc", "cde", "fgh"}) != 0 {
+			t.Errorf("wrong names: %v", names)
+		}
+
+		features["abc"] = false
+		features["cde"] = false
+		features["fgh"] = true
+
+		names = features.FeatureNames()
+		if slices.Compare(names, []string{"fgh"}) != 0 {
+			t.Errorf("wrong names: %v", names)
+		}
+	})
+}
+
+func TestDeviceFeatures(t *testing.T) {
+	tests := []struct {
+		device   string
+		features []string
+	}{
+		{
+			"testProfileMinimal",
+			[]string{"firmware", "health", "monitor", "resource"},
+		},
+		{
+			"testProfileBasic",
+			[]string{"dhcp", "dhcpl", "firmware", "health", "monitor", "resource", "routes", "wlanif"},
+		},
+		{
+			// default profile
+			"test1",
+			[]string{"conntrack", "dhcp", "dhcpl", "dhcpv6", "ipsec", "lte", "netwatch", "optics", "pools", "queue", "resource", "routes", "wlanif", "wlansta"},
+		},
+	}
+
+	b := loadTestFile(t)
+
+	c, err := Load(bytes.NewReader(b), nil)
+	if err != nil {
+		t.Fatalf("could not parse: %v", err)
+	}
+
+	for _, dt := range tests {
+		feats := c.DeviceFeatures(dt.device)
+		names := feats.FeatureNames()
+		sort.Strings(names)
+		if slices.Compare(names, dt.features) != 0 {
+			t.Errorf("invalid features for device %s: %v", dt.device, names)
+		}
+
 	}
 }

@@ -4,13 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"slices"
 	"strings"
-
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
-	"github.com/go-kit/log/term"
 
 	"github.com/hashicorp/go-multierror"
 	yaml "gopkg.in/yaml.v2"
@@ -27,8 +22,6 @@ const (
 
 	WaitForFinishCollectingTime = 5
 )
-
-var GlobalLogger log.Logger
 
 var ErrUnknownDevice = errors.New("unknown device")
 
@@ -62,7 +55,7 @@ func (i InvalidFieldValueError) Error() string {
 type Features map[string]bool
 
 func (f Features) validate(collectors []string) error {
-	// for tests
+	// skip validation when there is no collectors (test, not real life)
 	if len(collectors) == 0 {
 		return nil
 	}
@@ -121,6 +114,14 @@ type Device struct {
 }
 
 func (d *Device) validate(profiles map[string]Features) error {
+	return multierror.Append(nil,
+		d.validateConnConf(),
+		d.validateFwSettigns(),
+		d.validateProfile(profiles)).
+		ErrorOrNil()
+}
+
+func (d *Device) validateConnConf() error {
 	var errs *multierror.Error
 
 	if d.Srv == nil {
@@ -143,19 +144,31 @@ func (d *Device) validate(profiles map[string]Features) error {
 		errs = multierror.Append(errs, MissingFieldError("password"))
 	}
 
+	return errs.ErrorOrNil()
+}
+
+func (d *Device) validateFwSettigns() error {
+	var errs *multierror.Error
+
+	validChains := []string{"filter", "mangle", "raw", "nat"}
+
 	for f := range d.FWCollectorSettings {
-		if f != "filter" && f != "nat" && f != "mangle" && f != "raw" {
+		if !slices.Contains(validChains, f) {
 			errs = multierror.Append(errs, InvalidFieldValueError{"firewall name", f})
 		}
 	}
 
+	return errs.ErrorOrNil()
+}
+
+func (d *Device) validateProfile(profiles map[string]Features) error {
 	if d.Profile != "" {
 		if _, ok := profiles[d.Profile]; !ok {
-			errs = multierror.Append(errs, UnknownProfileError(d.Profile))
+			return UnknownProfileError(d.Profile)
 		}
 	}
 
-	return errs.ErrorOrNil()
+	return nil
 }
 
 type SrvRecord struct {
@@ -193,30 +206,58 @@ func Load(r io.Reader, collectors []string) (*Config, error) {
 	// always enabled
 	cfg.Features["resource"] = true
 
-	for name, features := range cfg.Profiles {
+	// remove disabled devices
+	cfg.Devices = filterDevices(cfg.Devices)
+
+	if err := cfg.validate(collectors); err != nil {
+		return nil, err
+	}
+
+	return cfg, nil
+}
+
+func (c *Config) DeviceFeatures(deviceName string) *Features {
+	for _, d := range c.Devices {
+		if d.Name == deviceName {
+			if d.Profile == "" {
+				return &c.Features
+			}
+
+			if f, ok := c.Profiles[d.Profile]; ok {
+				return &f
+			}
+
+			panic("unknown profile " + d.Profile + " in device " + deviceName)
+		}
+	}
+
+	panic("unknown device " + deviceName)
+}
+
+func (c *Config) FindDevice(deviceName string) *Device {
+	for _, d := range c.Devices {
+		if d.Name == deviceName {
+			return &d
+		}
+	}
+
+	panic("unknown device " + deviceName)
+}
+
+func (c *Config) validate(collectors []string) error {
+	for name, features := range c.Profiles {
 		if err := features.validate(collectors); err != nil {
-			return nil, fmt.Errorf("invalid profile '%s': %w", name, err)
+			return fmt.Errorf("invalid profile '%s': %w", name, err)
 		}
 
 		// always enabled
 		features["resource"] = true
 	}
 
-	// remove disabled devices
-	devs := make([]Device, 0, len(cfg.Devices))
-
-	for _, d := range cfg.Devices {
-		if !d.Disabled {
-			devs = append(devs, d)
-		}
-	}
-
-	cfg.Devices = devs
-
 	var errs *multierror.Error
 
-	for idx, d := range cfg.Devices {
-		if err := d.validate(cfg.Profiles); err != nil {
+	for idx, d := range c.Devices {
+		if err := d.validate(c.Profiles); err != nil {
 			errs = multierror.Append(errs,
 				fmt.Errorf("invalid device %d (%s) configuration: %w",
 					idx, d.Name, err))
@@ -224,91 +265,21 @@ func Load(r io.Reader, collectors []string) (*Config, error) {
 	}
 
 	if err := errs.ErrorOrNil(); err != nil {
-		return nil, err
+		return err
 	}
 
-	return cfg, nil
+	return nil
 }
 
-func (c *Config) DeviceFeatures(deviceName string) (*Features, error) {
-	for _, d := range c.Devices {
-		if d.Name == deviceName {
-			if d.Profile == "" {
-				return &c.Features, nil
-			}
+func filterDevices(devices []Device) []Device {
+	// remove disabled devices
+	enabled := make([]Device, 0, len(devices))
 
-			if f, ok := c.Profiles[d.Profile]; ok {
-				return &f, nil
-			}
-
-			return nil, UnknownProfileError(d.Profile)
+	for _, d := range devices {
+		if !d.Disabled {
+			enabled = append(enabled, d)
 		}
 	}
 
-	return nil, ErrUnknownDevice
-}
-
-func (c *Config) FindDevice(deviceName string) (*Device, error) {
-	for _, d := range c.Devices {
-		if d.Name == deviceName {
-			return &d, nil
-		}
-	}
-
-	return nil, ErrUnknownDevice
-}
-
-func ConfigureLog(logLevel, logFormat string) log.Logger {
-	var logger log.Logger
-
-	w := log.NewSyncWriter(os.Stdout)
-
-	if logFormat == "json" {
-		logger = term.NewLogger(w, log.NewJSONLogger, logColorFunc)
-	} else {
-		logger = term.NewLogger(w, log.NewLogfmtLogger, logColorFunc)
-	}
-
-	logger = level.NewFilter(logger, level.Allow(level.ParseDefault(logLevel, level.DebugValue())))
-	logger = log.WithSuffix(logger, "caller", log.DefaultCaller)
-
-	nlogger := log.LoggerFunc(func(keyvals ...interface{}) error {
-		if err := logger.Log(keyvals...); err != nil {
-			panic(fmt.Errorf("%v: %w", keyvals, err))
-		}
-
-		return nil
-	})
-
-	GlobalLogger = nlogger
-
-	return nlogger
-}
-
-func logColorFunc(keyvals ...interface{}) term.FgBgColor {
-	for i := 0; i < len(keyvals)-1; i += 2 {
-		if keyvals[i] != "level" {
-			continue
-		}
-
-		level, ok := keyvals[i+1].(level.Value)
-		if !ok {
-			continue
-		}
-
-		switch level.String() {
-		case "debug":
-			return term.FgBgColor{Fg: term.DarkGray}
-		case "info":
-			return term.FgBgColor{Fg: term.Gray}
-		case "warn":
-			return term.FgBgColor{Fg: term.Yellow}
-		case "error":
-			return term.FgBgColor{Fg: term.Red}
-		default:
-			return term.FgBgColor{}
-		}
-	}
-
-	return term.FgBgColor{}
+	return enabled
 }
