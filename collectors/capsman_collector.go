@@ -23,7 +23,10 @@ func newCapsmanCollector() RouterOSCollector {
 
 	labelNames := []string{"name", "address", "interface", "mac_address", "ssid", "eap_identity", "comment"}
 	radioLabelNames := []string{"name", "address", "interface", "radio_mac", "remote_cap_identity", "remote_cap_name"}
-	ifaceLabelNames := []string{"name", "address", "interface", "mac_address", "configuration", "current_state", "master_interface"}
+	ifaceLabelNames := []string{
+		"name", "address", "interface", "mac_address", "configuration",
+		"current_state", "master_interface",
+	}
 
 	collector := &capsmanCollector{
 		metrics: PropertyMetricList{

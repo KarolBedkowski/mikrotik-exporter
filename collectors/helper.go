@@ -96,18 +96,21 @@ func splitStringToFloats(metric string, separator string) (float64, float64, err
 	}
 
 	strs := strings.Split(metric, separator)
-	if len(strs) == 0 {
+	switch len(strs) {
+	case 0:
 		return 0, 0, nil
+	case 1:
+		return math.NaN(), math.NaN(), fmt.Errorf("invalid input %v for split floats", metric) //nolint:goerr113
 	}
 
 	m1, err := strconv.ParseFloat(strs[0], 64)
 	if err != nil {
-		return math.NaN(), math.NaN(), err
+		return math.NaN(), math.NaN(), fmt.Errorf("parse %v error: %w", metric, err)
 	}
 
 	m2, err := strconv.ParseFloat(strs[1], 64)
 	if err != nil {
-		return math.NaN(), math.NaN(), err
+		return math.NaN(), math.NaN(), fmt.Errorf("parse %v error: %w", metric, err)
 	}
 
 	return m1, m2, nil
@@ -120,14 +123,14 @@ func metricFromDuration(duration string) (float64, error) {
 
 	// should get one and only one match back on the regex
 	if len(reMatch) != 1 {
-		return 0, ErrInvalidDuration
+		return 0, fmt.Errorf("parse %s error: %w", duration, ErrInvalidDuration)
 	}
 
 	for idx, match := range reMatch[0][1:] {
 		if match != "" {
 			v, err := strconv.Atoi(match)
 			if err != nil {
-				return float64(0), err
+				return float64(0), fmt.Errorf("parse duration %s error: %w", duration, err)
 			}
 
 			totalDur += time.Duration(v) * durationParts[idx]
@@ -157,11 +160,16 @@ func metricConstantValue(value string) (float64, error) {
 
 // --------------------------------------
 
+// PropertyMetric define metric collector that read values from configured property.
 type PropertyMetric interface {
 	Describe(ch chan<- *prometheus.Desc)
 	Collect(reply *proto.Sentence, ctx *CollectorContext) error
 }
 
+// --------------------------------------
+
+// simplePropertyMetric collect basic value for given property using `valueConverter` to convert
+// it to float value. Should be created by PropertyMetricBuilder.
 type simplePropertyMetric struct {
 	desc           *prometheus.Desc
 	property       string
@@ -202,19 +210,20 @@ func (p *simplePropertyMetric) Collect(reply *proto.Sentence,
 	return nil
 }
 
-type RxTxPropertyMetric struct {
+// rxTxPropertyMetric collect counter metrics from given property and put it into two metrics _tx i _rx.
+type rxTxPropertyMetric struct {
 	rxDesc         *prometheus.Desc
 	txDesc         *prometheus.Desc
 	property       string
 	valueConverter TXRXValueConverter
 }
 
-func (p RxTxPropertyMetric) Describe(ch chan<- *prometheus.Desc) {
+func (p rxTxPropertyMetric) Describe(ch chan<- *prometheus.Desc) {
 	ch <- p.rxDesc
 	ch <- p.txDesc
 }
 
-func (p RxTxPropertyMetric) Collect(reply *proto.Sentence,
+func (p rxTxPropertyMetric) Collect(reply *proto.Sentence,
 	ctx *CollectorContext,
 ) error {
 	propertyVal, ok := reply.Map[p.property]
@@ -252,6 +261,7 @@ const (
 	metricRxTx
 )
 
+// PropertyMetricBuilder build metric collector that read given property from reply.
 type PropertyMetricBuilder struct {
 	prefix             string
 	property           string
@@ -368,7 +378,7 @@ func (p PropertyMetricBuilder) Build() PropertyMetric {
 		rxDesc := descriptionForPropertyNameHelpText(p.prefix, "rx_"+metricName, p.labels, metricHelp+" (RX)")
 		txDesc := descriptionForPropertyNameHelpText(p.prefix, "tx_"+metricName, p.labels, metricHelp+" (TX)")
 
-		return &RxTxPropertyMetric{rxDesc, txDesc, p.property, p.rxTxValueConverter}
+		return &rxTxPropertyMetric{rxDesc, txDesc, p.property, p.rxTxValueConverter}
 	}
 
 	panic("unknown metric type")
@@ -376,6 +386,7 @@ func (p PropertyMetricBuilder) Build() PropertyMetric {
 
 // --------------------------------------
 
+// RetMetricBuilder build metric collector for `ret` returned value.
 type RetMetricBuilder struct {
 	prefix         string
 	property       string
@@ -452,6 +463,7 @@ func (r RetMetricBuilder) Build() RetMetric {
 
 // --------------------------------------
 
+// RetMetric collect metrics from `ret` value retuned in reply.
 type RetMetric interface {
 	Describe(ch chan<- *prometheus.Desc)
 	Collect(reply *routeros.Reply, ctx *CollectorContext) error

@@ -47,6 +47,8 @@ var (
 	)
 )
 
+// --------------------------------------------
+
 type (
 	deviceCollectorRC struct {
 		name      string
@@ -106,11 +108,11 @@ func (dc *deviceCollector) connect() (*routeros.Client, error) {
 			return dc.cl, nil
 		}
 
+		_ = level.Info(dc.logger).Log("msg", "reconnecting")
+
 		// check failed, reconnect
 		dc.cl.Close()
 		dc.cl = nil
-
-		_ = level.Info(dc.logger).Log("msg", "reconnecting")
 	}
 
 	_ = level.Debug(dc.logger).Log("msg", "trying to Dial")
@@ -258,13 +260,12 @@ func (dc *deviceCollector) getIdentity() error {
 	return nil
 }
 
+// --------------------------------------------
+
 type mikrotikCollector struct {
 	devices    []*deviceCollector
 	collectors []collectors.RouterOSCollector
 	logger     log.Logger
-
-	// prevent parallel collecting
-	locker chan struct{}
 }
 
 // NewCollector creates a collector instance.
@@ -277,35 +278,20 @@ func NewCollector(cfg *config.Config, logger log.Logger) prometheus.Collector {
 
 	for _, dev := range cfg.Devices {
 		feat := cfg.DeviceFeatures(dev.Name)
-
-		var dcols []deviceCollectorRC
-
 		featNames := feat.FeatureNames()
-		for _, n := range featNames {
-			dcols = append(dcols, deviceCollectorRC{n, collectorInstances[n]})
-		}
-
-		dc := newDeviceCollector(dev, dcols, logger)
-		dcs = append(dcs, dc)
+		dcols := collectorInstances.get(featNames)
+		dcs = append(dcs, newDeviceCollector(dev, dcols, logger))
 
 		_ = level.Debug(logger).Log("msg", "new device", "device",
-			fmt.Sprintf("%#v", &dc.device), "feat", fmt.Sprintf("%v", featNames))
+			fmt.Sprintf("%#v", dev), "feat", fmt.Sprintf("%v", featNames))
 	}
 
-	colls := make([]collectors.RouterOSCollector, 0, len(collectorInstances))
-
-	for _, c := range collectorInstances {
-		colls = append(colls, c)
-	}
-
+	colls := collectorInstances.instances()
 	c := &mikrotikCollector{
 		devices:    dcs,
 		collectors: colls,
 		logger:     logger,
-		locker:     make(chan struct{}, 1),
 	}
-
-	c.locker <- struct{}{}
 
 	return c
 }
@@ -323,47 +309,32 @@ func (c *mikrotikCollector) Describe(ch chan<- *prometheus.Desc) {
 
 func (c *mikrotikCollector) devicesFromSrv(devCol *deviceCollector) ([]*deviceCollector, error) {
 	dev := devCol.device
-	conf, _ := dns.ClientConfigFromFile("/etc/resolv.conf")
-	dnsServer := net.JoinHostPort(conf.Servers[0], strconv.Itoa(config.DNSPort))
 
-	if dev.Srv.DNS != nil {
-		dnsServer = net.JoinHostPort(dev.Srv.DNS.Address, strconv.Itoa(dev.Srv.DNS.Port))
-		_ = level.Info(c.logger).Log("msg", "Custom DNS config detected", "DNSServer", dnsServer)
-	}
-
-	dnsMsg := new(dns.Msg)
-	dnsMsg.RecursionDesired = true
-	dnsMsg.SetQuestion(dns.Fqdn(dev.Srv.Record), dns.TypeSRV)
-
-	dnsCli := new(dns.Client)
-
-	r, _, err := dnsCli.Exchange(dnsMsg, dnsServer)
+	r, err := resolveServices(dev.Srv.DNS, dev.Srv.Record)
 	if err != nil {
 		return nil, fmt.Errorf("dns query for %s error: %w", dev.Srv.Record, err)
 	}
 
-	var realDevices []*deviceCollector
+	realDevices := make([]*deviceCollector, 0, len(r))
 
-	for _, k := range r.Answer {
-		if s, ok := k.(*dns.SRV); ok {
-			d := config.Device{
-				Name:     strings.TrimRight(s.Target, "."),
-				Address:  strings.TrimRight(s.Target, "."),
-				User:     dev.User,
-				Password: dev.Password,
-				Srv:      dev.Srv,
-			}
-
-			ndc := newDeviceCollector(d, devCol.collectors, devCol.logger)
-			if err := ndc.getIdentity(); err != nil {
-				_ = level.Error(c.logger).Log("msg", "error fetching identity",
-					"device", devCol.device.Name, "error", err)
-
-				continue
-			}
-
-			realDevices = append(realDevices, ndc)
+	for _, target := range r {
+		d := config.Device{
+			Name:     target,
+			Address:  target,
+			User:     dev.User,
+			Password: dev.Password,
+			Srv:      dev.Srv,
 		}
+
+		ndc := newDeviceCollector(d, devCol.collectors, devCol.logger)
+		if err := ndc.getIdentity(); err != nil {
+			_ = level.Error(c.logger).Log("msg", "error fetching identity",
+				"device", devCol.device.Name, "error", err)
+
+			continue
+		}
+
+		realDevices = append(realDevices, ndc)
 	}
 
 	return realDevices, nil
@@ -371,19 +342,6 @@ func (c *mikrotikCollector) devicesFromSrv(devCol *deviceCollector) ([]*deviceCo
 
 // Collect implements the prometheus.Collector interface.
 func (c *mikrotikCollector) Collect(ch chan<- prometheus.Metric) {
-	select {
-	case <-c.locker:
-	case <-time.After(config.WaitForFinishCollectingTime * time.Second):
-		_ = level.Warn(c.logger).Log("msg", "another collecting in progress")
-
-		return
-	}
-
-	defer func() {
-		_, _ = daemon.SdNotify(false, "STATUS=waiting")
-		c.locker <- struct{}{}
-	}()
-
 	_, _ = daemon.SdNotify(false, "STATUS=collecting")
 
 	wg := sync.WaitGroup{}
@@ -391,9 +349,6 @@ func (c *mikrotikCollector) Collect(ch chan<- prometheus.Metric) {
 
 	for _, dc := range c.devices {
 		if dc.isSrv {
-			_ = level.Info(c.logger).Log("msg", "SRV configuration detected",
-				"SRV", dc.device.Srv.Record)
-
 			if devs, err := c.devicesFromSrv(dc); err == nil {
 				realDevices = append(realDevices, devs...)
 			} else {
@@ -408,15 +363,17 @@ func (c *mikrotikCollector) Collect(ch chan<- prometheus.Metric) {
 
 	for _, dev := range realDevices {
 		go func(d *deviceCollector) {
-			c.collectForDevice(d, ch)
+			c.collectFromDevice(d, ch)
 			wg.Done()
 		}(dev)
 	}
 
 	wg.Wait()
+
+	_, _ = daemon.SdNotify(false, "STATUS=waiting")
 }
 
-func (c *mikrotikCollector) collectForDevice(d *deviceCollector, ch chan<- prometheus.Metric) {
+func (c *mikrotikCollector) collectFromDevice(d *deviceCollector, ch chan<- prometheus.Metric) {
 	name := d.device.Name
 	logger := log.WithSuffix(c.logger, "device", name)
 	_ = level.Debug(logger).Log("msg", "start collect for device")
@@ -443,6 +400,8 @@ func (c *mikrotikCollector) collectForDevice(d *deviceCollector, ch chan<- prome
 		float64(numFailed), name)
 }
 
+// --------------------------------------------
+
 func challengeResponse(cha []byte, password string) string {
 	h := md5.New() // #nosec
 	h.Write([]byte{0})
@@ -452,32 +411,77 @@ func challengeResponse(cha []byte, password string) string {
 	return fmt.Sprintf("00%x", h.Sum(nil))
 }
 
+// --------------------------------------------
+
+func resolveServices(srvDNS *config.DNSServer, record string) ([]string, error) {
+	var dnsServer string
+
+	if srvDNS == nil {
+		conf, _ := dns.ClientConfigFromFile("/etc/resolv.conf")
+		dnsServer = net.JoinHostPort(conf.Servers[0], strconv.Itoa(config.DNSPort))
+	} else {
+		dnsServer = net.JoinHostPort(srvDNS.Address, strconv.Itoa(srvDNS.Port))
+	}
+
+	_ = level.Debug(config.GlobalLogger).Log("msg", "resolve services",
+		"dns_server", dnsServer, "record", record)
+
+	dnsMsg := new(dns.Msg)
+	dnsMsg.RecursionDesired = true
+	dnsMsg.SetQuestion(dns.Fqdn(record), dns.TypeSRV)
+
+	dnsCli := new(dns.Client)
+
+	r, _, err := dnsCli.Exchange(dnsMsg, dnsServer)
+	if err != nil {
+		return nil, fmt.Errorf("dns query for %s error: %w", record, err)
+	}
+
+	result := make([]string, 0, len(r.Answer))
+
+	for _, k := range r.Answer {
+		if s, ok := k.(*dns.SRV); ok {
+			_ = level.Debug(config.GlobalLogger).Log("msg", "resolved services",
+				"dns_server", dnsServer, "record", record, "result", s.Target)
+
+			result = append(result, strings.TrimRight(s.Target, "."))
+		}
+	}
+
+	return result, nil
+}
+
+// --------------------------------------------
+
+type collectorInstances map[string]collectors.RouterOSCollector
+
 // createCollectors create instances of collectors according to configuration.
-func createCollectors(cfg *config.Config, logger log.Logger) map[string]collectors.RouterOSCollector {
+func createCollectors(cfg *config.Config, logger log.Logger) collectorInstances {
 	colls := make(map[string]collectors.RouterOSCollector)
-	uniqueNames := make(map[string]struct{})
-	applyDefault := false
 
-	for _, dev := range cfg.Devices {
-		if dev.Profile == "" {
-			applyDefault = true
-		} else {
-			features := cfg.DeviceFeatures(dev.Name)
-			for _, name := range features.FeatureNames() {
-				uniqueNames[name] = struct{}{}
-			}
-		}
-	}
-
-	if applyDefault {
-		for _, name := range cfg.Features.FeatureNames() {
-			uniqueNames[name] = struct{}{}
-		}
-	}
-
-	for k := range uniqueNames {
+	for _, k := range cfg.AllEnabledFeatures() {
 		colls[k] = collectors.InstanateCollector(k)
 		_ = level.Debug(logger).Log("msg", "new collector", "collector", k)
+	}
+
+	return colls
+}
+
+func (ci collectorInstances) get(names []string) []deviceCollectorRC {
+	dcols := make([]deviceCollectorRC, 0, len(names))
+
+	for _, n := range names {
+		dcols = append(dcols, deviceCollectorRC{n, ci[n]})
+	}
+
+	return dcols
+}
+
+func (ci collectorInstances) instances() []collectors.RouterOSCollector {
+	colls := make([]collectors.RouterOSCollector, 0, len(ci))
+
+	for _, c := range ci {
+		colls = append(colls, c)
 	}
 
 	return colls

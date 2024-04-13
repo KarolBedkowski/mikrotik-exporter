@@ -35,9 +35,9 @@ func TestShouldParse(t *testing.T) {
 	}
 
 	f := c.DeviceFeatures("testProfileMinimal")
-	assertFeature("Firmware", *f, t)
-	assertFeature("Health", *f, t)
-	assertFeature("Monitor", *f, t)
+	assertFeature("Firmware", f, t)
+	assertFeature("Health", f, t)
+	assertFeature("Monitor", f, t)
 
 	dev := c.FindDevice("testDns")
 	if dev.Srv.Record != "record2" {

@@ -79,7 +79,7 @@ func metricFromLinkStatus(value string) (float64, error) {
 	return 0.0, nil
 }
 
-func metricFromRate(v string) (float64, error) {
+func metricFromRate(v string) (float64, error) { //nolint:cyclop
 	value := 0
 
 	switch v {

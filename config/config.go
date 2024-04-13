@@ -52,6 +52,8 @@ func (i InvalidFieldValueError) Error() string {
 	return "invalid value of `" + i.field + "`: `" + i.value + "`"
 }
 
+// --------------------------------------
+
 type Features map[string]bool
 
 func (f Features) validate(collectors []string) error {
@@ -83,11 +85,103 @@ func (f Features) FeatureNames() []string {
 	return res
 }
 
+// --------------------------------------
+
 // Config represents the configuration for the exporter.
 type Config struct {
 	Devices  []Device            `yaml:"devices"`
 	Features Features            `yaml:"features,omitempty"`
 	Profiles map[string]Features `yaml:"profiles,omitempty"`
+}
+
+func (c *Config) DeviceFeatures(deviceName string) Features {
+	for _, d := range c.Devices {
+		if d.Name == deviceName {
+			if d.Profile == "" {
+				return c.Features
+			}
+
+			if f, ok := c.Profiles[d.Profile]; ok {
+				return f
+			}
+
+			panic("unknown profile " + d.Profile + " in device " + deviceName)
+		}
+	}
+
+	panic("unknown device " + deviceName)
+}
+
+func (c *Config) FindDevice(deviceName string) *Device {
+	for _, d := range c.Devices {
+		if d.Name == deviceName {
+			return &d
+		}
+	}
+
+	panic("unknown device " + deviceName)
+}
+
+func (c *Config) AllEnabledFeatures() []string {
+	uniqueNames := make(map[string]struct{})
+
+	for _, dev := range c.Devices {
+		features := c.Features
+		if dev.Profile != "" {
+			features = c.DeviceFeatures(dev.Name)
+		}
+
+		for _, name := range features.FeatureNames() {
+			uniqueNames[name] = struct{}{}
+		}
+	}
+
+	names := make([]string, 0, len(uniqueNames))
+	for k := range uniqueNames {
+		names = append(names, k)
+	}
+
+	return names
+}
+
+func (c *Config) validate(collectors []string) error {
+	for name, features := range c.Profiles {
+		if err := features.validate(collectors); err != nil {
+			return fmt.Errorf("invalid profile '%s': %w", name, err)
+		}
+
+		// always enabled
+		features["resource"] = true
+	}
+
+	var errs *multierror.Error
+
+	for idx, d := range c.Devices {
+		if err := d.validate(c.Profiles); err != nil {
+			errs = multierror.Append(errs,
+				fmt.Errorf("invalid device %d (%s) configuration: %w",
+					idx, d.Name, err))
+		}
+	}
+
+	if err := errs.ErrorOrNil(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// --------------------------------------
+
+type SrvRecord struct {
+	Record string `yaml:"record"`
+	/// DNS is additional dns server used to resolved `Record`
+	DNS *DNSServer `yaml:"dns,omitempty"`
+}
+
+type DNSServer struct {
+	Address string `yaml:"address"`
+	Port    int    `yaml:"port"`
 }
 
 // Device represents a target device.
@@ -171,16 +265,7 @@ func (d *Device) validateProfile(profiles map[string]Features) error {
 	return nil
 }
 
-type SrvRecord struct {
-	Record string `yaml:"record"`
-	/// DNS is additional dns server used to resolved `Record`
-	DNS *DNSServer `yaml:"dns,omitempty"`
-}
-
-type DNSServer struct {
-	Address string `yaml:"address"`
-	Port    int    `yaml:"port"`
-}
+// --------------------------------------
 
 // Load reads YAML from reader and unmashals in Config.
 func Load(r io.Reader, collectors []string) (*Config, error) {
@@ -216,60 +301,7 @@ func Load(r io.Reader, collectors []string) (*Config, error) {
 	return cfg, nil
 }
 
-func (c *Config) DeviceFeatures(deviceName string) *Features {
-	for _, d := range c.Devices {
-		if d.Name == deviceName {
-			if d.Profile == "" {
-				return &c.Features
-			}
-
-			if f, ok := c.Profiles[d.Profile]; ok {
-				return &f
-			}
-
-			panic("unknown profile " + d.Profile + " in device " + deviceName)
-		}
-	}
-
-	panic("unknown device " + deviceName)
-}
-
-func (c *Config) FindDevice(deviceName string) *Device {
-	for _, d := range c.Devices {
-		if d.Name == deviceName {
-			return &d
-		}
-	}
-
-	panic("unknown device " + deviceName)
-}
-
-func (c *Config) validate(collectors []string) error {
-	for name, features := range c.Profiles {
-		if err := features.validate(collectors); err != nil {
-			return fmt.Errorf("invalid profile '%s': %w", name, err)
-		}
-
-		// always enabled
-		features["resource"] = true
-	}
-
-	var errs *multierror.Error
-
-	for idx, d := range c.Devices {
-		if err := d.validate(c.Profiles); err != nil {
-			errs = multierror.Append(errs,
-				fmt.Errorf("invalid device %d (%s) configuration: %w",
-					idx, d.Name, err))
-		}
-	}
-
-	if err := errs.ErrorOrNil(); err != nil {
-		return err
-	}
-
-	return nil
-}
+// --------------------------------------
 
 func filterDevices(devices []Device) []Device {
 	// remove disabled devices
