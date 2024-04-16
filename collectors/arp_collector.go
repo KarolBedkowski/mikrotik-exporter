@@ -50,9 +50,8 @@ func (c *arpCollector) Collect(ctx *CollectorContext) error {
 	var errs *multierror.Error
 
 	for _, re := range reply.Re {
-		lctx := ctx.withLabels(re.Map["address"], re.Map["interface"], re.Map["mac-address"],
-			re.Map["comment"], re.Map["dynamic"], re.Map["DHCP"], re.Map["complete"],
-			re.Map["status"], re.Map["invalid"], re.Map["published"])
+		lctx := ctx.withLabelsFromMap(re.Map, "address", "interface", "mac-address",
+			"comment", "dynamic", "DHCP", "complete", "status", "invalid", "published")
 
 		if err := c.metrics.Collect(re, &lctx); err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("collect error: %w", err))

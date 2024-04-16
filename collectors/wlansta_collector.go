@@ -46,7 +46,7 @@ func (c *wlanSTACollector) Collect(ctx *CollectorContext) error {
 	var errs *multierror.Error
 
 	for _, re := range reply.Re {
-		lctx := ctx.withLabels(re.Map["interface"], re.Map["mac-address"])
+		lctx := ctx.withLabelsFromMap(re.Map, "interface", "mac-address")
 
 		if err := c.metrics.Collect(re, &lctx); err != nil {
 			errs = multierror.Append(errs, err)

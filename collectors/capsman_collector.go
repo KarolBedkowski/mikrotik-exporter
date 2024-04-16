@@ -74,8 +74,7 @@ func (c *capsmanCollector) collectRegistrations(ctx *CollectorContext) error {
 	var errs *multierror.Error
 
 	for _, re := range reply.Re {
-		lctx := ctx.withLabels(re.Map["interface"], re.Map["mac-address"], re.Map["ssid"],
-			re.Map["eap-identity"], re.Map["comment"])
+		lctx := ctx.withLabelsFromMap(re.Map, "interface", "mac-address", "ssid", "eap-identity", "comment")
 
 		if err := c.metrics.Collect(re, &lctx); err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("collect registrations error: %w", err))
@@ -96,8 +95,8 @@ func (c *capsmanCollector) collectInterfaces(ctx *CollectorContext) error {
 	var errs *multierror.Error
 
 	for _, re := range reply.Re {
-		lctx := ctx.withLabels(re.Map["name"], re.Map["mac-address"], re.Map["configuration"],
-			re.Map["current-state"], re.Map["master-interface"])
+		lctx := ctx.withLabelsFromMap(re.Map, "name", "mac-address", "configuration",
+			"current-state", "master-interface")
 
 		if err := c.interfaces.Collect(re, &lctx); err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("collect interfaces error: %w", err))
@@ -117,8 +116,7 @@ func (c *capsmanCollector) collectRadiosProvisioned(ctx *CollectorContext) error
 	var errs *multierror.Error
 
 	for _, re := range reply.Re {
-		lctx := ctx.withLabels(re.Map["interface"], re.Map["radio-mac"], re.Map["remote-cap-identity"],
-			re.Map["remote-cap-name"])
+		lctx := ctx.withLabelsFromMap(re.Map, "interface", "radio-mac", "remote-cap-identity", "remote-cap-name")
 
 		if err := c.radiosProvisionedDesc.Collect(re, &lctx); err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("collect provisions error: %w", err))

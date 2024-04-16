@@ -4,9 +4,10 @@ import (
 	"errors"
 	"fmt"
 
+	"mikrotik-exporter/routeros/proto"
+
 	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
-	"mikrotik-exporter/routeros/proto"
 )
 
 func init() {

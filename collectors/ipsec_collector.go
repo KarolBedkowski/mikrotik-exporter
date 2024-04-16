@@ -90,7 +90,7 @@ func (c *ipsecCollector) collectActivePeers(ctx *CollectorContext) error {
 	var errs *multierror.Error
 
 	for _, re := range reply.Re {
-		lctx := ctx.withLabels(re.Map["comment"], re.Map["side"])
+		lctx := ctx.withLabelsFromMap(re.Map, "comment", "side")
 		if err := c.activePeers.Collect(re, &lctx); err != nil {
 			errs = multierror.Append(errs,
 				fmt.Errorf("collect active peers error %w", err))

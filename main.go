@@ -234,13 +234,13 @@ func createMetricsHandler(cfg *config.Config, logger log.Logger) (http.Handler, 
 
 	registry := prometheus.NewRegistry()
 
-	err := registry.Register(pcollectors.NewGoCollector())
-	if err != nil {
+	if err := registry.Register(
+		pcollectors.NewGoCollector(
+			pcollectors.WithGoCollectorRuntimeMetrics(pcollectors.MetricsAll))); err != nil {
 		return nil, fmt.Errorf("register gocollector error: %w", err)
 	}
 
-	err = registry.Register(collector)
-	if err != nil {
+	if err := registry.Register(collector); err != nil {
 		return nil, fmt.Errorf("register collector error: %w", err)
 	}
 
