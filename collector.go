@@ -2,12 +2,9 @@ package main
 
 import (
 	// #nosec
-	"crypto/md5"
+
 	"crypto/tls"
-	"encoding/hex"
-	"errors"
 	"fmt"
-	"io"
 	"net"
 	"strconv"
 	"strings"
@@ -131,10 +128,10 @@ func (dc *deviceCollector) connect() (*routeros.Client, error) {
 
 	_ = level.Debug(dc.logger).Log("msg", "got client, trying to login")
 
-	if err := dc.login(client); err != nil {
+	if err := client.Login(dc.device.User, dc.device.Password); err != nil {
 		client.Close()
 
-		return nil, err
+		return nil, fmt.Errorf("login error: %w", err)
 	}
 
 	_ = level.Debug(dc.logger).Log("msg", "done wth login")
@@ -171,38 +168,6 @@ func (dc *deviceCollector) dial() (net.Conn, error) {
 	}
 
 	return con, nil
-}
-
-var ErrLoginNoRet = errors.New("login: no ret (challenge) received")
-
-func (dc *deviceCollector) login(client *routeros.Client) error {
-	r, err := client.Run("/login", "=name="+dc.device.User, "=password="+dc.device.Password)
-	if err != nil {
-		return fmt.Errorf("run login error: %w", err)
-	}
-
-	ret, ok := r.Done.Map["ret"]
-	if !ok {
-		// Login method post-6.43 one stage, cleartext and no challenge
-		if r.Done != nil {
-			return nil
-		}
-
-		return ErrLoginNoRet
-	}
-
-	// Login method pre-6.43 two stages, challenge
-	b, err := hex.DecodeString(ret)
-	if err != nil {
-		return fmt.Errorf("login invalid ret (challenge) hex string received: %w", err)
-	}
-
-	if _, err = client.Run("/login", "=name="+dc.device.User,
-		"=response="+challengeResponse(b, dc.device.Password)); err != nil {
-		return fmt.Errorf("login send response error: %w", err)
-	}
-
-	return nil
 }
 
 // collect data for device and return number of failed collectors and
@@ -398,17 +363,6 @@ func (c *mikrotikCollector) collectFromDevice(d *deviceCollector, ch chan<- prom
 	ch <- prometheus.MustNewConstMetric(scrapeSuccessDesc, prometheus.GaugeValue, success, name)
 	ch <- prometheus.MustNewConstMetric(scrapeErrorsDesc, prometheus.GaugeValue,
 		float64(numFailed), name)
-}
-
-// --------------------------------------------
-
-func challengeResponse(cha []byte, password string) string {
-	h := md5.New() // #nosec
-	h.Write([]byte{0})
-	_, _ = io.WriteString(h, password)
-	h.Write(cha)
-
-	return fmt.Sprintf("00%x", h.Sum(nil))
 }
 
 // --------------------------------------------
