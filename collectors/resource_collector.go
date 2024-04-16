@@ -3,9 +3,9 @@ package collectors
 import (
 	"fmt"
 
-	"github.com/KarolBedkowski/routeros-go-client/proto"
 	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
+	"mikrotik-exporter/routeros/proto"
 )
 
 func init() {

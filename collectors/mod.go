@@ -6,9 +6,9 @@ package collectors
 import (
 	"mikrotik-exporter/config"
 
-	routeros "github.com/KarolBedkowski/routeros-go-client"
 	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
+	routeros "mikrotik-exporter/routeros"
 )
 
 type RouterOSCollector interface {

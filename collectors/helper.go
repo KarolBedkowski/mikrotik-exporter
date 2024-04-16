@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"mikrotik-exporter/config"
+	"mikrotik-exporter/routeros"
+	"mikrotik-exporter/routeros/proto"
 
-	"github.com/KarolBedkowski/routeros-go-client"
-	"github.com/KarolBedkowski/routeros-go-client/proto"
 	"github.com/go-kit/log/level"
 	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"

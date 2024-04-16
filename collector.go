@@ -14,7 +14,8 @@ import (
 	"mikrotik-exporter/collectors"
 	"mikrotik-exporter/config"
 
-	"github.com/KarolBedkowski/routeros-go-client"
+	"mikrotik-exporter/routeros"
+
 	"github.com/coreos/go-systemd/v22/daemon"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
