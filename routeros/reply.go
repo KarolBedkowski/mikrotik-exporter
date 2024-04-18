@@ -26,7 +26,7 @@ func (r *Reply) String() string {
 
 // readReply reads one reply synchronously. It returns the reply.
 func (c *Client) readReply() (*Reply, error) {
-	r := &Reply{}
+	reply := &Reply{}
 
 	var lastErr error
 
@@ -36,7 +36,7 @@ func (c *Client) readReply() (*Reply, error) {
 			return nil, fmt.Errorf("read sentence error: %w", err)
 		}
 
-		done, err := r.processSentence(sen)
+		done, err := reply.processSentence(sen)
 		if err != nil {
 			if done {
 				return nil, err
@@ -46,7 +46,7 @@ func (c *Client) readReply() (*Reply, error) {
 		}
 
 		if done {
-			return r, lastErr
+			return reply, lastErr
 		}
 	}
 }
@@ -57,6 +57,7 @@ func (r *Reply) processSentence(sen *proto.Sentence) (bool, error) {
 		r.Re = append(r.Re, sen)
 	case "!done":
 		r.Done = sen
+
 		return true, nil
 	case "!trap", "!fatal":
 		return sen.Word == "!fatal", &DeviceError{sen}

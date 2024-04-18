@@ -4,10 +4,9 @@ Package routeros is a pure Go client library for accessing Mikrotik devices usin
 package routeros
 
 import (
-	"crypto/md5"
+	"crypto/md5" //nolint:gosec
 	"crypto/tls"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -24,7 +23,6 @@ type Client struct {
 	r       proto.Reader
 	w       proto.Writer
 	closing bool
-	nextTag int64
 	mu      sync.Mutex
 }
 
@@ -41,8 +39,9 @@ func NewClient(rwc io.ReadWriteCloser) (*Client, error) {
 func Dial(address, username, password string) (*Client, error) {
 	conn, err := net.Dial("tcp", address)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("dial error: %w", err)
 	}
+
 	return newClientAndLogin(conn, username, password)
 }
 
@@ -50,32 +49,39 @@ func Dial(address, username, password string) (*Client, error) {
 func DialTLS(address, username, password string, tlsConfig *tls.Config) (*Client, error) {
 	conn, err := tls.Dial("tcp", address, tlsConfig)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("tls dial error: %w", err)
 	}
+
 	return newClientAndLogin(conn, username, password)
 }
 
 func newClientAndLogin(rwc io.ReadWriteCloser, username, password string) (*Client, error) {
-	c, err := NewClient(rwc)
+	client, err := NewClient(rwc)
 	if err != nil {
 		rwc.Close()
+
 		return nil, err
 	}
-	err = c.Login(username, password)
-	if err != nil {
-		c.Close()
+
+	if err = client.Login(username, password); err != nil {
+		client.Close()
+
 		return nil, err
 	}
-	return c, nil
+
+	return client, nil
 }
 
 // Close closes the connection to the RouterOS device.
 func (c *Client) Close() {
 	c.mu.Lock()
+
 	if c.closing {
 		c.mu.Unlock()
+
 		return
 	}
+
 	c.closing = true
 	c.mu.Unlock()
 	c.rwc.Close()
@@ -87,23 +93,24 @@ func (c *Client) Login(username, password string) error {
 	if err != nil {
 		return err
 	}
+
 	ret, ok := r.Done.Map["ret"]
 	if !ok {
 		// Login method post-6.43 one stage, cleartext and no challenge
 		if r.Done != nil {
 			return nil
 		}
-		return errors.New("RouterOS: /login: no ret (challenge) received")
+
+		return ErrLoginNoRet
 	}
 
 	// Login method pre-6.43 two stages, challenge
 	b, err := hex.DecodeString(ret)
 	if err != nil {
-		return fmt.Errorf("RouterOS: /login: invalid ret (challenge) hex string received: %s", err)
+		return fmt.Errorf("RouterOS: /login: invalid ret (challenge) hex string received: %w", err)
 	}
 
-	r, err = c.Run("/login", "=name="+username, "=response="+c.challengeResponse(b, password))
-	if err != nil {
+	if _, err = c.Run("/login", "=name="+username, "=response="+c.challengeResponse(b, password)); err != nil {
 		return err
 	}
 
@@ -111,9 +118,10 @@ func (c *Client) Login(username, password string) error {
 }
 
 func (c *Client) challengeResponse(cha []byte, password string) string {
-	h := md5.New()
+	h := md5.New() //nolint:gosec
 	h.Write([]byte{0})
-	io.WriteString(h, password)
+	_, _ = io.WriteString(h, password)
 	h.Write(cha)
+
 	return fmt.Sprintf("00%x", h.Sum(nil))
 }

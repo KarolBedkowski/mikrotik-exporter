@@ -1,3 +1,4 @@
+//nolint:gomnd
 package proto
 
 import (
@@ -35,6 +36,7 @@ func (w *writer) EndSentence() error {
 	defer w.Unlock()
 	w.WriteWord("")
 	w.flush()
+
 	return w.err
 }
 
@@ -59,6 +61,7 @@ func (w *writer) write(b []byte) {
 	if w.err != nil {
 		return
 	}
+
 	if _, err := w.Write(b); err != nil {
 		w.err = err
 	}

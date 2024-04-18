@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"errors"
 	"io"
 	"testing"
 
@@ -92,7 +93,7 @@ func TestLoginEOF(t *testing.T) {
 	if err == nil {
 		t.Fatalf("Login succeeded; want error")
 	}
-	if err.Error() != "io: read/write on closed pipe" {
+	if err.Error() != "endsentence error: io: read/write on closed pipe" {
 		t.Fatal(err)
 	}
 }
@@ -102,26 +103,6 @@ func TestCloseTwice(t *testing.T) {
 	defer s.Close()
 	c.Close()
 	c.Close()
-}
-
-func TestAsyncTwice(t *testing.T) {
-	c, s := newPair(t)
-	defer c.Close()
-	defer s.Close()
-
-	c.Async()
-
-	errC := c.Async()
-	err := <-errC
-	want := "Async() has already been called"
-	if err.Error() != want {
-		t.Fatalf("Second Async()=%#q; want %#q", err, want)
-	}
-
-	err = <-errC
-	if err != nil {
-		t.Fatalf("Async() channel should be closed after error; got %#q", err)
-	}
 }
 
 func TestRun(t *testing.T) {
@@ -140,60 +121,6 @@ func TestRun(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := "!re @ [{`address` `1.2.3.4/32`}]\n!done @ []"
-	if sen.String() != want {
-		t.Fatalf("/ip/address (%s); want (%s)", sen, want)
-	}
-}
-
-func TestRunWithListen(t *testing.T) {
-	c, s := newPair(t)
-	defer c.Close()
-
-	go func() {
-		defer s.Close()
-		s.readSentence(t, "/ip/address @l1 []")
-		s.writeSentence(t, "!re", ".tag=l1", "=address=1.2.3.4/32")
-		s.writeSentence(t, "!done", ".tag=l1")
-	}()
-
-	listen, err := c.Listen("/ip/address")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	sen := <-listen.Chan()
-	want := "!re @l1 [{`address` `1.2.3.4/32`}]"
-	if sen.String() != want {
-		t.Fatalf("/ip/address (%s); want (%s)", sen, want)
-	}
-
-	sen = <-listen.Chan()
-	if sen != nil {
-		t.Fatalf("Listen() channel should be closed after EOF; got %#q", sen)
-	}
-	err = listen.Err()
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
-func TestRunAsync(t *testing.T) {
-	c, s := newPair(t)
-	defer c.Close()
-	c.Async()
-
-	go func() {
-		defer s.Close()
-		s.readSentence(t, "/ip/address @r1 []")
-		s.writeSentence(t, "!re", ".tag=r1", "=address=1.2.3.4/32")
-		s.writeSentence(t, "!done", ".tag=r1")
-	}()
-
-	sen, err := c.Run("/ip/address")
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := "!re @r1 [{`address` `1.2.3.4/32`}]\n!done @r1 []"
 	if sen.String() != want {
 		t.Fatalf("/ip/address (%s); want (%s)", sen, want)
 	}
@@ -234,27 +161,7 @@ func TestRunEOF(t *testing.T) {
 	if err == nil {
 		t.Fatalf("Run succeeded; want error")
 	}
-	if err != io.EOF {
-		t.Fatal(err)
-	}
-}
-
-func TestRunEOFAsync(t *testing.T) {
-	c, s := newPair(t)
-	defer c.Close()
-	c.Async()
-
-	go func() {
-		defer s.Close()
-		s.readSentence(t, "/ip/address @r1 []")
-		s.writeSentence(t, "!re", "=address=1.2.3.4/32")
-	}()
-
-	_, err := c.Run("/ip/address")
-	if err == nil {
-		t.Fatalf("Run succeeded; want error")
-	}
-	if err != io.EOF {
+	if !errors.Is(err, io.EOF) {
 		t.Fatal(err)
 	}
 }
@@ -346,46 +253,7 @@ func TestRunAfterClose(t *testing.T) {
 	if err == nil {
 		t.Fatalf("Run succeeded; want error")
 	}
-	if err.Error() != "io: read/write on closed pipe" {
-		t.Fatal(err)
-	}
-}
-
-func TestListen(t *testing.T) {
-	c, s := newPair(t)
-	defer c.Close()
-
-	go func() {
-		defer s.Close()
-		s.readSentence(t, "/ip/address/listen @l1 []")
-		s.writeSentence(t, "!re", ".tag=l1", "=address=1.2.3.4/32")
-		s.readSentence(t, "/cancel @r2 [{`tag` `l1`}]")
-		s.writeSentence(t, "!trap", "=category=2", ".tag=l1")
-		s.writeSentence(t, "!done", "=tag=r2")
-		s.writeSentence(t, "!done", "=tag=l1")
-	}()
-
-	c.Queue = 1
-	listen, err := c.Listen("/ip/address/listen")
-	if err != nil {
-		t.Fatal(err)
-	}
-	reC := listen.Chan()
-
-	listen.Cancel()
-
-	sen := <-reC
-	want := "!re @l1 [{`address` `1.2.3.4/32`}]"
-	if sen.String() != want {
-		t.Fatalf("/ip/address/listen (%s); want (%s)", sen, want)
-	}
-
-	sen = <-reC
-	if sen != nil {
-		t.Fatalf("Listen() channel should be closed after Close(); got %#q", sen)
-	}
-	err = listen.Err()
-	if err != nil {
+	if err.Error() != "endsentence error: io: read/write on closed pipe" {
 		t.Fatal(err)
 	}
 }

@@ -1,6 +1,8 @@
 package routeros
 
 import (
+	"errors"
+
 	"mikrotik-exporter/routeros/proto"
 )
 
@@ -24,5 +26,8 @@ func (err *DeviceError) Error() string {
 	if m == "" {
 		m = "unknown error: " + err.Sentence.String()
 	}
+
 	return "from RouterOS device: " + m
 }
+
+var ErrLoginNoRet = errors.New("RouterOS: /login: no ret (challenge) received")
