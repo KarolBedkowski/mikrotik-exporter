@@ -64,45 +64,46 @@ func (r *reader) ReadSentence() (*Sentence, error) {
 	}
 }
 
-func (r *reader) readNumber(size int) (int64, error) {
-	b := make([]byte, size)
-	if _, err := io.ReadFull(r, b); err != nil {
-		return -1, fmt.Errorf("read to buffer error: %w", err)
+func (r *reader) readBytes(buf []byte, size int) error {
+	if _, err := io.ReadAtLeast(r, buf, size); err != nil {
+		return fmt.Errorf("read to buffer error: %w", err)
 	}
 
-	var num int64
-	for _, ch := range b {
-		num = num<<8 | int64(ch)
-	}
-
-	return num, nil
+	return nil
 }
 
 func (r *reader) readLength() (int64, error) {
-	res, err := r.readNumber(1)
+	buf := []byte{0, 0, 0, 0}
+
+	_, err := r.Read(buf[3:])
 	if err != nil {
 		return -1, err
 	}
 
-	var n int64
+	res := int64(buf[3])
 
 	switch {
 	case res&0x80 == 0x00:
 	case (res & 0xC0) == 0x80:
-		n, err = r.readNumber(1)
-		res = res & ^0xC0 << 8 | n
+		buf[2] = byte(res & ^0xC0)
+		err = r.readBytes(buf[3:], 1)
 	case res&0xE0 == 0xC0:
-		n, err = r.readNumber(2)
-		res = res & ^0xE0 << 16 | n
+		buf[1] = byte(res & ^0xE0)
+		err = r.readBytes(buf[2:], 2)
 	case res&0xF0 == 0xE0:
-		n, err = r.readNumber(3)
-		res = res & ^0xF0 << 24 | n
+		buf[0] = byte(res & ^0xF0)
+		err = r.readBytes(buf[1:], 3)
 	case res&0xF8 == 0xF0:
-		res, err = r.readNumber(4)
+		err = r.readBytes(buf, 4)
 	}
 
 	if err != nil {
 		return -1, err
+	}
+
+	res = 0
+	for _, v := range buf {
+		res = res<<8 | int64(v)
 	}
 
 	return res, nil
