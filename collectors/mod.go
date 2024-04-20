@@ -18,9 +18,9 @@ type RouterOSCollector interface {
 }
 
 type RegisteredCollector struct {
+	instFunc    func() RouterOSCollector
 	Name        string
 	Description string
-	instFunc    func() RouterOSCollector
 }
 
 var registeredCollectors map[string]RegisteredCollector

@@ -7,8 +7,8 @@ import (
 
 func TestReadLength(t *testing.T) {
 	for _, d := range []struct {
-		length   int64
 		rawBytes []byte
+		length   int64
 	}{
 		{0x00000001, []byte{0x01}},
 		{0x00000087, []byte{0x80, 0x87}},

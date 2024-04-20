@@ -15,9 +15,8 @@ func init() {
 }
 
 type wlanIFCollector struct {
-	metrics PropertyMetricList
-
 	frequencyDesc *prometheus.Desc
+	metrics       PropertyMetricList
 }
 
 func newWlanIFCollector() RouterOSCollector {

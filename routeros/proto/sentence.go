@@ -4,10 +4,9 @@ import "fmt"
 
 // Sentence is a line read from a RouterOS device.
 type Sentence struct {
-	// Word that begins with !
+	Map  map[string]string
 	Word string
 	Tag  string
-	Map  map[string]string
 }
 
 type Pair struct {

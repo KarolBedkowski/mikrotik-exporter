@@ -13,9 +13,9 @@ func init() {
 }
 
 type capsmanCollector struct {
+	radiosProvisionedDesc PropertyMetric
 	metrics               PropertyMetricList
 	interfaces            PropertyMetricList
-	radiosProvisionedDesc PropertyMetric
 }
 
 func newCapsmanCollector() RouterOSCollector {

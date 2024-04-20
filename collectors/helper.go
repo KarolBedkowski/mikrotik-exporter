@@ -172,8 +172,8 @@ type PropertyMetric interface {
 // it to float value. Should be created by PropertyMetricBuilder.
 type simplePropertyMetric struct {
 	desc           *prometheus.Desc
-	property       string
 	valueConverter ValueConverter
+	property       string
 	valueType      prometheus.ValueType
 }
 
@@ -214,8 +214,8 @@ func (p *simplePropertyMetric) Collect(reply *proto.Sentence,
 type rxTxPropertyMetric struct {
 	rxDesc         *prometheus.Desc
 	txDesc         *prometheus.Desc
-	property       string
 	valueConverter TXRXValueConverter
+	property       string
 }
 
 func (p rxTxPropertyMetric) Describe(ch chan<- *prometheus.Desc) {
@@ -263,14 +263,14 @@ const (
 
 // PropertyMetricBuilder build metric collector that read given property from reply.
 type PropertyMetricBuilder struct {
-	prefix             string
-	property           string
 	valueConverter     ValueConverter
 	rxTxValueConverter TXRXValueConverter
-	metricType         metricType
+	prefix             string
+	property           string
 	metricName         string
 	metricHelp         string
 	labels             []string
+	metricType         metricType
 }
 
 func NewPropertyCounterMetric(prefix, property string, labels []string) PropertyMetricBuilder {
@@ -367,18 +367,18 @@ func (p PropertyMetricBuilder) Build() PropertyMetric {
 	case metricCounter:
 		desc := descriptionForPropertyNameHelpText(p.prefix, metricName, p.labels, metricHelp)
 
-		return &simplePropertyMetric{desc, p.property, p.valueConverter, prometheus.GaugeValue}
+		return &simplePropertyMetric{desc, p.valueConverter, p.property, prometheus.GaugeValue}
 
 	case metricGauge:
 		desc := descriptionForPropertyNameHelpText(p.prefix, metricName, p.labels, metricHelp)
 
-		return &simplePropertyMetric{desc, p.property, p.valueConverter, prometheus.GaugeValue}
+		return &simplePropertyMetric{desc, p.valueConverter, p.property, prometheus.GaugeValue}
 
 	case metricRxTx:
 		rxDesc := descriptionForPropertyNameHelpText(p.prefix, "rx_"+metricName, p.labels, metricHelp+" (RX)")
 		txDesc := descriptionForPropertyNameHelpText(p.prefix, "tx_"+metricName, p.labels, metricHelp+" (TX)")
 
-		return &rxTxPropertyMetric{rxDesc, txDesc, p.property, p.rxTxValueConverter}
+		return &rxTxPropertyMetric{rxDesc, txDesc, p.rxTxValueConverter, p.property}
 	}
 
 	panic("unknown metric type")
@@ -388,13 +388,13 @@ func (p PropertyMetricBuilder) Build() PropertyMetric {
 
 // RetMetricBuilder build metric collector for `ret` returned value.
 type RetMetricBuilder struct {
+	valueConverter ValueConverter
 	prefix         string
 	property       string
-	valueConverter ValueConverter
-	metricType     metricType
 	metricName     string
 	metricHelp     string
 	labels         []string
+	metricType     metricType
 }
 
 func NewRetGaugeMetric(prefix, property string, labels []string) RetMetricBuilder {
@@ -455,7 +455,7 @@ func (r RetMetricBuilder) Build() RetMetric {
 	if r.metricType == metricGauge {
 		desc := descriptionForPropertyNameHelpText(r.prefix, metricName, r.labels, metricHelp)
 
-		return &retGaugeCollector{desc, r.property, valueConverter}
+		return &retGaugeCollector{desc, valueConverter, r.property}
 	}
 
 	panic("unknown metric type")
@@ -471,8 +471,8 @@ type RetMetric interface {
 
 type retGaugeCollector struct {
 	desc           *prometheus.Desc
-	property       string
 	valueConverter ValueConverter
+	property       string
 }
 
 func (r *retGaugeCollector) Describe(ch chan<- *prometheus.Desc) {

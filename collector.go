@@ -49,17 +49,16 @@ var (
 
 type (
 	deviceCollectorRC struct {
-		name      string
 		collector collectors.RouterOSCollector
+		name      string
 	}
 
 	deviceCollector struct {
+		logger     log.Logger
+		cl         *routeros.Client
 		device     config.Device
 		collectors []deviceCollectorRC
-		cl         *routeros.Client
 		isSrv      bool
-
-		logger log.Logger
 	}
 )
 
@@ -229,9 +228,9 @@ func (dc *deviceCollector) getIdentity() error {
 // --------------------------------------------
 
 type mikrotikCollector struct {
+	logger     log.Logger
 	devices    []*deviceCollector
 	collectors []collectors.RouterOSCollector
-	logger     log.Logger
 }
 
 // NewCollector creates a collector instance.
@@ -426,7 +425,7 @@ func (ci collectorInstances) get(names []string) []deviceCollectorRC {
 	dcols := make([]deviceCollectorRC, 0, len(names))
 
 	for _, n := range names {
-		dcols = append(dcols, deviceCollectorRC{n, ci[n]})
+		dcols = append(dcols, deviceCollectorRC{ci[n], n})
 	}
 
 	return dcols

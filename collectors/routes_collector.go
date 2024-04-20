@@ -13,10 +13,9 @@ func init() {
 }
 
 type routesCollector struct {
-	protocols []string
-
 	count         RetMetric
 	countProtocol RetMetric
+	protocols     []string
 }
 
 func newRoutesCollector() RouterOSCollector {

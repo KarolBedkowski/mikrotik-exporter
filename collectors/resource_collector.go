@@ -15,9 +15,8 @@ func init() {
 }
 
 type resourceCollector struct {
-	metrics PropertyMetricList
-
 	versionDesc *prometheus.Desc
+	metrics     PropertyMetricList
 }
 
 func newResourceCollector() RouterOSCollector {

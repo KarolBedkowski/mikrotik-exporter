@@ -89,9 +89,9 @@ func (f Features) FeatureNames() []string {
 
 // Config represents the configuration for the exporter.
 type Config struct {
-	Devices  []Device            `yaml:"devices"`
 	Features Features            `yaml:"features,omitempty"`
 	Profiles map[string]Features `yaml:"profiles,omitempty"`
+	Devices  []Device            `yaml:"devices"`
 }
 
 func (c *Config) DeviceFeatures(deviceName string) Features {
@@ -174,9 +174,8 @@ func (c *Config) validate(collectors []string) error {
 // --------------------------------------
 
 type SrvRecord struct {
-	Record string `yaml:"record"`
-	/// DNS is additional dns server used to resolved `Record`
-	DNS *DNSServer `yaml:"dns,omitempty"`
+	DNS    *DNSServer `yaml:"dns,omitempty"`
+	Record string     `yaml:"record"`
 }
 
 type DNSServer struct {
@@ -186,25 +185,20 @@ type DNSServer struct {
 
 // Device represents a target device.
 type Device struct {
-	Name     string     `yaml:"name"`
-	Address  string     `yaml:"address,omitempty"`
-	Srv      *SrvRecord `yaml:"srv,omitempty"`
-	User     string     `yaml:"user"`
-	Password string     `yaml:"password"`
-	Port     string     `yaml:"port"`
-	Profile  string     `yaml:"profile,omitempty"`
-
-	IPv6Disabled bool `yaml:"ipv6_disabled"`
-
-	Timeout  uint `yaml:"timeout,omitempty"`
-	TLS      bool `yaml:"tls,omitempty"`
-	Insecure bool `yaml:"insecure,omitempty"`
-
-	Disabled bool `yaml:"disabled,omitempty"`
-
+	Srv                 *SrvRecord          `yaml:"srv,omitempty"`
 	FWCollectorSettings map[string][]string `yaml:"fw_collector_settings"`
-
-	Scripts []string `yaml:"scripts"`
+	Profile             string              `yaml:"profile,omitempty"`
+	User                string              `yaml:"user"`
+	Password            string              `yaml:"password"`
+	Port                string              `yaml:"port"`
+	Name                string              `yaml:"name"`
+	Address             string              `yaml:"address,omitempty"`
+	Scripts             []string            `yaml:"scripts"`
+	Timeout             uint                `yaml:"timeout,omitempty"`
+	IPv6Disabled        bool                `yaml:"ipv6_disabled"`
+	TLS                 bool                `yaml:"tls,omitempty"`
+	Insecure            bool                `yaml:"insecure,omitempty"`
+	Disabled            bool                `yaml:"disabled,omitempty"`
 }
 
 func (d *Device) validate(profiles map[string]Features) error {

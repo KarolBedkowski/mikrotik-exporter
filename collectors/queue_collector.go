@@ -13,10 +13,9 @@ func init() {
 }
 
 type queueCollector struct {
-	metrics PropertyMetricList
-
 	monitorQueuedBytes   PropertyMetric
 	monitorQueuedPackets PropertyMetric
+	metrics              PropertyMetricList
 }
 
 func newQueueCollector() RouterOSCollector {

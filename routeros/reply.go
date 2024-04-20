@@ -9,8 +9,8 @@ import (
 
 // Reply has all the sentences from a reply.
 type Reply struct {
-	Re   []*proto.Sentence
 	Done *proto.Sentence
+	Re   []*proto.Sentence
 }
 
 func (r *Reply) String() string {

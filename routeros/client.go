@@ -17,13 +17,12 @@ import (
 
 // Client is a RouterOS API client.
 type Client struct {
-	Queue int
-
 	rwc     io.ReadWriteCloser
 	r       proto.Reader
 	w       proto.Writer
-	closing bool
+	Queue   int
 	mu      sync.Mutex
+	closing bool
 }
 
 // NewClient returns a new Client over rwc. Login must be called.
