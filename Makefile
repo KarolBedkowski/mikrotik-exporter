@@ -11,7 +11,8 @@ LDFLAGS=\
 	-X github.com/prometheus/common/version.Revision='$(REVISION) \
 	-X github.com/prometheus/common/version.BuildDate=$(DATE) \
 	-X github.com/prometheus/common/version.BuildUser=$(USER) \
-	-X github.com/prometheus/common/version.Branch=$(BRANCH)
+	-X github.com/prometheus/common/version.Branch=$(BRANCH) \
+	-w -s
 
 
 .PHONY: build
@@ -20,7 +21,6 @@ build:
 
 .PHONY: build_arm64
 build_arm64:
-	CGO_ENABLED=0 \
 	GOARCH=arm64 \
 	GOOS=linux \
 	go build -v -o mikrotik-exporter-linux-arm64  --ldflags "$(LDFLAGS)"
