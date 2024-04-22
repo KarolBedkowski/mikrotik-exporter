@@ -1,3 +1,11 @@
+v2.0.1 2024-04-22
+=================
+
+* dev: include stripped down routeros package
+* dev: remove doubled code, simplify code
+* feat: add systemd support (watchdog, notifications)
+
+
 v2.0.0 2024-03-31
 =================
 
