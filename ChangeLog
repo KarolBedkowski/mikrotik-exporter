@@ -1,3 +1,12 @@
+
+v2.0.2 2025-03-07
+=================
+
+* fix: fix handle empty response from routeros
+* tests: fix routeros.proto tests
+* chore: fix linter errors
+
+
 v2.0.1 2024-04-22
 =================
 
