@@ -9,9 +9,9 @@ import (
 
 func TestReadWrite(t *testing.T) {
 	for i, test := range []struct {
+		in  []string
 		out string
 		tag string
-		in  []string
 	}{
 		{[]string{"!done"}, `[]`, ""},
 		{[]string{"!done", ".tag=abc123"}, `[]`, "abc123"},

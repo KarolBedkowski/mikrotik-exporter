@@ -7,8 +7,8 @@ import (
 
 func TestEncodeLength(t *testing.T) {
 	for _, d := range []struct {
-		rawBytes []byte
 		length   int
+		rawBytes []byte
 	}{
 		{0x00000001, []byte{0x01}},
 		{0x00000087, []byte{0x80, 0x87}},
