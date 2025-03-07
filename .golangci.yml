@@ -11,19 +11,9 @@ linters:
     - forbidigo
     # depricated
     - exhaustruct
-    - exhaustivestruct
-    - deadcode
-    - ifshort
-    - maligned
-    - scopelint
-    - golint
-    - interfacer
-    - nosnakecase
-    - structcheck
-    - varcheck
 
-run:
-  skip-files:
+issues:
+  exclude-files:
     - ".*_test.go$"
 
 linters-settings:
