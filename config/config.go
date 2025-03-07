@@ -194,7 +194,7 @@ type Device struct {
 	Name                string              `yaml:"name"`
 	Address             string              `yaml:"address,omitempty"`
 	Scripts             []string            `yaml:"scripts"`
-	Timeout             uint                `yaml:"timeout,omitempty"`
+	Timeout             int                 `yaml:"timeout,omitempty"`
 	IPv6Disabled        bool                `yaml:"ipv6_disabled"`
 	TLS                 bool                `yaml:"tls,omitempty"`
 	Insecure            bool                `yaml:"insecure,omitempty"`

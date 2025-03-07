@@ -38,7 +38,7 @@ var (
 	password    = flag.String("password", "", "password for authentication for single device")
 	deviceport  = flag.String("deviceport", "8728", "port for single device")
 	listen      = flag.String("listen-address", ":9436", "address to listen on")
-	timeout     = flag.Uint("timeout", config.DefaultTimeout, "timeout when connecting to devices")
+	timeout     = flag.Int("timeout", config.DefaultTimeout, "timeout when connecting to devices")
 	tlsEnabled  = flag.Bool("tls", false, "use tls to connect to routers")
 	user        = flag.String("user", "", "user for authentication with single device")
 	ver         = flag.Bool("version", false, "find the version of binary")
@@ -105,7 +105,7 @@ func loadConfig(logger log.Logger) *config.Config {
 	if err != nil {
 		_ = level.Error(logger).Log("msg", "could not load config", "error", err)
 
-		os.Exit(3) //nolint:gomnd
+		os.Exit(3) //nolint:gomnd,mnd
 	}
 
 	updateConfigFromFlags(cfg)
@@ -208,7 +208,7 @@ func startServer(cfg *config.Config, logger log.Logger) {
 		http.Handle("/", landingPage)
 	}
 
-	serverTimeout := time.Duration(2**timeout) * time.Second //nolint:gomnd
+	serverTimeout := time.Duration(30**timeout) * time.Second //nolint:gomnd,mnd
 	srv := &http.Server{
 		ReadTimeout:  serverTimeout,
 		WriteTimeout: serverTimeout,
@@ -300,7 +300,7 @@ func enableSDNotify() error {
 		for range tick {
 			_, _ = daemon.SdNotify(false, daemon.SdNotifyWatchdog)
 		}
-	}(interval / 2) //nolint:gomnd
+	}(interval / 2) //nolint:gomnd,mnd
 
 	return nil
 }

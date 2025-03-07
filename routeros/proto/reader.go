@@ -1,4 +1,4 @@
-//nolint:gomnd
+//nolint:gomnd,mnd
 package proto
 
 import (
@@ -77,7 +77,7 @@ func (r *reader) readLength() (int64, error) {
 
 	_, err := r.Read(buf[3:])
 	if err != nil {
-		return -1, err
+		return -1, fmt.Errorf("read to buffer error: %w", err)
 	}
 
 	res := int64(buf[3])
