@@ -4,11 +4,12 @@ package collectors
 // mod.go
 // Copyright (C) 2024 Karol Będkowski <Karol Będkowski@kkomp>.
 import (
+	"log/slog"
+
 	"mikrotik-exporter/config"
 
 	routeros "mikrotik-exporter/routeros"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -73,13 +74,13 @@ type CollectorContext struct {
 	client    *routeros.Client
 	collector string
 
-	logger log.Logger
+	logger *slog.Logger
 
 	labels []string
 }
 
 func NewCollectorContext(ch chan<- prometheus.Metric, device *config.Device, client *routeros.Client,
-	collector string, logger log.Logger,
+	collector string, logger *slog.Logger,
 ) CollectorContext {
 	return CollectorContext{
 		ch:        ch,

@@ -3,6 +3,7 @@ package collectors
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"math"
 	"regexp"
 	"strconv"
@@ -13,7 +14,6 @@ import (
 	"mikrotik-exporter/routeros"
 	"mikrotik-exporter/routeros/proto"
 
-	"github.com/go-kit/log/level"
 	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -186,8 +186,8 @@ func (p *simplePropertyMetric) Collect(reply *proto.Sentence,
 ) error {
 	propertyVal, ok := reply.Map[p.property]
 	if !ok {
-		_ = level.Debug(ctx.logger).Log("msg", fmt.Sprintf("property %s value not found", p.property),
-			"property", p.property, "labels", ctx.labels)
+		ctx.logger.Debug(fmt.Sprintf("property %s value not found", p.property),
+			"property", p.property, "labels", ctx.labels, "reply_map", reply.Map)
 
 		return nil
 	}
@@ -228,7 +228,7 @@ func (p rxTxPropertyMetric) Collect(reply *proto.Sentence,
 ) error {
 	propertyVal, ok := reply.Map[p.property]
 	if !ok {
-		_ = level.Debug(ctx.logger).Log("msg", fmt.Sprintf("property %s value not found", p.property),
+		ctx.logger.Debug(fmt.Sprintf("property %s value not found", p.property),
 			"property", p.property, "labels", ctx.labels)
 
 		return nil
@@ -354,7 +354,7 @@ func (p PropertyMetricBuilder) Build() PropertyMetric {
 		p.rxTxValueConverter = splitStringToFloatsOnComma
 	}
 
-	_ = level.Debug(config.GlobalLogger).Log("msg", "build metric",
+	slog.Debug("build metric",
 		"name", metricName,
 		"help", metricHelp,
 		"prefix", p.prefix,
@@ -443,7 +443,7 @@ func (r RetMetricBuilder) Build() RetMetric {
 		valueConverter = r.valueConverter
 	}
 
-	_ = level.Debug(config.GlobalLogger).Log("msg", "build metric",
+	slog.Debug("build metric",
 		"name", metricName,
 		"help", metricHelp,
 		"prefix", r.prefix,

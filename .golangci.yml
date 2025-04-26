@@ -11,6 +11,7 @@ linters:
     - forbidigo
     # depricated
     - exhaustruct
+    - tenv
 
 issues:
   exclude-files:

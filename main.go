@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"sort"
@@ -15,8 +16,6 @@ import (
 	"mikrotik-exporter/config"
 
 	"github.com/coreos/go-systemd/v22/daemon"
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 
 	"github.com/prometheus/client_golang/prometheus"
 	pcollectors "github.com/prometheus/client_golang/prometheus/collectors"
@@ -32,7 +31,7 @@ var (
 	configFile  = flag.String("config-file", "", "config file to load")
 	device      = flag.String("device", "", "single device to monitor")
 	insecure    = flag.Bool("insecure", false, "skips verification of server certificate when using TLS (not recommended)")
-	logFormat   = flag.String("log-format", "text", "log format text or json (default text)")
+	logFormat   = flag.String("log-format", "logfmt", "log format logfmt or json (default logfmt)")
 	logLevel    = flag.String("log-level", "info", "log level")
 	metricsPath = flag.String("path", "/metrics", "path to answer requests on")
 	password    = flag.String("password", "", "password for authentication for single device")
@@ -84,13 +83,13 @@ func main() {
 		os.Exit(0)
 	}
 
-	logger := config.ConfigureLog(*logLevel, *logFormat)
+	logger := config.SetupLogging(logLevel, logFormat)
 	cfg := loadConfig(logger)
 
 	startServer(cfg, logger)
 }
 
-func loadConfig(logger log.Logger) *config.Config {
+func loadConfig(logger *slog.Logger) *config.Config {
 	var (
 		cfg *config.Config
 		err error
@@ -103,7 +102,7 @@ func loadConfig(logger log.Logger) *config.Config {
 	}
 
 	if err != nil {
-		_ = level.Error(logger).Log("msg", "could not load config", "error", err)
+		logger.Error("could not load config", "error", err)
 
 		os.Exit(3) //nolint:gomnd,mnd
 	}
@@ -169,9 +168,9 @@ func loadConfigFromFlags() (*config.Config, error) {
 	}, nil
 }
 
-func startServer(cfg *config.Config, logger log.Logger) {
+func startServer(cfg *config.Config, logger *slog.Logger) {
 	if err := enableSDNotify(); err != nil {
-		_ = level.Warn(logger).Log("msg", "enable systemd watchdog error", "err", err)
+		logger.Warn("enable systemd watchdog error", "err", err)
 	}
 
 	h, err := createMetricsHandler(cfg, logger)
@@ -200,7 +199,7 @@ func startServer(cfg *config.Config, logger log.Logger) {
 
 		landingPage, err := web.NewLandingPage(landingConfig)
 		if err != nil {
-			_ = level.Error(logger).Log("err", err)
+			logger.Error("create new landing pager error", "err", err)
 
 			os.Exit(1)
 		}
@@ -221,13 +220,13 @@ func startServer(cfg *config.Config, logger log.Logger) {
 		WebListenAddresses: &[]string{*listen},
 		WebConfigFile:      webConfig,
 	}, logger); err != nil {
-		_ = level.Error(logger).Log("err", err)
+		logger.Error("listen and serve error", "err", err)
 
 		os.Exit(1)
 	}
 }
 
-func createMetricsHandler(cfg *config.Config, logger log.Logger) (http.Handler, error) {
+func createMetricsHandler(cfg *config.Config, logger *slog.Logger) (http.Handler, error) {
 	collector := NewCollector(cfg, logger)
 
 	promhttp.Handler()
@@ -249,7 +248,7 @@ func createMetricsHandler(cfg *config.Config, logger log.Logger) (http.Handler, 
 
 	return promhttp.HandlerFor(registry,
 		promhttp.HandlerOpts{
-			ErrorLog:            loggerBridge{logger},
+			ErrorLog:            slog.NewLogLogger(logger.Handler(), slog.LevelError),
 			ErrorHandling:       promhttp.ContinueOnError,
 			DisableCompression:  disableCompression,
 			MaxRequestsInFlight: 1,
@@ -264,14 +263,6 @@ func updateConfigFromFlags(cfg *config.Config) {
 			cfg.Features[feat] = true
 		}
 	})
-}
-
-type loggerBridge struct {
-	logger log.Logger
-}
-
-func (l loggerBridge) Println(v ...interface{}) {
-	_ = level.Info(l.logger).Log(v...)
 }
 
 func enableSDNotify() error {
