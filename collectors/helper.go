@@ -42,6 +42,14 @@ type (
 
 // --------------------------------------------
 
+type InvalidInputError string
+
+func (i InvalidInputError) Error() string {
+	return "invalid input: " + string(i)
+}
+
+// --------------------------------------------
+
 func metricStringCleanup(in string) string {
 	return strings.ReplaceAll(in, "-", "_")
 }
@@ -100,7 +108,7 @@ func splitStringToFloats(metric string, separator string) (float64, float64, err
 	case 0:
 		return 0, 0, nil
 	case 1:
-		return math.NaN(), math.NaN(), fmt.Errorf("invalid input %v for split floats", metric) //nolint:goerr113
+		return math.NaN(), math.NaN(), InvalidInputError(fmt.Sprintf("can't split %v to floats", metric))
 	}
 
 	m1, err := strconv.ParseFloat(strs[0], 64)

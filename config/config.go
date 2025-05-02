@@ -56,6 +56,18 @@ func (i InvalidFieldValueError) Error() string {
 
 type Features map[string]bool
 
+func (f Features) FeatureNames() []string {
+	res := make([]string, 0, len(f))
+
+	for name, enabled := range f {
+		if enabled {
+			res = append(res, strings.ToLower(name))
+		}
+	}
+
+	return res
+}
+
 func (f Features) validate(collectors []string) error {
 	// skip validation when there is no collectors (test, not real life)
 	if len(collectors) == 0 {
@@ -71,18 +83,6 @@ func (f Features) validate(collectors []string) error {
 	}
 
 	return result.ErrorOrNil()
-}
-
-func (f Features) FeatureNames() []string {
-	res := make([]string, 0, len(f))
-
-	for name, enabled := range f {
-		if enabled {
-			res = append(res, strings.ToLower(name))
-		}
-	}
-
-	return res
 }
 
 // --------------------------------------

@@ -270,39 +270,6 @@ func (c *mikrotikCollector) Describe(ch chan<- *prometheus.Desc) {
 	}
 }
 
-func (c *mikrotikCollector) devicesFromSrv(devCol *deviceCollector) ([]*deviceCollector, error) {
-	dev := devCol.device
-
-	r, err := resolveServices(dev.Srv.DNS, dev.Srv.Record)
-	if err != nil {
-		return nil, fmt.Errorf("dns query for %s error: %w", dev.Srv.Record, err)
-	}
-
-	realDevices := make([]*deviceCollector, 0, len(r))
-
-	for _, target := range r {
-		d := config.Device{
-			Name:     target,
-			Address:  target,
-			User:     dev.User,
-			Password: dev.Password,
-			Srv:      dev.Srv,
-		}
-
-		ndc := newDeviceCollector(d, devCol.collectors, devCol.logger)
-		if err := ndc.getIdentity(); err != nil {
-			c.logger.Error("error fetching identity",
-				"device", devCol.device.Name, "error", err)
-
-			continue
-		}
-
-		realDevices = append(realDevices, ndc)
-	}
-
-	return realDevices, nil
-}
-
 // Collect implements the prometheus.Collector interface.
 func (c *mikrotikCollector) Collect(ch chan<- prometheus.Metric) {
 	_, _ = daemon.SdNotify(false, "STATUS=collecting")
@@ -362,6 +329,39 @@ func (c *mikrotikCollector) collectFromDevice(d *deviceCollector, ch chan<- prom
 }
 
 // --------------------------------------------
+
+func (c *mikrotikCollector) devicesFromSrv(devCol *deviceCollector) ([]*deviceCollector, error) {
+	dev := devCol.device
+
+	r, err := resolveServices(dev.Srv.DNS, dev.Srv.Record)
+	if err != nil {
+		return nil, fmt.Errorf("dns query for %s error: %w", dev.Srv.Record, err)
+	}
+
+	realDevices := make([]*deviceCollector, 0, len(r))
+
+	for _, target := range r {
+		d := config.Device{
+			Name:     target,
+			Address:  target,
+			User:     dev.User,
+			Password: dev.Password,
+			Srv:      dev.Srv,
+		}
+
+		ndc := newDeviceCollector(d, devCol.collectors, devCol.logger)
+		if err := ndc.getIdentity(); err != nil {
+			c.logger.Error("error fetching identity",
+				"device", devCol.device.Name, "error", err)
+
+			continue
+		}
+
+		realDevices = append(realDevices, ndc)
+	}
+
+	return realDevices, nil
+}
 
 func resolveServices(srvDNS *config.DNSServer, record string) ([]string, error) {
 	var dnsServer string
