@@ -53,7 +53,7 @@ func (r *reader) ReadSentence() (*Sentence, error) {
 		if buf[0] == '=' {
 			if t := bytes.SplitN(buf[1:], []byte("="), 2); len(t) == 1 {
 				sen.Map[string(t[0])] = ""
-			} else {
+			} else if len(t) > 1 {
 				sen.Map[string(t[0])] = string(t[1])
 			}
 

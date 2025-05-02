@@ -4,6 +4,7 @@ import (
 	// #nosec
 
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net"
@@ -363,12 +364,24 @@ func (c *mikrotikCollector) devicesFromSrv(devCol *deviceCollector) ([]*deviceCo
 	return realDevices, nil
 }
 
+// --------------------------------------------
+
+var ErrNoServersDefined = errors.New("no servers defined")
+
 func resolveServices(srvDNS *config.DNSServer, record string) ([]string, error) {
 	var dnsServer string
 
 	if srvDNS == nil {
-		conf, _ := dns.ClientConfigFromFile("/etc/resolv.conf")
-		dnsServer = net.JoinHostPort(conf.Servers[0], strconv.Itoa(config.DNSPort))
+		conf, err := dns.ClientConfigFromFile("/etc/resolv.conf")
+		if err != nil {
+			return nil, fmt.Errorf("load resolv.conf file error: %w", err)
+		}
+
+		if conf != nil && len(conf.Servers) > 0 {
+			dnsServer = net.JoinHostPort(conf.Servers[0], strconv.Itoa(config.DNSPort))
+		} else {
+			return nil, ErrNoServersDefined
+		}
 	} else {
 		dnsServer = net.JoinHostPort(srvDNS.Address, strconv.Itoa(srvDNS.Port))
 	}
