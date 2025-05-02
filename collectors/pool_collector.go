@@ -31,16 +31,16 @@ func (c *poolCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *poolCollector) Collect(ctx *CollectorContext) error {
-	errs := multierror.Append(nil, c.colllectForIPVersion("4", "ip", ctx))
+	errs := multierror.Append(nil, c.collectForIPVersion("4", "ip", ctx))
 
 	if !ctx.device.IPv6Disabled {
-		errs = multierror.Append(errs, c.colllectForIPVersion("6", "ipv6", ctx))
+		errs = multierror.Append(errs, c.collectForIPVersion("6", "ipv6", ctx))
 	}
 
 	return errs.ErrorOrNil()
 }
 
-func (c *poolCollector) colllectForIPVersion(ipVersion, topic string, ctx *CollectorContext) error {
+func (c *poolCollector) collectForIPVersion(ipVersion, topic string, ctx *CollectorContext) error {
 	reply, err := ctx.client.Run("/"+topic+"/pool/print", "=.proplist=name")
 	if err != nil {
 		return fmt.Errorf("fetch %s pool error: %w", topic, err)

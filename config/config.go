@@ -204,7 +204,7 @@ type Device struct {
 func (d *Device) validate(profiles map[string]Features) error {
 	return multierror.Append(nil,
 		d.validateConnConf(),
-		d.validateFwSettigns(),
+		d.validateFwSettings(),
 		d.validateProfile(profiles)).
 		ErrorOrNil()
 }
@@ -235,7 +235,7 @@ func (d *Device) validateConnConf() error {
 	return errs.ErrorOrNil()
 }
 
-func (d *Device) validateFwSettigns() error {
+func (d *Device) validateFwSettings() error {
 	var errs *multierror.Error
 
 	validChains := []string{"filter", "mangle", "raw", "nat"}

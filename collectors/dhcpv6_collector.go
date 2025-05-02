@@ -47,7 +47,7 @@ func (c *dhcpv6Collector) Collect(ctx *CollectorContext) error {
 	var errs *multierror.Error
 
 	for _, n := range names {
-		if err := c.colllectForDHCPServer(ctx, n); err != nil {
+		if err := c.collectForDHCPServer(ctx, n); err != nil {
 			errs = multierror.Append(errs, err)
 		}
 	}
@@ -55,7 +55,7 @@ func (c *dhcpv6Collector) Collect(ctx *CollectorContext) error {
 	return errs.ErrorOrNil()
 }
 
-func (c *dhcpv6Collector) colllectForDHCPServer(ctx *CollectorContext, dhcpServer string) error {
+func (c *dhcpv6Collector) collectForDHCPServer(ctx *CollectorContext, dhcpServer string) error {
 	reply, err := ctx.client.Run("/ipv6/dhcp-server/binding/print",
 		"?server="+dhcpServer, "=count-only=")
 	if err != nil {

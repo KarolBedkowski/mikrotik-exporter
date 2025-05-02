@@ -38,22 +38,22 @@ func (c *routesCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *routesCollector) Collect(ctx *CollectorContext) error {
-	errs := multierror.Append(nil, c.colllectForIPVersion("4", "ip", ctx))
+	errs := multierror.Append(nil, c.collectForIPVersion("4", "ip", ctx))
 
 	if !ctx.device.IPv6Disabled {
-		errs = multierror.Append(errs, c.colllectForIPVersion("6", "ipv6", ctx))
+		errs = multierror.Append(errs, c.collectForIPVersion("6", "ipv6", ctx))
 	}
 
 	return errs.ErrorOrNil()
 }
 
-func (c *routesCollector) colllectForIPVersion(ipVersion, topic string, ctx *CollectorContext) error {
-	if err := c.colllectCount(ipVersion, topic, ctx); err != nil {
+func (c *routesCollector) collectForIPVersion(ipVersion, topic string, ctx *CollectorContext) error {
+	if err := c.collectCount(ipVersion, topic, ctx); err != nil {
 		return err
 	}
 
 	for _, p := range c.protocols {
-		if err := c.colllectCountProtcol(ipVersion, topic, p, ctx); err != nil {
+		if err := c.collectCountProtocol(ipVersion, topic, p, ctx); err != nil {
 			return err
 		}
 	}
@@ -61,7 +61,7 @@ func (c *routesCollector) colllectForIPVersion(ipVersion, topic string, ctx *Col
 	return nil
 }
 
-func (c *routesCollector) colllectCount(ipVersion, topic string, ctx *CollectorContext) error {
+func (c *routesCollector) collectCount(ipVersion, topic string, ctx *CollectorContext) error {
 	reply, err := ctx.client.Run("/"+topic+"/route/print", "?disabled=false", "=count-only=")
 	if err != nil {
 		return fmt.Errorf("fetch route %s error: %w", topic, err)
@@ -76,7 +76,7 @@ func (c *routesCollector) colllectCount(ipVersion, topic string, ctx *CollectorC
 	return nil
 }
 
-func (c *routesCollector) colllectCountProtcol(ipVersion, topic, protocol string, ctx *CollectorContext) error {
+func (c *routesCollector) collectCountProtocol(ipVersion, topic, protocol string, ctx *CollectorContext) error {
 	reply, err := ctx.client.Run("/"+topic+"/route/print", "?disabled=false", "?"+protocol, "=count-only=")
 	if err != nil {
 		return fmt.Errorf("fetch route %s error: %w", topic, err)

@@ -471,7 +471,7 @@ func (r RetMetricBuilder) Build() RetMetric {
 
 // --------------------------------------
 
-// RetMetric collect metrics from `ret` value retuned in reply.
+// RetMetric collect metrics from `ret` value returned in reply.
 type RetMetric interface {
 	Describe(ch chan<- *prometheus.Desc)
 	Collect(reply *routeros.Reply, ctx *CollectorContext) error
