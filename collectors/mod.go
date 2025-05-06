@@ -5,6 +5,8 @@ package collectors
 // Copyright (C) 2024 Karol Będkowski <Karol Będkowski@kkomp>.
 import (
 	"log/slog"
+	"maps"
+	"slices"
 
 	"mikrotik-exporter/config"
 
@@ -49,23 +51,11 @@ func InstanateCollector(name string) RouterOSCollector {
 }
 
 func AvailableCollectorsNames() []string {
-	res := make([]string, 0, len(registeredCollectors))
-
-	for n := range registeredCollectors {
-		res = append(res, n)
-	}
-
-	return res
+	return slices.Collect(maps.Keys(registeredCollectors))
 }
 
 func AvailableCollectors() []RegisteredCollector {
-	res := make([]RegisteredCollector, 0, len(registeredCollectors))
-
-	for _, k := range registeredCollectors {
-		res = append(res, k)
-	}
-
-	return res
+	return slices.Collect(maps.Values(registeredCollectors))
 }
 
 type CollectorContext struct {

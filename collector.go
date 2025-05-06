@@ -135,7 +135,6 @@ func (dc *deviceCollector) connect() (*routeros.Client, error) {
 	}
 
 	dc.logger.Debug("done with login")
-
 	dc.cl = client
 
 	return client, nil
@@ -181,10 +180,7 @@ func (dc *deviceCollector) collect(ch chan<- prometheus.Metric) (int, error) {
 
 	defer dc.disconnect()
 
-	var (
-		result    *multierror.Error
-		numFailed int
-	)
+	var result *multierror.Error
 
 	for _, drc := range dc.collectors {
 		logger := dc.logger.With("collector", drc.name)
@@ -194,12 +190,11 @@ func (dc *deviceCollector) collect(ch chan<- prometheus.Metric) (int, error) {
 
 		if err = drc.collector.Collect(&ctx); err != nil {
 			result = multierror.Append(result, fmt.Errorf("collect %s error: %w", drc.name, err))
-			numFailed++
 		}
 	}
 
 	if err := result.ErrorOrNil(); err != nil {
-		return numFailed, fmt.Errorf("collect error: %w", err)
+		return len(result.Errors), fmt.Errorf("collect error: %w", err)
 	}
 
 	return 0, nil
@@ -377,11 +372,11 @@ func resolveServices(srvDNS *config.DNSServer, record string) ([]string, error) 
 			return nil, fmt.Errorf("load resolv.conf file error: %w", err)
 		}
 
-		if conf != nil && len(conf.Servers) > 0 {
-			dnsServer = net.JoinHostPort(conf.Servers[0], strconv.Itoa(config.DNSPort))
-		} else {
+		if conf == nil || len(conf.Servers) == 0 {
 			return nil, ErrNoServersDefined
 		}
+
+		dnsServer = net.JoinHostPort(conf.Servers[0], strconv.Itoa(config.DNSPort))
 	} else {
 		dnsServer = net.JoinHostPort(srvDNS.Address, strconv.Itoa(srvDNS.Port))
 	}
