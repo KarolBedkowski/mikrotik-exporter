@@ -4,9 +4,11 @@ package collectors
 // mod.go
 // Copyright (C) 2024 Karol Będkowski <Karol Będkowski@kkomp>.
 import (
+	"fmt"
 	"log/slog"
 	"maps"
 	"slices"
+	"time"
 
 	"mikrotik-exporter/config"
 
@@ -107,4 +109,19 @@ func (c CollectorContext) withLabelsFromMap(values map[string]string, labelName 
 		labels:    labels,
 		logger:    c.logger,
 	}
+}
+
+//-----------------
+
+func parseTS(value string) (float64, error) {
+	if value == "" {
+		return 0.0, nil
+	}
+
+	t, err := time.Parse("2006-01-02 15:04:05", value)
+	if err != nil {
+		return 0.0, fmt.Errorf("parse time %s error: %w", value, err)
+	}
+
+	return float64(t.Unix()), nil
 }

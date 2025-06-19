@@ -49,6 +49,7 @@ devices:
 features:
   arp: false
   dns: false
+  certs: true
   cloud: true
   conntrack: true
   dhcp: true
@@ -78,6 +79,7 @@ features:
 # custom profiles
 profiles:
   router:
+    certs: true
     dhcp: true
     dhcpl: true
     routes: true
