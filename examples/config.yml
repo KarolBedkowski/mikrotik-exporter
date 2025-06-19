@@ -74,6 +74,7 @@ features:
   netwatch: true
   queue: true
   interface: true
+  service: false
   scripts: false
   # always captured
   resource: true
