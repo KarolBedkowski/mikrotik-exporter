@@ -49,6 +49,7 @@ devices:
 features:
   arp: false
   dns: false
+  dns_adlist: false
   certs: true
   cloud: true
   conntrack: true
