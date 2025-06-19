@@ -19,8 +19,23 @@
 .vscode
 debug
 
+# hidden files
+.*
+
+# test certificates
+*.crt
+*.pem
+*.key
+
+
+*.pgo
+
 mikrotik-exporter
 mikrotik-exporter-*
 test-config.yml
 
 tmp/
+
+
+!.gitignore
+!.golangci.yml
