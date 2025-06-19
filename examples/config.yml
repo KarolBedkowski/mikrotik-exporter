@@ -68,6 +68,7 @@ features:
   capsman: true
   wlanif: true
   monitor: true
+  neighbor: false
   ipsec: true
   lte: true
   netwatch: true
