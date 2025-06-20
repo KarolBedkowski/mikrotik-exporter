@@ -541,3 +541,22 @@ func extractPropertyFromReplay(reply *routeros.Reply, name string) []string { //
 
 	return values
 }
+
+// --------------------------------------------
+
+func countByProperty(re []*proto.Sentence, property string) map[string]int {
+	counter := make(map[string]int)
+
+	for _, re := range re {
+		pool := re.Map[property]
+		cnt := 1
+
+		if count, ok := counter[pool]; ok {
+			cnt = count + 1
+		}
+
+		counter[pool] = cnt
+	}
+
+	return counter
+}
