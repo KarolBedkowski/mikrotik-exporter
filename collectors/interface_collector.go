@@ -1,5 +1,7 @@
 package collectors
 
+// TODO: drop `running` label?
+
 import (
 	"fmt"
 
@@ -33,6 +35,7 @@ func newInterfaceCollector() RouterOSCollector {
 			NewPropertyCounterMetric(prefix, "rx-drop", labelNames).Build(),
 			NewPropertyCounterMetric(prefix, "tx-drop", labelNames).Build(),
 			NewPropertyCounterMetric(prefix, "link-downs", labelNames).Build(),
+			NewPropertyCounterMetric(prefix, "tx-queue-drop", labelNames).Build(),
 		},
 	}
 }
@@ -44,7 +47,7 @@ func (c *interfaceCollector) Describe(ch chan<- *prometheus.Desc) {
 func (c *interfaceCollector) Collect(ctx *CollectorContext) error {
 	reply, err := ctx.client.Run("/interface/print",
 		"=.proplist=name,type,disabled,comment,slave,actual-mtu,running,rx-byte,tx-byte,"+
-			"rx-packet,tx-packet,rx-error,tx-error,rx-drop,tx-drop,link-downs")
+			"rx-packet,tx-packet,rx-error,tx-error,rx-drop,tx-drop,link-downs,tx-queue-drop")
 	if err != nil {
 		return fmt.Errorf("fetch interfaces detail error: %w", err)
 	}
@@ -52,6 +55,10 @@ func (c *interfaceCollector) Collect(ctx *CollectorContext) error {
 	var errs *multierror.Error
 
 	for _, re := range reply.Re {
+		if re.Map["name"] == "lo" {
+			continue
+		}
+
 		lctx := ctx.withLabelsFromMap(re.Map, "name", "type", "disabled", "comment", "running", "slave")
 
 		if err := c.metrics.Collect(re, &lctx); err != nil {
