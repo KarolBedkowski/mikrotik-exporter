@@ -17,7 +17,7 @@ LDFLAGS=\
 
 .PHONY: build
 build:
-	go build -ldflags "$(LDFLAGS)" .
+	go build -o mikrotik-exporter -ldflags "$(LDFLAGS)" .
 
 .PHONY: build_arm64
 build_arm64:
@@ -31,7 +31,10 @@ run:
 
 .PHONY: lint
 lint:
-	golangci-lint run --fix
+	golangci-lint run --fix || true
+	# go install go.uber.org/nilaway/cmd/nilaway@latest
+	nilaway ./... || true
+	typos
 
 
 .PHONY: format

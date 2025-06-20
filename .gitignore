@@ -39,3 +39,4 @@ tmp/
 
 !.gitignore
 !.golangci.yml
+!.air.toml
