@@ -245,8 +245,8 @@ type PropertyMetricBuilder struct {
 // NewPropertyCounterMetric create new PropertyMetricBuilder for counter type metric with `prefix` and value from
 // `property` with `labels`. First two labels are generated (device name and address) are added automatically
 // but must be included in list; additional must filled.
-func NewPropertyCounterMetric(prefix, property string, labels []string) PropertyMetricBuilder {
-	return PropertyMetricBuilder{
+func NewPropertyCounterMetric(prefix, property string, labels []string) *PropertyMetricBuilder {
+	return &PropertyMetricBuilder{
 		prefix:     prefix,
 		property:   property,
 		metricType: metricCounter,
@@ -257,8 +257,8 @@ func NewPropertyCounterMetric(prefix, property string, labels []string) Property
 // NewPropertyGaugeMetric create new PropertyMetricBuilder for gauge type metric with `prefix` and value from
 // `property` with `labels`. First two labels are generated (device name and address) are added automatically
 // but must be included in list; additional must filled.
-func NewPropertyGaugeMetric(prefix, property string, labels []string) PropertyMetricBuilder {
-	return PropertyMetricBuilder{
+func NewPropertyGaugeMetric(prefix, property string, labels []string) *PropertyMetricBuilder {
+	return &PropertyMetricBuilder{
 		prefix:     prefix,
 		property:   property,
 		metricType: metricGauge,
@@ -269,8 +269,8 @@ func NewPropertyGaugeMetric(prefix, property string, labels []string) PropertyMe
 // NewPropertyRxTxMetric create new PropertyMetricBuilder for two counter type metrics (rx_, tx_) with `prefix`
 // and values from `property`. First two labels are generated (device name and address)
 // are added automatically but must be included in list; additional must filled.
-func NewPropertyRxTxMetric(prefix, property string, labels []string) PropertyMetricBuilder {
-	return PropertyMetricBuilder{
+func NewPropertyRxTxMetric(prefix, property string, labels []string) *PropertyMetricBuilder {
+	return &PropertyMetricBuilder{
 		prefix:     prefix,
 		property:   property,
 		metricType: metricRxTx,
@@ -278,8 +278,8 @@ func NewPropertyRxTxMetric(prefix, property string, labels []string) PropertyMet
 	}
 }
 
-func NewPropertyStatusMetric(prefix, property string, labels []string, values ...string) PropertyMetricBuilder {
-	return PropertyMetricBuilder{
+func NewPropertyStatusMetric(prefix, property string, labels []string, values ...string) *PropertyMetricBuilder {
+	return &PropertyMetricBuilder{
 		prefix:     prefix,
 		property:   property,
 		metricType: metricStatus,
@@ -289,21 +289,21 @@ func NewPropertyStatusMetric(prefix, property string, labels []string, values ..
 }
 
 // WithName set name for metric.
-func (p PropertyMetricBuilder) WithName(name string) PropertyMetricBuilder {
+func (p *PropertyMetricBuilder) WithName(name string) *PropertyMetricBuilder {
 	p.metricName = name
 
 	return p
 }
 
 // WithHelp set help message for metric.
-func (p PropertyMetricBuilder) WithHelp(help string) PropertyMetricBuilder {
+func (p *PropertyMetricBuilder) WithHelp(help string) *PropertyMetricBuilder {
 	p.metricHelp = help
 
 	return p
 }
 
 // WithConverter add converter that change value form property to float64.
-func (p PropertyMetricBuilder) WithConverter(vc ValueConverter) PropertyMetricBuilder {
+func (p *PropertyMetricBuilder) WithConverter(vc ValueConverter) *PropertyMetricBuilder {
 	if p.metricType == metricRxTx {
 		panic("can't set ValueConverter for rxtx metric")
 	}
@@ -314,7 +314,7 @@ func (p PropertyMetricBuilder) WithConverter(vc ValueConverter) PropertyMetricBu
 }
 
 // WithRxTxConverter add converter for RxTx metric type.
-func (p PropertyMetricBuilder) WithRxTxConverter(vc TXRXValueConverter) PropertyMetricBuilder {
+func (p *PropertyMetricBuilder) WithRxTxConverter(vc TXRXValueConverter) *PropertyMetricBuilder {
 	if p.metricType != metricRxTx {
 		panic("can't set TXRXValueConverter for non-rxtx metric")
 	}
@@ -325,18 +325,59 @@ func (p PropertyMetricBuilder) WithRxTxConverter(vc TXRXValueConverter) Property
 }
 
 // / Build create PropertyMetric from configuration.
-func (p PropertyMetricBuilder) Build() PropertyMetric {
-	metricName := p.metricName
-	if metricName == "" {
-		metricName = p.property
+func (p *PropertyMetricBuilder) Build() PropertyMetric {
+	p.prepare()
+
+	slog.Debug("build metric", "b", p)
+
+	switch p.metricType {
+	case metricCounter:
+		desc := descriptionForPropertyNameHelpText(p.prefix, p.metricName, p.labels, p.metricHelp)
+
+		return &simplePropertyMetric{desc, p.valueConverter, p.property, prometheus.GaugeValue}
+
+	case metricGauge:
+		desc := descriptionForPropertyNameHelpText(p.prefix, p.metricName, p.labels, p.metricHelp)
+
+		return &simplePropertyMetric{desc, p.valueConverter, p.property, prometheus.GaugeValue}
+
+	case metricRxTx:
+		rxDesc := descriptionForPropertyNameHelpText(p.prefix, "rx_"+p.metricName, p.labels, p.metricHelp+" (RX)")
+		txDesc := descriptionForPropertyNameHelpText(p.prefix, "tx_"+p.metricName, p.labels, p.metricHelp+" (TX)")
+
+		return &rxTxPropertyMetric{rxDesc, txDesc, p.rxTxValueConverter, p.property}
+
+	case metricStatus:
+		return newStatusPropertyMetric(p.prefix, p.metricName, p.property, p.metricHelp, p.labels, p.values)
+	}
+
+	panic("unknown metric type")
+}
+
+func (p *PropertyMetricBuilder) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.String("name", p.metricName),
+		slog.String("help", p.metricHelp),
+		slog.String("prefix", p.prefix),
+		slog.String("labels", fmt.Sprintf("%v", p.labels)),
+		slog.Int("type", int(p.metricType)),
+		slog.String("property", p.property),
+		slog.String("values", fmt.Sprintf("%v", p.values)),
+	)
+}
+
+func (p *PropertyMetricBuilder) prepare() {
+	if p.metricName == "" {
+		metricName := p.property
 		if p.metricType == metricCounter || p.metricType == metricRxTx {
 			metricName += "_total"
 		}
+
+		p.metricName = metricName
 	}
 
-	metricHelp := p.metricHelp
-	if metricHelp == "" {
-		metricHelp = p.property + " for " + p.prefix
+	if p.metricHelp == "" {
+		p.metricHelp = p.property + " for " + p.prefix
 	}
 
 	if p.valueConverter == nil {
@@ -346,38 +387,6 @@ func (p PropertyMetricBuilder) Build() PropertyMetric {
 	if p.rxTxValueConverter == nil {
 		p.rxTxValueConverter = splitStringToFloatsOnComma
 	}
-
-	slog.Debug("build metric",
-		"name", metricName,
-		"help", metricHelp,
-		"prefix", p.prefix,
-		"labels", fmt.Sprintf("%v", p.labels),
-		"type", p.metricType,
-		"property", p.property,
-	)
-
-	switch p.metricType {
-	case metricCounter:
-		desc := descriptionForPropertyNameHelpText(p.prefix, metricName, p.labels, metricHelp)
-
-		return &simplePropertyMetric{desc, p.valueConverter, p.property, prometheus.GaugeValue}
-
-	case metricGauge:
-		desc := descriptionForPropertyNameHelpText(p.prefix, metricName, p.labels, metricHelp)
-
-		return &simplePropertyMetric{desc, p.valueConverter, p.property, prometheus.GaugeValue}
-
-	case metricRxTx:
-		rxDesc := descriptionForPropertyNameHelpText(p.prefix, "rx_"+metricName, p.labels, metricHelp+" (RX)")
-		txDesc := descriptionForPropertyNameHelpText(p.prefix, "tx_"+metricName, p.labels, metricHelp+" (TX)")
-
-		return &rxTxPropertyMetric{rxDesc, txDesc, p.rxTxValueConverter, p.property}
-
-	case metricStatus:
-		return newStatusPropertyMetric(p.prefix, metricName, p.property, metricHelp, p.labels, p.values)
-	}
-
-	panic("unknown metric type")
 }
 
 // --------------------------------------
