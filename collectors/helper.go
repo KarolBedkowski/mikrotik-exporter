@@ -56,7 +56,7 @@ func metricStringCleanup(in string) string {
 	return strings.ReplaceAll(in, "-", "_")
 }
 
-func descriptionForPropertyName(prefix, property string, labelNames []string) *prometheus.Desc {
+func descriptionForPropertyName(prefix, property string, labelNames []string) *prometheus.Desc { //nolint:unused
 	return descriptionForPropertyNameHelpText(prefix, property, labelNames, property)
 }
 
@@ -267,6 +267,72 @@ func (p rxTxPropertyMetric) Collect(reply *proto.Sentence,
 	return nil
 }
 
+type statusPropertyMetricDV struct {
+	value string
+	desc  *prometheus.Desc
+}
+
+// statusPropertyMetric collect gauge metrics from status.
+type statusPropertyMetric struct {
+	descs    []statusPropertyMetricDV
+	property string
+}
+
+func newStatusPropertyMetric(prefix, metricName, property, metricHelp string, labels, values []string,
+) *statusPropertyMetric {
+	desc := make([]statusPropertyMetricDV, 0, len(values))
+	for _, v := range values {
+		desc = append(desc, statusPropertyMetricDV{
+			v,
+			descriptionForPropertyNameHelpText(prefix, metricName+"_"+v, labels, metricHelp),
+		})
+	}
+
+	return &statusPropertyMetric{desc, property}
+}
+
+func (s statusPropertyMetric) Describe(ch chan<- *prometheus.Desc) {
+	for _, d := range s.descs {
+		ch <- d.desc
+	}
+}
+
+func (s statusPropertyMetric) Collect(reply *proto.Sentence,
+	ctx *CollectorContext,
+) error {
+	propertyVal, ok := reply.Map[s.property]
+	if !ok {
+		ctx.logger.Debug(fmt.Sprintf("property %s value not found", s.property),
+			"property", s.property, "labels", ctx.labels)
+
+		return nil
+	}
+
+	if propertyVal == "" {
+		return nil
+	}
+
+	labels := ctx.labels
+	found := false
+
+	for _, vd := range s.descs {
+		val := 0.0
+		if vd.value == propertyVal {
+			val = 1
+			found = true
+		}
+
+		ctx.ch <- prometheus.MustNewConstMetric(vd.desc, prometheus.GaugeValue, val, labels...)
+	}
+
+	if !found {
+		ctx.logger.Debug(fmt.Sprintf("unknown property %s value", s.property),
+			"property", s.property, "labels", ctx.labels)
+	}
+
+	return nil
+}
+
 // --------------------------------------------
 
 type metricType int
@@ -275,6 +341,7 @@ const (
 	metricCounter metricType = iota
 	metricGauge
 	metricRxTx
+	metricStatus
 )
 
 // PropertyMetricBuilder build metric collector that read given property from reply.
@@ -287,6 +354,7 @@ type PropertyMetricBuilder struct {
 	metricHelp         string
 	labels             []string
 	metricType         metricType
+	values             []string
 }
 
 // NewPropertyCounterMetric create new PropertyMetricBuilder for counter type metric with `prefix` and value from
@@ -322,6 +390,16 @@ func NewPropertyRxTxMetric(prefix, property string, labels []string) PropertyMet
 		property:   property,
 		metricType: metricRxTx,
 		labels:     labels,
+	}
+}
+
+func NewPropertyStatusMetric(prefix, property string, labels []string, values ...string) PropertyMetricBuilder {
+	return PropertyMetricBuilder{
+		prefix:     prefix,
+		property:   property,
+		metricType: metricStatus,
+		labels:     labels,
+		values:     values,
 	}
 }
 
@@ -409,6 +487,9 @@ func (p PropertyMetricBuilder) Build() PropertyMetric {
 		txDesc := descriptionForPropertyNameHelpText(p.prefix, "tx_"+metricName, p.labels, metricHelp+" (TX)")
 
 		return &rxTxPropertyMetric{rxDesc, txDesc, p.rxTxValueConverter, p.property}
+
+	case metricStatus:
+		return newStatusPropertyMetric(p.prefix, metricName, p.property, metricHelp, p.labels, p.values)
 	}
 
 	panic("unknown metric type")

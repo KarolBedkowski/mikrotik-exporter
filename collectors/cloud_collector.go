@@ -2,7 +2,6 @@ package collectors
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -13,19 +12,20 @@ func init() {
 }
 
 type cloudCollector struct {
-	ifaceStatusDesc *prometheus.Desc
+	ifaceStatus PropertyMetric
 }
 
 func newCloudCollector() RouterOSCollector {
-	labelNames := []string{"name", "address", "status"}
+	labelNames := []string{"name", "address"}
 
 	return &cloudCollector{
-		ifaceStatusDesc: descriptionForPropertyName("cloud", "status", labelNames),
+		ifaceStatus: NewPropertyStatusMetric("cloud", "status", labelNames,
+			"unknown", "updated", "updating", "error").Build(),
 	}
 }
 
 func (c *cloudCollector) Describe(ch chan<- *prometheus.Desc) {
-	ch <- c.ifaceStatusDesc
+	c.ifaceStatus.Describe(ch)
 }
 
 func (c *cloudCollector) Collect(ctx *CollectorContext) error {
@@ -38,36 +38,9 @@ func (c *cloudCollector) Collect(ctx *CollectorContext) error {
 		return nil
 	}
 
-	se := reply.Re[0]
-
-	status, ok := se.Map["status"]
-	if !ok {
-		return nil
+	if err := c.ifaceStatus.Collect(reply.Re[0], ctx); err != nil {
+		return fmt.Errorf("collect error: %w", err)
 	}
-
-	var statusUnknown, statusUpdated, statusUpdating, statusError float64
-
-	status = strings.ToLower(status)
-
-	switch {
-	case status == "updated":
-		statusUpdated = 1.0
-	case strings.HasPrefix(status, "updating"):
-		statusUpdating = 1.0
-	case strings.HasPrefix(status, "error"):
-		statusError = 1.0
-	default:
-		statusUnknown = 1.0
-	}
-
-	ctx.ch <- prometheus.MustNewConstMetric(c.ifaceStatusDesc, prometheus.GaugeValue,
-		statusUnknown, ctx.device.Name, ctx.device.Address, "unknown")
-	ctx.ch <- prometheus.MustNewConstMetric(c.ifaceStatusDesc, prometheus.GaugeValue,
-		statusUpdated, ctx.device.Name, ctx.device.Address, "updated")
-	ctx.ch <- prometheus.MustNewConstMetric(c.ifaceStatusDesc, prometheus.GaugeValue,
-		statusUpdating, ctx.device.Name, ctx.device.Address, "updating")
-	ctx.ch <- prometheus.MustNewConstMetric(c.ifaceStatusDesc, prometheus.GaugeValue,
-		statusError, ctx.device.Name, ctx.device.Address, "error")
 
 	return nil
 }

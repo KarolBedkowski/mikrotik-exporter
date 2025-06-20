@@ -1,10 +1,7 @@
 package collectors
 
 import (
-	"errors"
 	"fmt"
-
-	"mikrotik-exporter/routeros/proto"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
@@ -15,19 +12,19 @@ func init() {
 }
 
 type netwatchCollector struct {
-	statusDesc *prometheus.Desc
+	metric PropertyMetric
 }
 
 func newNetwatchCollector() RouterOSCollector {
-	labelNames := []string{"name", "address", "host", "comment", "status"}
+	labelNames := []string{"name", "address", "host", "comment"}
 
 	return &netwatchCollector{
-		statusDesc: descriptionForPropertyName("netwatch", "status", labelNames),
+		metric: NewPropertyStatusMetric("netwatch", "status", labelNames, "up", "unknown", "down").Build(),
 	}
 }
 
 func (c *netwatchCollector) Describe(ch chan<- *prometheus.Desc) {
-	ch <- c.statusDesc
+	c.metric.Describe(ch)
 }
 
 func (c *netwatchCollector) Collect(ctx *CollectorContext) error {
@@ -40,41 +37,11 @@ func (c *netwatchCollector) Collect(ctx *CollectorContext) error {
 	var errs *multierror.Error
 
 	for _, re := range reply.Re {
-		if err := c.collectStatus(re.Map["host"], re.Map["comment"], re, ctx); err != nil {
+		lctx := ctx.withLabelsFromMap(re.Map, "host", "comment")
+		if err := c.metric.Collect(re, &lctx); err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("collect error %w", err))
 		}
 	}
 
 	return errs.ErrorOrNil()
-}
-
-var ErrUnexpectedStatus = errors.New("unexpected netwatch status value")
-
-func (c *netwatchCollector) collectStatus(
-	host, comment string, re *proto.Sentence, ctx *CollectorContext,
-) error {
-	if value := re.Map["status"]; value != "" {
-		var upVal, downVal, unknownVal float64
-
-		switch value {
-		case "up":
-			upVal = 1
-		case "unknown":
-			unknownVal = 1
-		case "down":
-			downVal = 1
-		default:
-			return fmt.Errorf("parse value %v for host %s (%v) error: %w", value, host, comment, ErrUnexpectedStatus)
-		}
-
-		desc := c.statusDesc
-		ctx.ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue,
-			upVal, ctx.device.Name, ctx.device.Address, host, comment, "up")
-		ctx.ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue,
-			downVal, ctx.device.Name, ctx.device.Address, host, comment, "down")
-		ctx.ch <- prometheus.MustNewConstMetric(desc, prometheus.GaugeValue,
-			unknownVal, ctx.device.Name, ctx.device.Address, host, comment, "unknown")
-	}
-
-	return nil
 }
