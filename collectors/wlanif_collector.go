@@ -5,9 +5,8 @@ import (
 	"strconv"
 	"strings"
 
-	"mikrotik-exporter/routeros/proto"
-
 	"github.com/prometheus/client_golang/prometheus"
+	"mikrotik-exporter/routeros/proto"
 )
 
 func init() {

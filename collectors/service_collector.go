@@ -20,12 +20,10 @@ type serviceConnCollector struct {
 func newServiceConnCollector() RouterOSCollector {
 	const prefix = "service"
 
-	collector := &serviceConnCollector{
+	return &serviceConnCollector{
 		metrics: description(prefix, "active_connections_count", "number of active connection for service",
 			[]string{"name", "address", "service"}),
 	}
-
-	return collector
 }
 
 func (c *serviceConnCollector) Describe(ch chan<- *prometheus.Desc) {
@@ -40,6 +38,7 @@ func (c *serviceConnCollector) Collect(ctx *CollectorContext) error {
 
 	counter := make(map[string]int)
 
+	// count rows per service
 	for _, re := range reply.Re {
 		service := re.Map["name"]
 		cnt := 1

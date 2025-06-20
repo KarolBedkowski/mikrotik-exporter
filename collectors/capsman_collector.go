@@ -8,8 +8,7 @@ import (
 )
 
 func init() {
-	registerCollector("capsman", newCapsmanCollector,
-		"retrieves CapsMan station metrics")
+	registerCollector("capsman", newCapsmanCollector, "retrieves CapsMan station metrics")
 }
 
 type capsmanCollector struct {
@@ -32,7 +31,7 @@ func newCapsmanCollector() RouterOSCollector {
 		"name", "address", "interface", "mac_address", "configuration", "master_interface", "current_state",
 	}
 
-	collector := &capsmanCollector{
+	return &capsmanCollector{
 		metrics: PropertyMetricList{
 			NewPropertyCounterMetric(prefix, "uptime", labelNames).
 				WithConverter(metricFromDuration).
@@ -68,8 +67,6 @@ func newCapsmanCollector() RouterOSCollector {
 			WithConverter(metricFromBool).
 			Build(),
 	}
-
-	return collector
 }
 
 func (c *capsmanCollector) Describe(ch chan<- *prometheus.Desc) {

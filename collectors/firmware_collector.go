@@ -16,11 +16,10 @@ type firmwareCollector struct {
 
 func newFirmwareCollector() RouterOSCollector {
 	labelNames := []string{"devicename", "name", "version", "build_time"}
-	c := &firmwareCollector{
+
+	return &firmwareCollector{
 		description: description("system", "package_enabled", "system packages version and status", labelNames),
 	}
-
-	return c
 }
 
 func (c *firmwareCollector) Describe(ch chan<- *prometheus.Desc) {

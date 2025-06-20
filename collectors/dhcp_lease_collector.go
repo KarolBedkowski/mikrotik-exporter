@@ -3,15 +3,13 @@ package collectors
 import (
 	"fmt"
 
-	"mikrotik-exporter/routeros/proto"
-
 	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
+	"mikrotik-exporter/routeros/proto"
 )
 
 func init() {
-	registerCollector("dhcpl", newDHCPLCollector,
-		"retrieves DHCP server lease information")
+	registerCollector("dhcpl", newDHCPLCollector, "retrieves DHCP server lease information")
 }
 
 type dhcpLeaseCollector struct {
@@ -26,8 +24,10 @@ func newDHCPLCollector() RouterOSCollector {
 
 	return &dhcpLeaseCollector{
 		leases: NewPropertyGaugeMetric("dhcp", "status", labelNames).
-			WithName("leases_metrics").WithHelp("number of metrics").
-			WithConverter(metricConstantValue).Build(),
+			WithName("leases_metrics").
+			WithHelp("number of metrics").
+			WithConverter(metricConstantValue).
+			Build(),
 	}
 }
 

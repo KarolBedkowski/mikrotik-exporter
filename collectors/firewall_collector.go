@@ -8,8 +8,7 @@ import (
 )
 
 func init() {
-	registerCollector("firewall", newFirewallCollector,
-		"retrieves firewall metrics")
+	registerCollector("firewall", newFirewallCollector, "retrieves firewall metrics")
 }
 
 type firewallCollector struct {

@@ -36,13 +36,20 @@ func newIpsecCollector() RouterOSCollector {
 			NewPropertyGaugeMetric(prefixPeers, "tx-bytes", labelsPeers).Build(),
 			NewPropertyGaugeMetric(prefixPeers, "rx-packets", labelsPeers).Build(),
 			NewPropertyGaugeMetric(prefixPeers, "tx-packets", labelsPeers).Build(),
-			NewPropertyGaugeMetric(prefixPeers, "state", labelsPeers).WithConverter(metricFromState).
-				WithName("established").Build(),
-			NewPropertyGaugeMetric(prefixPeers, "uptime", labelsPeers).WithConverter(metricFromDuration).
-				WithName("uptime_seconds").Build(),
-			NewPropertyGaugeMetric(prefixPeers, "last-seen", labelsPeers).WithConverter(metricFromDuration).
-				WithName("last_seen_seconds").Build(),
-			NewPropertyGaugeMetric(prefixPeers, "responder", labelsPeers).WithConverter(metricFromBool).
+			NewPropertyGaugeMetric(prefixPeers, "state", labelsPeers).
+				WithConverter(metricFromState).
+				WithName("established").
+				Build(),
+			NewPropertyGaugeMetric(prefixPeers, "uptime", labelsPeers).
+				WithConverter(metricFromDuration).
+				WithName("uptime_seconds").
+				Build(),
+			NewPropertyGaugeMetric(prefixPeers, "last-seen", labelsPeers).
+				WithConverter(metricFromDuration).
+				WithName("last_seen_seconds").
+				Build(),
+			NewPropertyGaugeMetric(prefixPeers, "responder", labelsPeers).
+				WithConverter(metricFromBool).
 				Build(),
 		},
 	}

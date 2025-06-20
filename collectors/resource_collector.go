@@ -3,10 +3,9 @@ package collectors
 import (
 	"fmt"
 
-	"mikrotik-exporter/routeros/proto"
-
 	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
+	"mikrotik-exporter/routeros/proto"
 )
 
 func init() {
@@ -34,7 +33,9 @@ func newResourceCollector() RouterOSCollector {
 			NewPropertyGaugeMetric(prefix, "cpu-frequency", labelNames).Build(),
 			NewPropertyGaugeMetric(prefix, "bad-blocks", labelNames).Build(),
 			NewPropertyCounterMetric(prefix, "uptime", labelNames).
-				WithName("uptime_seconds").WithConverter(metricFromDuration).Build(),
+				WithName("uptime_seconds").
+				WithConverter(metricFromDuration).
+				Build(),
 			NewPropertyGaugeMetric(prefix, "cpu-count", labelNames).Build(),
 		},
 

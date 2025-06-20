@@ -7,8 +7,7 @@ import (
 )
 
 func init() {
-	registerCollector("cloud", newCloudCollector,
-		"retrieves cloud services information")
+	registerCollector("cloud", newCloudCollector, "retrieves cloud services information")
 }
 
 type cloudCollector struct {
@@ -19,8 +18,10 @@ func newCloudCollector() RouterOSCollector {
 	labelNames := []string{"name", "address"}
 
 	return &cloudCollector{
+		// create metrics with postfix and set it to value 1 or 0 according to `status` property.
 		ifaceStatus: NewPropertyStatusMetric("cloud", "status", labelNames,
-			"unknown", "updated", "updating", "error").Build(),
+			"unknown", "updated", "updating", "error").
+			Build(),
 	}
 }
 
@@ -35,7 +36,7 @@ func (c *cloudCollector) Collect(ctx *CollectorContext) error {
 	}
 
 	if len(reply.Re) != 1 {
-		return nil
+		return UnexpectedResponseError{"get cloud returned more than 1 record", reply}
 	}
 
 	if err := c.ifaceStatus.Collect(reply.Re[0], ctx); err != nil {

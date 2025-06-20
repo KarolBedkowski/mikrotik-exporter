@@ -4,21 +4,22 @@ package collectors
 // mod.go
 // Copyright (C) 2024 Karol Będkowski <Karol Będkowski@kkomp>.
 import (
+	"fmt"
 	"log/slog"
 	"maps"
 	"slices"
 
-	"mikrotik-exporter/config"
-
-	routeros "mikrotik-exporter/routeros"
-
 	"github.com/prometheus/client_golang/prometheus"
+	"mikrotik-exporter/config"
+	routeros "mikrotik-exporter/routeros"
 )
 
 type RouterOSCollector interface {
 	Describe(ch chan<- *prometheus.Desc)
 	Collect(ctx *CollectorContext) error
 }
+
+// ----------------------------------------------------------------------------
 
 type RegisteredCollector struct {
 	instFunc    func() RouterOSCollector
@@ -57,6 +58,8 @@ func AvailableCollectorsNames() []string {
 func AvailableCollectors() []RegisteredCollector {
 	return slices.Collect(maps.Values(registeredCollectors))
 }
+
+// ----------------------------------------------------------------------------
 
 type CollectorContext struct {
 	ch        chan<- prometheus.Metric
@@ -110,7 +113,7 @@ func (c CollectorContext) withLabelsFromMap(values map[string]string, labelName 
 }
 
 func (c CollectorContext) appendLabelsFromMap(values map[string]string, labelName ...string) CollectorContext {
-	labels := c.labels
+	labels := slices.Clone(c.labels)
 	for _, n := range labelName {
 		labels = append(labels, values[n])
 	}
@@ -123,4 +126,15 @@ func (c CollectorContext) appendLabelsFromMap(values map[string]string, labelNam
 		labels:    labels,
 		logger:    c.logger,
 	}
+}
+
+// ----------------------------------------------------------------------------
+
+type UnexpectedResponseError struct {
+	msg   string
+	reply *routeros.Reply
+}
+
+func (u UnexpectedResponseError) Error() string {
+	return fmt.Sprintf("%s: %v", u.msg, u.reply)
 }

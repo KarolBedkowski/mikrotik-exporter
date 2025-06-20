@@ -1,8 +1,6 @@
 package main
 
 import (
-	// #nosec
-
 	"crypto/tls"
 	"errors"
 	"fmt"
@@ -13,15 +11,13 @@ import (
 	"sync"
 	"time"
 
-	"mikrotik-exporter/collectors"
-	"mikrotik-exporter/config"
-
-	"mikrotik-exporter/routeros"
-
 	"github.com/coreos/go-systemd/v22/daemon"
 	"github.com/hashicorp/go-multierror"
 	"github.com/miekg/dns"
 	"github.com/prometheus/client_golang/prometheus"
+	"mikrotik-exporter/collectors"
+	"mikrotik-exporter/config"
+	"mikrotik-exporter/routeros"
 )
 
 var (

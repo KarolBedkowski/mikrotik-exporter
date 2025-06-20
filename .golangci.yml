@@ -52,8 +52,9 @@ linters:
       - examples$
 formatters:
   enable:
-    - gofmt
     - goimports
+    - gci
+    - gofumpt
   exclusions:
     generated: lax
     paths:

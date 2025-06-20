@@ -12,17 +12,15 @@ import (
 	"strings"
 	"time"
 
-	"mikrotik-exporter/collectors"
-	"mikrotik-exporter/config"
-
 	"github.com/coreos/go-systemd/v22/daemon"
-
 	"github.com/prometheus/client_golang/prometheus"
 	pcollectors "github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/collectors/version"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	pcVersion "github.com/prometheus/common/version"
 	"github.com/prometheus/exporter-toolkit/web"
+	"mikrotik-exporter/collectors"
+	"mikrotik-exporter/config"
 )
 
 // single device can be defined via CLI flags, multiple via config file.

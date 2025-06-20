@@ -8,8 +8,7 @@ import (
 )
 
 func init() {
-	registerCollector("dns", newDNSCollector,
-		"retrieves dns metrics")
+	registerCollector("dns", newDNSCollector, "retrieves dns metrics")
 }
 
 type dnsCollector struct {
@@ -21,14 +20,12 @@ func newDNSCollector() RouterOSCollector {
 
 	labelNames := []string{"name", "address"}
 
-	collector := &dnsCollector{
+	return &dnsCollector{
 		metrics: PropertyMetricList{
 			NewPropertyGaugeMetric(prefix, "cache-used", labelNames).WithName("cache_used_bytes").Build(),
 			NewPropertyGaugeMetric(prefix, "cache-size", labelNames).WithName("cache_size_bytes").Build(),
 		},
 	}
-
-	return collector
 }
 
 func (c *dnsCollector) Describe(ch chan<- *prometheus.Desc) {

@@ -39,8 +39,7 @@ lint:
 
 .PHONY: format
 format:
-	wsl -fix . || true
-	find . -name '*.go' -type f -exec gofumpt -w {} ';'
+	golangci-lint fmt
 
 
 .PHONY: test

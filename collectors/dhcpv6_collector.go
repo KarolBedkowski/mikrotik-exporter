@@ -20,12 +20,11 @@ func newDHCPv6Collector() RouterOSCollector {
 
 	labelNames := []string{"name", "address", "server"}
 
-	c := &dhcpv6Collector{
+	return &dhcpv6Collector{
 		bindingCount: NewRetGaugeMetric(prefix, "binding", labelNames).
-			WithHelp("number of active bindings per DHCPv6 server").Build(),
+			WithHelp("number of active bindings per DHCPv6 server").
+			Build(),
 	}
-
-	return c
 }
 
 func (c *dhcpv6Collector) Describe(ch chan<- *prometheus.Desc) {
@@ -42,11 +41,9 @@ func (c *dhcpv6Collector) Collect(ctx *CollectorContext) error {
 		return fmt.Errorf("fetch dhcp6 server names error: %w", err)
 	}
 
-	names := extractPropertyFromReplay(reply, "name")
-
 	var errs *multierror.Error
 
-	for _, n := range names {
+	for _, n := range extractPropertyFromReplay(reply, "name") {
 		if err := c.collectForDHCPServer(ctx, n); err != nil {
 			errs = multierror.Append(errs, err)
 		}

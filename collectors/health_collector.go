@@ -23,11 +23,14 @@ func newhealthCollector() RouterOSCollector {
 	return &healthCollector{
 		metrics: PropertyMetricList{
 			NewPropertyGaugeMetric(prefix, "voltage", labelNames).
-				WithHelp("Input voltage to the RouterOS board, in volts").Build(),
+				WithHelp("Input voltage to the RouterOS board, in volts").
+				Build(),
 			NewPropertyGaugeMetric(prefix, "temperature", labelNames).
-				WithHelp("Temperature of RouterOS board, in degrees Celsius").Build(),
+				WithHelp("Temperature of RouterOS board, in degrees Celsius").
+				Build(),
 			NewPropertyGaugeMetric(prefix, "cpu-temperature", labelNames).
-				WithHelp("Temperature of RouterOS CPU, in degrees Celsius").Build(),
+				WithHelp("Temperature of RouterOS CPU, in degrees Celsius").
+				Build(),
 		},
 	}
 }
@@ -45,6 +48,7 @@ func (c *healthCollector) Collect(ctx *CollectorContext) error {
 	var errs *multierror.Error
 
 	for _, re := range reply.Re {
+		// hack for old ros
 		if metric, ok := re.Map["name"]; ok {
 			if v, ok := re.Map["value"]; ok {
 				re.Map[metric] = v

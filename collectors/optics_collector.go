@@ -27,17 +27,25 @@ func newOpticsCollector() RouterOSCollector {
 	return &opticsCollector{
 		metrics: PropertyMetricList{
 			NewPropertyGaugeMetric(prefix, "sfp-rx-loss", labelNames).
-				WithHelp("RX status").WithConverter(metricFromBool).Build(),
+				WithHelp("RX status").
+				WithConverter(metricFromBool).
+				Build(),
 			NewPropertyGaugeMetric(prefix, "sfp-tx-fault", labelNames).
-				WithHelp("TX status").WithConverter(metricFromBool).Build(),
+				WithHelp("TX status").
+				WithConverter(metricFromBool).
+				Build(),
 			NewPropertyGaugeMetric(prefix, "sfp-rx-power", labelNames).
-				WithHelp("RX power in dBM").Build(),
+				WithHelp("RX power in dBM").
+				Build(),
 			NewPropertyGaugeMetric(prefix, "sfp-tx-power", labelNames).
-				WithHelp("TX power in dBM").Build(),
+				WithHelp("TX power in dBM").
+				Build(),
 			NewPropertyGaugeMetric(prefix, "sfp-temperature", labelNames).
-				WithHelp("temperature in degree celsius").Build(),
+				WithHelp("temperature in degree celsius").
+				Build(),
 			NewPropertyGaugeMetric(prefix, "sfp-tx-bias-current", labelNames).
-				WithHelp("bias is milliamps").Build(),
+				WithHelp("bias is milliamps").
+				Build(),
 			NewPropertyGaugeMetric(prefix, "sfp-supply-voltage", labelNames).Build(),
 		},
 	}

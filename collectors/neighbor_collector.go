@@ -27,14 +27,14 @@ func newNeighborCollector() RouterOSCollector {
 		"address6", "board", "identity", "interface-name", "mac-address", "system-caps", "system-description",
 	}
 
-	collector := &neighborCollector{
+	return &neighborCollector{
 		metrics: PropertyMetricList{
-			NewPropertyGaugeMetric(prefix, "address", labelNames).WithName("entry").
-				WithConverter(metricConstantValue).Build(),
+			NewPropertyGaugeMetric(prefix, "address", labelNames).
+				WithName("entry").
+				WithConverter(metricConstantValue).
+				Build(),
 		},
 	}
-
-	return collector
 }
 
 func (c *neighborCollector) Describe(ch chan<- *prometheus.Desc) {

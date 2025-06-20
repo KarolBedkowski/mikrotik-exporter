@@ -6,12 +6,11 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/hashicorp/go-multierror"
+	"github.com/prometheus/client_golang/prometheus"
 	"mikrotik-exporter/config"
 	"mikrotik-exporter/routeros"
 	"mikrotik-exporter/routeros/proto"
-
-	"github.com/hashicorp/go-multierror"
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 var (

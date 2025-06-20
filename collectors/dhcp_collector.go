@@ -22,7 +22,8 @@ func newDHCPCollector() RouterOSCollector {
 
 	return &dhcpCollector{
 		leasesActiveCount: NewRetGaugeMetric(prefix, "leases_active", labelNames).
-			WithHelp("number of active leases per DHCP server").Build(),
+			WithHelp("number of active leases per DHCP server").
+			Build(),
 	}
 }
 
@@ -36,11 +37,9 @@ func (c *dhcpCollector) Collect(ctx *CollectorContext) error {
 		return fmt.Errorf("fetch dhcp-server error: %w", err)
 	}
 
-	names := extractPropertyFromReplay(reply, "name")
-
 	var errs *multierror.Error
 
-	for _, n := range names {
+	for _, n := range extractPropertyFromReplay(reply, "name") {
 		if err := c.collectForDHCPServer(ctx, n); err != nil {
 			errs = multierror.Append(errs, err)
 		}

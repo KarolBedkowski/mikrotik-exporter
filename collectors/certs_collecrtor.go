@@ -12,8 +12,7 @@ import (
 )
 
 func init() {
-	registerCollector("certs", newCertsCollector,
-		"retrieves dns metrics")
+	registerCollector("certs", newCertsCollector, "retrieves dns metrics")
 }
 
 type certsCollector struct {
@@ -25,14 +24,11 @@ func newCertsCollector() RouterOSCollector {
 
 	labelNames := []string{"name", "address", "cert-name", "common-name", "issuer", "serial-number"}
 
-	collector := &certsCollector{
+	return &certsCollector{
 		metrics: PropertyMetricList{
-			NewPropertyGaugeMetric(prefix, "invalid-after", labelNames).WithName("invalid_after").
-				WithConverter(parseTS).Build(),
+			NewPropertyGaugeMetric(prefix, "invalid-after", labelNames).WithConverter(parseTS).Build(),
 		},
 	}
-
-	return collector
 }
 
 func (c *certsCollector) Describe(ch chan<- *prometheus.Desc) {

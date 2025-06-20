@@ -22,7 +22,8 @@ func newPoolCollector() RouterOSCollector {
 
 	return &poolCollector{
 		usedCount: NewRetGaugeMetric(prefix, "pool_used", labelNames).
-			WithHelp("number of used IP/prefixes in a pool").Build(),
+			WithHelp("number of used IP/prefixes in a pool").
+			Build(),
 	}
 }
 

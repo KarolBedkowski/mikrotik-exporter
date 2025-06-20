@@ -23,12 +23,9 @@ func newPOECollector() RouterOSCollector {
 
 	return &poeCollector{
 		metrics: PropertyMetricList{
-			NewPropertyGaugeMetric(prefix, "current", labelNames).
-				WithHelp("current in mA").Build(),
-			NewPropertyGaugeMetric(prefix, "wattage", labelNames).
-				WithHelp("power in W").Build(),
-			NewPropertyGaugeMetric(prefix, "voltage", labelNames).
-				WithHelp("voltage in V").Build(),
+			NewPropertyGaugeMetric(prefix, "current", labelNames).WithHelp("current in mA").Build(),
+			NewPropertyGaugeMetric(prefix, "wattage", labelNames).WithHelp("power in W").Build(),
+			NewPropertyGaugeMetric(prefix, "voltage", labelNames).WithHelp("voltage in V").Build(),
 		},
 	}
 }

@@ -25,9 +25,11 @@ func newRoutesCollector() RouterOSCollector {
 
 	return &routesCollector{
 		count: NewRetGaugeMetric("", prefix, labelNames).
-			WithHelp("number of routes in RIB").Build(),
+			WithHelp("number of routes in RIB").
+			Build(),
 		countProtocol: NewRetGaugeMetric(prefix, "protocol", append(labelNames, "protocol")).
-			WithHelp("number of routes per protocol in RIB").Build(),
+			WithHelp("number of routes per protocol in RIB").
+			Build(),
 		protocols: []string{"bgp", "static", "ospf", "dynamic", "connect", "rip"},
 	}
 }

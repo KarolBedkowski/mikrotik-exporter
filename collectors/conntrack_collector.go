@@ -8,8 +8,7 @@ import (
 )
 
 func init() {
-	registerCollector("conntrack", newConntrackCollector,
-		"retrieves connection tracking information")
+	registerCollector("conntrack", newConntrackCollector, "retrieves connection tracking information")
 }
 
 type conntrackCollector struct {
@@ -24,9 +23,11 @@ func newConntrackCollector() RouterOSCollector {
 
 	return &conntrackCollector{
 		totalEntries: NewPropertyGaugeMetric(prefix, "total-entries", labelNames).
-			WithHelp("Number of tracked connections").Build(),
+			WithHelp("Number of tracked connections").
+			Build(),
 		maxEntries: NewPropertyGaugeMetric(prefix, "max-entries", labelNames).
-			WithHelp("Conntrack table capacity").Build(),
+			WithHelp("Conntrack table capacity").
+			Build(),
 	}
 }
 

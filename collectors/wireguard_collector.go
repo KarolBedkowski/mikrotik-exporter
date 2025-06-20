@@ -25,12 +25,16 @@ func newWireguardCollector() RouterOSCollector {
 
 	return &wireguardCollector{
 		metrics: PropertyMetricList{
-			NewPropertyGaugeMetric(prefix, "last-handshake", labelNames).WithConverter(metricFromDuration).Build(),
+			NewPropertyGaugeMetric(prefix, "last-handshake", labelNames).
+				WithConverter(metricFromDuration).
+				Build(),
 			NewPropertyCounterMetric(prefix, "rx", labelNames).Build(),
 			NewPropertyCounterMetric(prefix, "tx", labelNames).Build(),
 		},
 		wg: PropertyMetricList{
-			NewPropertyGaugeMetric(prefix, "running", wgLabelNames).WithConverter(metricFromBool).Build(),
+			NewPropertyGaugeMetric(prefix, "running", wgLabelNames).
+				WithConverter(metricFromBool).
+				Build(),
 		},
 	}
 }

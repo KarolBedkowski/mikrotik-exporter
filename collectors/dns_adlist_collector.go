@@ -11,8 +11,7 @@ import (
 )
 
 func init() {
-	registerCollector("dns_adlist", newDNSAdlistCollector,
-		"retrieves dns adlist metrics")
+	registerCollector("dns_adlist", newDNSAdlistCollector, "retrieves dns adlist metrics")
 }
 
 type dnsAdlistCollector struct {
@@ -24,14 +23,12 @@ func newDNSAdlistCollector() RouterOSCollector {
 
 	labelNames := []string{"name", "address", "url"}
 
-	collector := &dnsAdlistCollector{
+	return &dnsAdlistCollector{
 		metrics: PropertyMetricList{
 			NewPropertyCounterMetric(prefix, "match-count", labelNames).WithName("match_count_total").Build(),
 			NewPropertyGaugeMetric(prefix, "name-count", labelNames).WithName("name_count").Build(),
 		},
 	}
-
-	return collector
 }
 
 func (c *dnsAdlistCollector) Describe(ch chan<- *prometheus.Desc) {

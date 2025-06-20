@@ -22,15 +22,13 @@ func newMonitorCollector() RouterOSCollector {
 
 	const prefix = "monitor"
 
-	c := &monitorCollector{
+	return &monitorCollector{
 		metrics: PropertyMetricList{
 			NewPropertyGaugeMetric(prefix, "status", labelNames).WithConverter(metricFromLinkStatus).Build(),
 			NewPropertyGaugeMetric(prefix, "rate", labelNames).WithConverter(metricFromRate).Build(),
 			NewPropertyGaugeMetric(prefix, "full-duplex", labelNames).WithConverter(metricFromBool).Build(),
 		},
 	}
-
-	return c
 }
 
 func (c *monitorCollector) Describe(ch chan<- *prometheus.Desc) {

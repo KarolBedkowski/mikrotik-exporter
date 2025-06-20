@@ -28,7 +28,9 @@ func newLteCollector() RouterOSCollector {
 			NewPropertyGaugeMetric(prefix, "rsrq", labelNames).Build(),
 			NewPropertyGaugeMetric(prefix, "sinr", labelNames).Build(),
 			NewPropertyGaugeMetric(prefix, "status", labelNames).
-				WithName("connected").WithConverter(metricFromLTEStatus).Build(),
+				WithName("connected").
+				WithConverter(metricFromLTEStatus).
+				Build(),
 		},
 	}
 }
