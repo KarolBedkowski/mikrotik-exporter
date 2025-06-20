@@ -36,7 +36,9 @@ func init() {
 }
 
 type (
-	ValueConverter     func(value string) (float64, error)
+	// ValueConverter convert value from api to metric.
+	ValueConverter func(value string) (float64, error)
+	// TXRXValueConverter convert value from api to metric; dedicated to tx/rx metrics.
 	TXRXValueConverter func(value string) (float64, float64, error)
 )
 
@@ -94,10 +96,12 @@ func cleanHostName(hostname string) string {
 
 // --------------------------------------------
 
+// splitStringToFloatsOnComma get two floats from `metric` separated by comma.
 func splitStringToFloatsOnComma(metric string) (float64, float64, error) {
 	return splitStringToFloats(metric, ",")
 }
 
+// splitStringToFloats split `metric` to two floats on `separator.
 func splitStringToFloats(metric string, separator string) (float64, float64, error) {
 	if metric == "" {
 		return math.NaN(), math.NaN(), ErrEmptyValue
@@ -124,6 +128,7 @@ func splitStringToFloats(metric string, separator string) (float64, float64, err
 	return m1, m2, nil
 }
 
+// metricFromDuration convert formatted `duration` to duration in seconds as float64.
 func metricFromDuration(duration string) (float64, error) {
 	var totalDur time.Duration
 
@@ -148,10 +153,12 @@ func metricFromDuration(duration string) (float64, error) {
 	return totalDur.Seconds(), nil
 }
 
+// metricFromString convert string to float64.
 func metricFromString(value string) (float64, error) {
 	return strconv.ParseFloat(value, 64) //nolint:wrapcheck
 }
 
+// metricFromBool return 1.0 if value is "true" or "yes"; 0.0 otherwise.
 func metricFromBool(value string) (float64, error) {
 	if value == "true" || value == "yes" {
 		return 1.0, nil
@@ -160,6 +167,7 @@ func metricFromBool(value string) (float64, error) {
 	return 0.0, nil
 }
 
+// metricConstantValue always return 1.0.
 func metricConstantValue(value string) (float64, error) {
 	_ = value
 
@@ -281,6 +289,9 @@ type PropertyMetricBuilder struct {
 	metricType         metricType
 }
 
+// NewPropertyCounterMetric create new PropertyMetricBuilder for counter type metric with `prefix` and value from
+// `property` with `labels`. First two labels are generated (device name and address) are added automatically
+// but must be included in list; additional must filled.
 func NewPropertyCounterMetric(prefix, property string, labels []string) PropertyMetricBuilder {
 	return PropertyMetricBuilder{
 		prefix:     prefix,
@@ -290,6 +301,9 @@ func NewPropertyCounterMetric(prefix, property string, labels []string) Property
 	}
 }
 
+// NewPropertyGaugeMetric create new PropertyMetricBuilder for gauge type metric with `prefix` and value from
+// `property` with `labels`. First two labels are generated (device name and address) are added automatically
+// but must be included in list; additional must filled.
 func NewPropertyGaugeMetric(prefix, property string, labels []string) PropertyMetricBuilder {
 	return PropertyMetricBuilder{
 		prefix:     prefix,
@@ -299,6 +313,9 @@ func NewPropertyGaugeMetric(prefix, property string, labels []string) PropertyMe
 	}
 }
 
+// NewPropertyRxTxMetric create new PropertyMetricBuilder for two counter type metrics (rx_, tx_) with `prefix`
+// and values from `property`. First two labels are generated (device name and address)
+// are added automatically but must be included in list; additional must filled.
 func NewPropertyRxTxMetric(prefix, property string, labels []string) PropertyMetricBuilder {
 	return PropertyMetricBuilder{
 		prefix:     prefix,
@@ -308,18 +325,21 @@ func NewPropertyRxTxMetric(prefix, property string, labels []string) PropertyMet
 	}
 }
 
+// WithName set name for metric.
 func (p PropertyMetricBuilder) WithName(name string) PropertyMetricBuilder {
 	p.metricName = name
 
 	return p
 }
 
+// WithHelp set help message for metric.
 func (p PropertyMetricBuilder) WithHelp(help string) PropertyMetricBuilder {
 	p.metricHelp = help
 
 	return p
 }
 
+// WithConverter add converter that change value form property to float64.
 func (p PropertyMetricBuilder) WithConverter(vc ValueConverter) PropertyMetricBuilder {
 	if p.metricType == metricRxTx {
 		panic("can't set ValueConverter for rxtx metric")
@@ -330,6 +350,7 @@ func (p PropertyMetricBuilder) WithConverter(vc ValueConverter) PropertyMetricBu
 	return p
 }
 
+// WithRxTxConverter add converter for RxTx metric type.
 func (p PropertyMetricBuilder) WithRxTxConverter(vc TXRXValueConverter) PropertyMetricBuilder {
 	if p.metricType != metricRxTx {
 		panic("can't set TXRXValueConverter for non-rxtx metric")
@@ -340,6 +361,7 @@ func (p PropertyMetricBuilder) WithRxTxConverter(vc TXRXValueConverter) Property
 	return p
 }
 
+// / Build create PropertyMetric from configuration.
 func (p PropertyMetricBuilder) Build() PropertyMetric {
 	metricName := p.metricName
 	if metricName == "" {
@@ -511,6 +533,7 @@ func (r *retGaugeCollector) Collect(reply *routeros.Reply,
 
 // --------------------------------------
 
+// PropertyMetricList is list of PropertyMetric that can be collected at once.
 type PropertyMetricList []PropertyMetric
 
 func (p PropertyMetricList) Describe(ch chan<- *prometheus.Desc) {
@@ -533,6 +556,7 @@ func (p PropertyMetricList) Collect(re *proto.Sentence, ctx *CollectorContext) e
 
 // --------------------------------------------
 
+// extractPropertyFromReplay get all values from reply for property `name`.
 func extractPropertyFromReplay(reply *routeros.Reply, name string) []string { //nolint:unparam
 	values := make([]string, 0, len(reply.Re))
 
