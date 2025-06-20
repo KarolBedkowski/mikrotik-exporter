@@ -102,7 +102,7 @@ func loadConfig(logger *slog.Logger) *config.Config {
 	if err != nil {
 		logger.Error("could not load config", "error", err)
 
-		os.Exit(3) //nolint:gomnd,mnd
+		os.Exit(3) //nolint:mnd
 	}
 
 	updateConfigFromFlags(cfg)
@@ -205,7 +205,7 @@ func startServer(cfg *config.Config, logger *slog.Logger) {
 		http.Handle("/", landingPage)
 	}
 
-	serverTimeout := time.Duration(30**timeout) * time.Second //nolint:gomnd,mnd
+	serverTimeout := time.Duration(30**timeout) * time.Second //nolint:mnd
 	srv := &http.Server{
 		ReadTimeout:  serverTimeout,
 		WriteTimeout: serverTimeout,
@@ -289,7 +289,7 @@ func enableSDNotify() error {
 		for range tick {
 			_, _ = daemon.SdNotify(false, daemon.SdNotifyWatchdog)
 		}
-	}(interval / 2) //nolint:gomnd,mnd
+	}(interval / 2) //nolint:mnd
 
 	return nil
 }
