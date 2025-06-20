@@ -13,10 +13,10 @@ func init() {
 }
 
 type capsmanCollector struct {
-	radiosProvisionedDesc PropertyMetric
 	metrics               PropertyMetricList
 	interfaces            PropertyMetricList
 	interfacesStatus      PropertyMetric
+	radiosProvisionedDesc PropertyMetric
 }
 
 func newCapsmanCollector() RouterOSCollector {
@@ -34,8 +34,10 @@ func newCapsmanCollector() RouterOSCollector {
 
 	collector := &capsmanCollector{
 		metrics: PropertyMetricList{
-			NewPropertyCounterMetric(prefix, "uptime", labelNames).WithConverter(metricFromDuration).
-				WithName("uptime_seconds").Build(),
+			NewPropertyCounterMetric(prefix, "uptime", labelNames).
+				WithConverter(metricFromDuration).
+				WithName("uptime_seconds").
+				Build(),
 			NewPropertyGaugeMetric(prefix, "tx-signal", labelNames).Build(),
 			NewPropertyGaugeMetric(prefix, "rx-signal", labelNames).Build(),
 			NewPropertyRxTxMetric(prefix, "packets", labelNames).Build(),
@@ -44,12 +46,25 @@ func newCapsmanCollector() RouterOSCollector {
 		interfaces: PropertyMetricList{
 			NewPropertyGaugeMetric(prefixIface, "current-authorized-clients", ifaceLabelNames).Build(),
 			NewPropertyGaugeMetric(prefixIface, "current-registered-clients", ifaceLabelNames).Build(),
+			NewPropertyGaugeMetric(prefixIface, "running", ifaceLabelNames).
+				WithConverter(metricFromBool).
+				Build(),
+			NewPropertyGaugeMetric(prefixIface, "master", ifaceLabelNames).
+				WithConverter(metricFromBool).
+				Build(),
+			NewPropertyGaugeMetric(prefixIface, "inactive", ifaceLabelNames).
+				WithConverter(metricFromBool).
+				Build(),
+			NewPropertyGaugeMetric(prefixIface, "disabled", ifaceLabelNames).
+				WithConverter(metricFromBool).
+				Build(),
 		},
 		interfacesStatus: NewPropertyGaugeMetric(prefixIface, "current-state", ifaceStatusLabelNames).
 			WithName("state").
 			WithConverter(metricConstantValue).Build(),
 		radiosProvisionedDesc: NewPropertyGaugeMetric("capsman", "provisioned", radioLabelNames).
-			WithName("radio_provisioned").WithHelp("Status of provision remote radios").
+			WithName("radio_provisioned").
+			WithHelp("Status of provision remote radios").
 			WithConverter(metricFromBool).
 			Build(),
 	}
@@ -60,6 +75,7 @@ func newCapsmanCollector() RouterOSCollector {
 func (c *capsmanCollector) Describe(ch chan<- *prometheus.Desc) {
 	c.radiosProvisionedDesc.Describe(ch)
 	c.interfaces.Describe(ch)
+	c.interfacesStatus.Describe(ch)
 	c.metrics.Describe(ch)
 }
 
@@ -94,7 +110,7 @@ func (c *capsmanCollector) collectRegistrations(ctx *CollectorContext) error {
 func (c *capsmanCollector) collectInterfaces(ctx *CollectorContext) error {
 	reply, err := ctx.client.Run("/caps-man/interface/print",
 		"=.proplist=name,mac-address,configuration,current-state,master-interface,"+
-			"current-authorized-clients,current-registered-clients")
+			"current-authorized-clients,current-registered-clients,running,master,inactive,disabled")
 	if err != nil {
 		return fmt.Errorf("fetch capsman interfaces error: %w", err)
 	}
@@ -108,8 +124,7 @@ func (c *capsmanCollector) collectInterfaces(ctx *CollectorContext) error {
 			errs = multierror.Append(errs, fmt.Errorf("collect interfaces error: %w", err))
 		}
 
-		lctx = lctx.withLabelsFromMap(re.Map, "name", "mac-address", "configuration", "master-interface",
-			"current-state")
+		lctx = lctx.appendLabelsFromMap(re.Map, "current-state")
 		if err := c.interfacesStatus.Collect(re, &lctx); err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("collect interfaces error: %w", err))
 		}
