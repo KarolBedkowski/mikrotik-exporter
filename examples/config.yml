@@ -59,6 +59,7 @@ features:
   firewall: true
   firmware: true
   health: true
+  ip: true
   routes: true
   poe: true
   pools: true
