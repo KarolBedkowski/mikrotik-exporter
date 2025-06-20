@@ -15,9 +15,9 @@ type firmwareCollector struct {
 }
 
 func newFirmwareCollector() RouterOSCollector {
-	labelNames := []string{"devicename", "name", "disabled", "version", "build_time"}
+	labelNames := []string{"devicename", "name", "version", "build_time"}
 	c := &firmwareCollector{
-		description: description("system", "package", "system packages version", labelNames),
+		description: description("system", "package_enabled", "system packages version and status", labelNames),
 	}
 
 	return c
@@ -34,9 +34,12 @@ func (c *firmwareCollector) Collect(ctx *CollectorContext) error {
 	}
 
 	for _, pkg := range reply.Re {
-		ctx.ch <- prometheus.MustNewConstMetric(c.description, prometheus.GaugeValue, 1,
-			ctx.device.Name, pkg.Map["name"], pkg.Map["disabled"], pkg.Map["version"],
-			pkg.Map["build-time"])
+		enabled := 0.0
+		if pkg.Map["disabled"] == "false" {
+			enabled = 1.0
+		}
+		ctx.ch <- prometheus.MustNewConstMetric(c.description, prometheus.GaugeValue, enabled,
+			ctx.device.Name, pkg.Map["name"], pkg.Map["version"], pkg.Map["build-time"])
 	}
 
 	return nil

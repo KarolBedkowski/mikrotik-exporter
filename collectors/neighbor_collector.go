@@ -24,7 +24,7 @@ func newNeighborCollector() RouterOSCollector {
 	labelNames := []string{
 		"name", "address",
 		"about", "address4", "discovered-by", "interface", "ipv6", "platform", "software-id", "version", "neighbor-address",
-		"address6", "board", "identity", "interface-name", "mac-address", "running", "system-caps", "system-description",
+		"address6", "board", "identity", "interface-name", "mac-address", "system-caps", "system-description",
 	}
 
 	collector := &neighborCollector{
@@ -43,7 +43,8 @@ func (c *neighborCollector) Describe(ch chan<- *prometheus.Desc) {
 
 func (c *neighborCollector) Collect(ctx *CollectorContext) error {
 	reply, err := ctx.client.Run("/ip/neighbor/print",
-		"=.proplist=about,address4,discovered-by,interface,ipv6,platform,software-id,version,address,address6,board,identity,interface-name,mac-address,running,system-caps,system-description")
+		"=.proplist=about,address4,discovered-by,interface,ipv6,platform,software-id,version,address,"+
+			"address6,board,identity,interface-name,mac-address,system-caps,system-description")
 	if err != nil {
 		return fmt.Errorf("fetch neighbor error: %w", err)
 	}
@@ -52,8 +53,9 @@ func (c *neighborCollector) Collect(ctx *CollectorContext) error {
 
 	for _, re := range reply.Re {
 		lctx := ctx.withLabelsFromMap(re.Map,
-			"about", "address4", "discovered-by", "interface", "ipv6", "platform", "software-id", "version", "address", "address6", "board",
-			"identity", "interface-name", "mac-address", "running", "system-caps", "system-description",
+			"about", "address4", "discovered-by", "interface", "ipv6", "platform", "software-id", "version",
+			"address", "address6", "board", "identity", "interface-name", "mac-address", "system-caps",
+			"system-description",
 		)
 
 		if err := c.metrics.Collect(re, &lctx); err != nil {

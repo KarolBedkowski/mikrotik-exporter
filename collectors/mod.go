@@ -111,6 +111,22 @@ func (c CollectorContext) withLabelsFromMap(values map[string]string, labelName 
 	}
 }
 
+func (c CollectorContext) appendLabelsFromMap(values map[string]string, labelName ...string) CollectorContext {
+	labels := c.labels
+	for _, n := range labelName {
+		labels = append(labels, values[n])
+	}
+
+	return CollectorContext{
+		ch:        c.ch,
+		device:    c.device,
+		client:    c.client,
+		collector: c.collector,
+		labels:    labels,
+		logger:    c.logger,
+	}
+}
+
 //-----------------
 
 func parseTS(value string) (float64, error) {

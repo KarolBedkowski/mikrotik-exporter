@@ -17,12 +17,13 @@ func init() {
 type wlanIFCollector struct {
 	frequencyDesc *prometheus.Desc
 	metrics       PropertyMetricList
+	channelDesc   *prometheus.Desc
 }
 
 func newWlanIFCollector() RouterOSCollector {
 	const prefix = "wlan_interface"
 
-	labelNames := []string{"name", "address", "interface", "channel"}
+	labelNames := []string{"name", "address", "interface"}
 
 	return &wlanIFCollector{
 		metrics: PropertyMetricList{
@@ -32,12 +33,15 @@ func newWlanIFCollector() RouterOSCollector {
 		},
 		frequencyDesc: description(prefix, "frequency", "WiFi frequency",
 			[]string{"name", "address", "interface", "freqidx"}),
+		channelDesc: description(prefix, "channel", "WiFi channel",
+			[]string{"name", "address", "interface", "channel"}),
 	}
 }
 
 func (c *wlanIFCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.frequencyDesc
 	c.metrics.Describe(ch)
+	ch <- c.channelDesc
 }
 
 func (c *wlanIFCollector) Collect(ctx *CollectorContext) error {
@@ -77,7 +81,7 @@ func (c *wlanIFCollector) collectForInterface(iface string, ctx *CollectorContex
 
 	re := reply.Re[0]
 
-	lctx := ctx.withLabels(iface, re.Map["channel"])
+	lctx := ctx.withLabels(iface)
 
 	if err := c.metrics.Collect(re, &lctx); err != nil {
 		return fmt.Errorf("collect %s error: %w", iface, err)
@@ -88,6 +92,10 @@ func (c *wlanIFCollector) collectForInterface(iface string, ctx *CollectorContex
 
 func (c *wlanIFCollector) collectMetricForFreq(iface string, re *proto.Sentence, ctx *CollectorContext) error {
 	channel := re.Map["channel"]
+
+	// TODO: skip without channel?
+	ctx.ch <- prometheus.MustNewConstMetric(c.channelDesc, prometheus.GaugeValue,
+		1, ctx.device.Name, ctx.device.Address, iface, channel)
 
 	for idx, part := range strings.Split(channel, "+") {
 		freq, _, found := strings.Cut(part, "/")

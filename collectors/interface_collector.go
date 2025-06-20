@@ -1,7 +1,5 @@
 package collectors
 
-// TODO: drop `running` label?
-
 import (
 	"fmt"
 
@@ -20,12 +18,13 @@ type interfaceCollector struct {
 func newInterfaceCollector() RouterOSCollector {
 	const prefix = "interface"
 
-	labelNames := []string{"name", "address", "interface", "type", "disabled", "comment", "running", "slave"}
+	labelNames := []string{"name", "address", "interface", "type", "comment", "slave"}
 
 	return &interfaceCollector{
 		metrics: PropertyMetricList{
 			NewPropertyGaugeMetric(prefix, "actual-mtu", labelNames).Build(),
 			NewPropertyGaugeMetric(prefix, "running", labelNames).WithConverter(metricFromBool).Build(),
+			NewPropertyGaugeMetric(prefix, "disabled", labelNames).WithConverter(metricFromBool).Build(),
 			NewPropertyCounterMetric(prefix, "rx-byte", labelNames).Build(),
 			NewPropertyCounterMetric(prefix, "tx-byte", labelNames).Build(),
 			NewPropertyCounterMetric(prefix, "rx-packet", labelNames).Build(),
@@ -59,7 +58,7 @@ func (c *interfaceCollector) Collect(ctx *CollectorContext) error {
 			continue
 		}
 
-		lctx := ctx.withLabelsFromMap(re.Map, "name", "type", "disabled", "comment", "running", "slave")
+		lctx := ctx.withLabelsFromMap(re.Map, "name", "type", "comment", "slave")
 
 		if err := c.metrics.Collect(re, &lctx); err != nil {
 			errs = multierror.Append(errs, err)

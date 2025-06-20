@@ -16,16 +16,20 @@ type capsmanCollector struct {
 	radiosProvisionedDesc PropertyMetric
 	metrics               PropertyMetricList
 	interfaces            PropertyMetricList
+	interfacesStatus      PropertyMetric
 }
 
 func newCapsmanCollector() RouterOSCollector {
-	const prefix = "capsman_station"
+	const (
+		prefix      = "capsman_station"
+		prefixIface = "capsman_interface"
+	)
 
 	labelNames := []string{"name", "address", "interface", "mac_address", "ssid", "eap_identity", "comment"}
 	radioLabelNames := []string{"name", "address", "interface", "radio_mac", "remote_cap_identity", "remote_cap_name"}
-	ifaceLabelNames := []string{
-		"name", "address", "interface", "mac_address", "configuration",
-		"current_state", "master_interface",
+	ifaceLabelNames := []string{"name", "address", "interface", "mac_address", "configuration", "master_interface"}
+	ifaceStatusLabelNames := []string{
+		"name", "address", "interface", "mac_address", "configuration", "master_interface", "current_state",
 	}
 
 	collector := &capsmanCollector{
@@ -38,9 +42,12 @@ func newCapsmanCollector() RouterOSCollector {
 			NewPropertyRxTxMetric(prefix, "bytes", labelNames).Build(),
 		},
 		interfaces: PropertyMetricList{
-			NewPropertyGaugeMetric("capsman_interface", "current-authorized-clients", ifaceLabelNames).Build(),
-			NewPropertyGaugeMetric("capsman_interface", "current-registered-clients", ifaceLabelNames).Build(),
+			NewPropertyGaugeMetric(prefixIface, "current-authorized-clients", ifaceLabelNames).Build(),
+			NewPropertyGaugeMetric(prefixIface, "current-registered-clients", ifaceLabelNames).Build(),
 		},
+		interfacesStatus: NewPropertyGaugeMetric(prefixIface, "current-state", ifaceStatusLabelNames).
+			WithName("state").
+			WithConverter(metricConstantValue).Build(),
 		radiosProvisionedDesc: NewPropertyGaugeMetric("capsman", "provisioned", radioLabelNames).
 			WithName("radio_provisioned").WithHelp("Status of provision remote radios").
 			WithConverter(metricFromBool).
@@ -95,10 +102,15 @@ func (c *capsmanCollector) collectInterfaces(ctx *CollectorContext) error {
 	var errs *multierror.Error
 
 	for _, re := range reply.Re {
-		lctx := ctx.withLabelsFromMap(re.Map, "name", "mac-address", "configuration",
-			"current-state", "master-interface")
+		lctx := ctx.withLabelsFromMap(re.Map, "name", "mac-address", "configuration", "master-interface")
 
 		if err := c.interfaces.Collect(re, &lctx); err != nil {
+			errs = multierror.Append(errs, fmt.Errorf("collect interfaces error: %w", err))
+		}
+
+		lctx = lctx.withLabelsFromMap(re.Map, "name", "mac-address", "configuration", "master-interface",
+			"current-state")
+		if err := c.interfacesStatus.Collect(re, &lctx); err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("collect interfaces error: %w", err))
 		}
 	}

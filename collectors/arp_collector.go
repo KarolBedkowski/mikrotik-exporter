@@ -13,22 +13,28 @@ func init() {
 }
 
 type arpCollector struct {
-	metrics PropertyMetricList
+	metrics  PropertyMetricList
+	statuses PropertyMetric
 }
 
 func newARPCollector() RouterOSCollector {
 	const prefix = "arp"
 
-	labelNames := []string{
-		"name", "address", "client_address", "interface", "mac_address",
-		"comment", "dynamic", "dhcp", "complete", "status", "invalid", "published",
-	}
+	labelNames := []string{"name", "address", "client_address", "interface", "mac_address", "comment"}
+	statusLabelNames := []string{"name", "address", "client_address", "interface", "mac_address", "comment", "status"}
 
 	collector := &arpCollector{
 		metrics: PropertyMetricList{
 			NewPropertyGaugeMetric(prefix, "mac-address", labelNames).WithName("entry").
 				WithConverter(metricConstantValue).Build(),
+			NewPropertyGaugeMetric(prefix, "dynamic", labelNames).WithConverter(metricFromBool).Build(),
+			NewPropertyGaugeMetric(prefix, "dhcp", labelNames).WithConverter(metricFromBool).Build(),
+			NewPropertyGaugeMetric(prefix, "invalid", labelNames).WithConverter(metricFromBool).Build(),
+			NewPropertyGaugeMetric(prefix, "published", labelNames).WithConverter(metricFromBool).Build(),
+			NewPropertyGaugeMetric(prefix, "complete", labelNames).WithConverter(metricFromBool).Build(),
 		},
+		statuses: NewPropertyGaugeMetric(prefix, "mac-address", statusLabelNames).WithName("status").
+			WithConverter(metricConstantValue).Build(),
 	}
 
 	return collector
@@ -41,7 +47,7 @@ func (c *arpCollector) Describe(ch chan<- *prometheus.Desc) {
 func (c *arpCollector) Collect(ctx *CollectorContext) error {
 	reply, err := ctx.client.Run("/ip/arp/print",
 		"?disabled=false",
-		"=.proplist=address,mac-address,interface,comment,dynamic,DHCP,complete,status,"+
+		"=.proplist=address,mac-address,interface,comment,dynamic,dhcp,complete,status,"+
 			"invalid,published")
 	if err != nil {
 		return fmt.Errorf("fetch arp error: %w", err)
@@ -50,10 +56,14 @@ func (c *arpCollector) Collect(ctx *CollectorContext) error {
 	var errs *multierror.Error
 
 	for _, re := range reply.Re {
-		lctx := ctx.withLabelsFromMap(re.Map, "address", "interface", "mac-address",
-			"comment", "dynamic", "DHCP", "complete", "status", "invalid", "published")
+		lctx := ctx.withLabelsFromMap(re.Map, "address", "interface", "mac-address", "comment")
 
 		if err := c.metrics.Collect(re, &lctx); err != nil {
+			errs = multierror.Append(errs, fmt.Errorf("collect error: %w", err))
+		}
+
+		lctx = lctx.appendLabelsFromMap(re.Map, "status")
+		if err := c.statuses.Collect(re, &lctx); err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("collect error: %w", err))
 		}
 	}
