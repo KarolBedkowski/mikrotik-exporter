@@ -19,17 +19,16 @@ type neighborCollector struct {
 func newNeighborCollector() RouterOSCollector {
 	const prefix = "neighbor"
 
-	// values for first two labels (device name and address) are added automatically;
+	// values for first two labels (dev_name and dev_address) are added automatically;
 	// rest must be loaded in Collect.
 	labelNames := []string{
-		"name", "address",
-		"about", "address4", "discovered-by", "interface", "ipv6", "platform", "software-id", "version", "neighbor-address",
+		"about", "address4", "discovered-by", LabelInterface, "ipv6", "platform", "software-id", "version", "neighbor-address",
 		"address6", "board", "identity", "interface-name", "mac-address", "system-caps", "system-description",
 	}
 
 	return &neighborCollector{
 		metrics: PropertyMetricList{
-			NewPropertyConstMetric(prefix, "address", labelNames).WithName("entry").Build(),
+			NewPropertyConstMetric(prefix, "address", labelNames...).WithName("entry").Build(),
 		},
 	}
 }

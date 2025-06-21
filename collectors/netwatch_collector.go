@@ -16,10 +16,10 @@ type netwatchCollector struct {
 }
 
 func newNetwatchCollector() RouterOSCollector {
-	labelNames := []string{"name", "address", "host", "comment", "status"}
+	labelNames := []string{"host", LabelComment, "status"}
 
 	return &netwatchCollector{
-		metric: NewPropertyConstMetric("netwatch", "status", labelNames).Build(),
+		metric: NewPropertyConstMetric("netwatch", "status", labelNames...).Build(),
 	}
 }
 

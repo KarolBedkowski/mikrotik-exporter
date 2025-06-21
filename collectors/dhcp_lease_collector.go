@@ -18,12 +18,12 @@ type dhcpLeaseCollector struct {
 
 func newDHCPLCollector() RouterOSCollector {
 	labelNames := []string{
-		"name", "address", "activemacaddress", "server", "status", "activeaddress",
-		"hostname", "comment", "dhcp_address", "dhcp_macaddress",
+		"activemacaddress", "server", "status", "activeaddress",
+		"hostname", LabelComment, "dhcp_address", "dhcp_macaddress",
 	}
 
 	return &dhcpLeaseCollector{
-		leases: NewPropertyConstMetric("dhcp", "status", labelNames).
+		leases: NewPropertyConstMetric("dhcp", "status", labelNames...).
 			WithName("leases_metrics").
 			WithHelp("number of metrics").
 			Build(),

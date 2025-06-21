@@ -24,18 +24,16 @@ type wlanIFCollector struct {
 func newWlanIFCollector() RouterOSCollector {
 	const prefix = "wlan_interface"
 
-	labelNames := []string{"name", "address", "interface"}
-
 	return &wlanIFCollector{
 		metrics: PropertyMetricList{
-			NewPropertyGaugeMetric(prefix, "registered-clients", labelNames).Build(),
-			NewPropertyGaugeMetric(prefix, "noise-floor", labelNames).Build(),
-			NewPropertyGaugeMetric(prefix, "overall-tx-ccq", labelNames).Build(),
+			NewPropertyGaugeMetric(prefix, "registered-clients", LabelInterface).Build(),
+			NewPropertyGaugeMetric(prefix, "noise-floor", LabelInterface).Build(),
+			NewPropertyGaugeMetric(prefix, "overall-tx-ccq", LabelInterface).Build(),
 		},
 		frequencyDesc: description(prefix, "frequency", "WiFi frequency",
-			[]string{"name", "address", "interface", "freqidx"}),
+			LabelDevName, LabelDevAddress, LabelInterface, "freqidx"),
 		channelDesc: description(prefix, "channel", "WiFi channel",
-			[]string{"name", "address", "interface", "channel"}),
+			LabelDevName, LabelDevAddress, LabelInterface, "channel"),
 	}
 }
 

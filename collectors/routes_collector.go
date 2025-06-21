@@ -21,13 +21,11 @@ type routesCollector struct {
 func newRoutesCollector() RouterOSCollector {
 	const prefix = "routes"
 
-	labelNames := []string{"name", "address", "ip_version"}
-
 	return &routesCollector{
-		count: NewRetGaugeMetric("", prefix, labelNames).
+		count: NewRetGaugeMetric("", prefix, "ip_version").
 			WithHelp("number of routes in RIB").
 			Build(),
-		countProtocol: NewRetGaugeMetric(prefix, "protocol", append(labelNames, "protocol")).
+		countProtocol: NewRetGaugeMetric(prefix, "protocol", "ip_version", "protocol").
 			WithHelp("number of routes per protocol in RIB").
 			Build(),
 		protocols: []string{"bgp", "static", "ospf", "dynamic", "connect", "rip"},

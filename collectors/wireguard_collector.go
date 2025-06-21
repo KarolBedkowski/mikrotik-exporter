@@ -20,19 +20,19 @@ type wireguardCollector struct {
 func newWireguardCollector() RouterOSCollector {
 	const prefix = "wireguard"
 
-	peerLabelNames := []string{"name", "address", "public_key", "comment", "disabled"}
-	wgLabelNames := []string{"name", "address", "public_key", "wg_name", "comment"}
+	peerLabelNames := []string{"public_key", LabelComment, "disabled"}
+	wgLabelNames := []string{"public_key", "wg_name", LabelComment}
 
 	return &wireguardCollector{
 		peers: PropertyMetricList{
-			NewPropertyGaugeMetric(prefix, "last-handshake", peerLabelNames).
+			NewPropertyGaugeMetric(prefix, "last-handshake", peerLabelNames...).
 				WithConverter(metricFromDuration).
 				Build(),
-			NewPropertyCounterMetric(prefix, "rx", peerLabelNames).Build(),
-			NewPropertyCounterMetric(prefix, "tx", peerLabelNames).Build(),
+			NewPropertyCounterMetric(prefix, "rx", peerLabelNames...).Build(),
+			NewPropertyCounterMetric(prefix, "tx", peerLabelNames...).Build(),
 		},
 		wg: PropertyMetricList{
-			NewPropertyGaugeMetric(prefix, "running", wgLabelNames).
+			NewPropertyGaugeMetric(prefix, "running", wgLabelNames...).
 				WithConverter(metricFromBool).
 				Build(),
 		},

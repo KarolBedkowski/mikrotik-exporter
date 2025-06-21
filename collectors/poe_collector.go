@@ -19,13 +19,11 @@ type poeCollector struct {
 func newPOECollector() RouterOSCollector {
 	const prefix = "poe"
 
-	labelNames := []string{"name", "address", "interface"}
-
 	return &poeCollector{
 		metrics: PropertyMetricList{
-			NewPropertyGaugeMetric(prefix, "current", labelNames).WithHelp("current in mA").Build(),
-			NewPropertyGaugeMetric(prefix, "wattage", labelNames).WithHelp("power in W").Build(),
-			NewPropertyGaugeMetric(prefix, "voltage", labelNames).WithHelp("voltage in V").Build(),
+			NewPropertyGaugeMetric(prefix, "current", LabelInterface).WithHelp("current in mA").Build(),
+			NewPropertyGaugeMetric(prefix, "wattage", LabelInterface).WithHelp("power in W").Build(),
+			NewPropertyGaugeMetric(prefix, "voltage", LabelInterface).WithHelp("voltage in V").Build(),
 		},
 	}
 }

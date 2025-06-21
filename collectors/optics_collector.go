@@ -22,31 +22,29 @@ type opticsCollector struct {
 func newOpticsCollector() RouterOSCollector {
 	const prefix = "optics"
 
-	labelNames := []string{"name", "address", "interface"}
-
 	return &opticsCollector{
 		metrics: PropertyMetricList{
-			NewPropertyGaugeMetric(prefix, "sfp-rx-loss", labelNames).
+			NewPropertyGaugeMetric(prefix, "sfp-rx-loss", LabelInterface).
 				WithHelp("RX status").
 				WithConverter(metricFromBool).
 				Build(),
-			NewPropertyGaugeMetric(prefix, "sfp-tx-fault", labelNames).
+			NewPropertyGaugeMetric(prefix, "sfp-tx-fault", LabelInterface).
 				WithHelp("TX status").
 				WithConverter(metricFromBool).
 				Build(),
-			NewPropertyGaugeMetric(prefix, "sfp-rx-power", labelNames).
+			NewPropertyGaugeMetric(prefix, "sfp-rx-power", LabelInterface).
 				WithHelp("RX power in dBM").
 				Build(),
-			NewPropertyGaugeMetric(prefix, "sfp-tx-power", labelNames).
+			NewPropertyGaugeMetric(prefix, "sfp-tx-power", LabelInterface).
 				WithHelp("TX power in dBM").
 				Build(),
-			NewPropertyGaugeMetric(prefix, "sfp-temperature", labelNames).
+			NewPropertyGaugeMetric(prefix, "sfp-temperature", LabelInterface).
 				WithHelp("temperature in degree celsius").
 				Build(),
-			NewPropertyGaugeMetric(prefix, "sfp-tx-bias-current", labelNames).
+			NewPropertyGaugeMetric(prefix, "sfp-tx-bias-current", LabelInterface).
 				WithHelp("bias is milliamps").
 				Build(),
-			NewPropertyGaugeMetric(prefix, "sfp-supply-voltage", labelNames).Build(),
+			NewPropertyGaugeMetric(prefix, "sfp-supply-voltage", LabelInterface).Build(),
 		},
 	}
 }

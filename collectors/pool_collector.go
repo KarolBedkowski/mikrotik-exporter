@@ -22,14 +22,14 @@ type poolCollector struct {
 func newPoolCollector() RouterOSCollector {
 	const prefix = "ip_pool"
 
-	labelNames := []string{"name", "address", "ip_version", "pool"}
+	labelNames := []string{"ip_version", "pool"}
 
 	return &poolCollector{
 		PropertyMetricList{
-			NewPropertyGaugeMetric(prefix, "used", labelNames).
+			NewPropertyGaugeMetric(prefix, "used", labelNames...).
 				WithHelp("number of used IP/prefixes in a pool").
 				Build(),
-			NewPropertyGaugeMetric(prefix, "total", labelNames).
+			NewPropertyGaugeMetric(prefix, "total", labelNames...).
 				WithHelp("number of total IP in a pool").
 				Build(),
 		},

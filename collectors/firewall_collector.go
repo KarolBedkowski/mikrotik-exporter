@@ -18,12 +18,12 @@ type firewallCollector struct {
 func newFirewallCollector() RouterOSCollector {
 	const prefix = "firewall"
 
-	labelNames := []string{"name", "address", "firewall", "chain", "comment"}
+	labelNames := []string{"firewall", "chain", LabelComment}
 
 	return &firewallCollector{
 		metrics: PropertyMetricList{
-			NewPropertyCounterMetric(prefix, "packets", labelNames).Build(),
-			NewPropertyCounterMetric(prefix, "bytes", labelNames).Build(),
+			NewPropertyCounterMetric(prefix, "packets", labelNames...).Build(),
+			NewPropertyCounterMetric(prefix, "bytes", labelNames...).Build(),
 		},
 	}
 }

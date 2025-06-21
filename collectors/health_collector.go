@@ -18,17 +18,15 @@ type healthCollector struct {
 func newhealthCollector() RouterOSCollector {
 	const prefix = "health"
 
-	labelNames := []string{"name", "address"}
-
 	return &healthCollector{
 		metrics: PropertyMetricList{
-			NewPropertyGaugeMetric(prefix, "voltage", labelNames).
+			NewPropertyGaugeMetric(prefix, "voltage").
 				WithHelp("Input voltage to the RouterOS board, in volts").
 				Build(),
-			NewPropertyGaugeMetric(prefix, "temperature", labelNames).
+			NewPropertyGaugeMetric(prefix, "temperature").
 				WithHelp("Temperature of RouterOS board, in degrees Celsius").
 				Build(),
-			NewPropertyGaugeMetric(prefix, "cpu-temperature", labelNames).
+			NewPropertyGaugeMetric(prefix, "cpu-temperature").
 				WithHelp("Temperature of RouterOS CPU, in degrees Celsius").
 				Build(),
 		},

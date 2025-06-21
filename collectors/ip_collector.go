@@ -18,21 +18,18 @@ type ipCollector struct {
 func newIPCollector() RouterOSCollector {
 	const prefix = "ip"
 
-	// list of labels exposed in metric
-	labelNames := []string{"name", "address"}
-
 	return &ipCollector{
 		metrics: PropertyMetricList{
-			NewPropertyCounterMetric(prefix, "ipv4-fast-path-active", labelNames).
+			NewPropertyCounterMetric(prefix, "ipv4-fast-path-active").
 				WithConverter(metricFromBool).
 				Build(),
-			NewPropertyCounterMetric(prefix, "ipv4-fast-path-bytes", labelNames).Build(),
-			NewPropertyCounterMetric(prefix, "ipv4-fast-path-packets", labelNames).Build(),
-			NewPropertyCounterMetric(prefix, "ipv4-fasttrack-active", labelNames).
+			NewPropertyCounterMetric(prefix, "ipv4-fast-path-bytes").Build(),
+			NewPropertyCounterMetric(prefix, "ipv4-fast-path-packets").Build(),
+			NewPropertyCounterMetric(prefix, "ipv4-fasttrack-active").
 				WithConverter(metricFromBool).
 				Build(),
-			NewPropertyCounterMetric(prefix, "ipv4-fasttrack-bytes", labelNames).Build(),
-			NewPropertyCounterMetric(prefix, "ipv4-fasttrack-packets", labelNames).Build(),
+			NewPropertyCounterMetric(prefix, "ipv4-fasttrack-bytes").Build(),
+			NewPropertyCounterMetric(prefix, "ipv4-fasttrack-packets").Build(),
 		},
 	}
 }

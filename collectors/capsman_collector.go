@@ -24,41 +24,41 @@ func newCapsmanCollector() RouterOSCollector {
 		prefixIface = "capsman_interface"
 	)
 
-	labelNames := []string{"name", "address", "interface", "mac_address", "ssid", "eap_identity", "comment"}
-	radioLabelNames := []string{"name", "address", "interface", "radio_mac", "remote_cap_identity", "remote_cap_name"}
-	ifaceLabelNames := []string{"name", "address", "interface", "mac_address", "configuration", "master_interface"}
+	labelNames := []string{LabelInterface, "mac_address", "ssid", "eap_identity", LabelComment}
+	radioLabelNames := []string{LabelInterface, "radio_mac", "remote_cap_identity", "remote_cap_name"}
+	ifaceLabelNames := []string{LabelInterface, "mac_address", "configuration", "master_interface"}
 	ifaceStatusLabelNames := []string{
-		"name", "address", "interface", "mac_address", "configuration", "master_interface", "current_state",
+		LabelInterface, "mac_address", "configuration", "master_interface", "current_state",
 	}
 
 	return &capsmanCollector{
 		metrics: PropertyMetricList{
-			NewPropertyCounterMetric(prefix, "uptime", labelNames).
+			NewPropertyCounterMetric(prefix, "uptime", labelNames...).
 				WithConverter(metricFromDuration).
 				WithName("uptime_seconds").
 				Build(),
-			NewPropertyGaugeMetric(prefix, "tx-signal", labelNames).Build(),
-			NewPropertyGaugeMetric(prefix, "rx-signal", labelNames).Build(),
-			NewPropertyRxTxMetric(prefix, "packets", labelNames).Build(),
-			NewPropertyRxTxMetric(prefix, "bytes", labelNames).Build(),
+			NewPropertyGaugeMetric(prefix, "tx-signal", labelNames...).Build(),
+			NewPropertyGaugeMetric(prefix, "rx-signal", labelNames...).Build(),
+			NewPropertyRxTxMetric(prefix, "packets", labelNames...).Build(),
+			NewPropertyRxTxMetric(prefix, "bytes", labelNames...).Build(),
 		},
 		interfaces: PropertyMetricList{
-			NewPropertyGaugeMetric(prefixIface, "current-authorized-clients", ifaceLabelNames).Build(),
-			NewPropertyGaugeMetric(prefixIface, "current-registered-clients", ifaceLabelNames).Build(),
-			NewPropertyGaugeMetric(prefixIface, "running", ifaceLabelNames).
+			NewPropertyGaugeMetric(prefixIface, "current-authorized-clients", ifaceLabelNames...).Build(),
+			NewPropertyGaugeMetric(prefixIface, "current-registered-clients", ifaceLabelNames...).Build(),
+			NewPropertyGaugeMetric(prefixIface, "running", ifaceLabelNames...).
 				WithConverter(metricFromBool).
 				Build(),
-			NewPropertyGaugeMetric(prefixIface, "master", ifaceLabelNames).
+			NewPropertyGaugeMetric(prefixIface, "master", ifaceLabelNames...).
 				WithConverter(metricFromBool).
 				Build(),
-			NewPropertyGaugeMetric(prefixIface, "inactive", ifaceLabelNames).
+			NewPropertyGaugeMetric(prefixIface, "inactive", ifaceLabelNames...).
 				WithConverter(metricFromBool).
 				Build(),
 		},
-		interfacesStatus: NewPropertyConstMetric(prefixIface, "current-state", ifaceStatusLabelNames).
+		interfacesStatus: NewPropertyConstMetric(prefixIface, "current-state", ifaceStatusLabelNames...).
 			WithName("state").
 			Build(),
-		radiosProvisionedDesc: NewPropertyGaugeMetric("capsman", "provisioned", radioLabelNames).
+		radiosProvisionedDesc: NewPropertyGaugeMetric("capsman", "provisioned", radioLabelNames...).
 			WithName("radio_provisioned").
 			WithHelp("Status of provision remote radios").
 			WithConverter(metricFromBool).

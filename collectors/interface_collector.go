@@ -18,23 +18,23 @@ type interfaceCollector struct {
 func newInterfaceCollector() RouterOSCollector {
 	const prefix = "interface"
 
-	labelNames := []string{"name", "address", "interface", "type", "comment", "slave"}
+	labelNames := []string{LabelInterface, "type", LabelComment, "slave"}
 
 	return &interfaceCollector{
 		metrics: PropertyMetricList{
-			NewPropertyGaugeMetric(prefix, "actual-mtu", labelNames).Build(),
-			NewPropertyGaugeMetric(prefix, "running", labelNames).WithConverter(metricFromBool).Build(),
-			NewPropertyGaugeMetric(prefix, "disabled", labelNames).WithConverter(metricFromBool).Build(),
-			NewPropertyCounterMetric(prefix, "rx-byte", labelNames).Build(),
-			NewPropertyCounterMetric(prefix, "tx-byte", labelNames).Build(),
-			NewPropertyCounterMetric(prefix, "rx-packet", labelNames).Build(),
-			NewPropertyCounterMetric(prefix, "tx-packet", labelNames).Build(),
-			NewPropertyCounterMetric(prefix, "rx-error", labelNames).Build(),
-			NewPropertyCounterMetric(prefix, "tx-error", labelNames).Build(),
-			NewPropertyCounterMetric(prefix, "rx-drop", labelNames).Build(),
-			NewPropertyCounterMetric(prefix, "tx-drop", labelNames).Build(),
-			NewPropertyCounterMetric(prefix, "link-downs", labelNames).Build(),
-			NewPropertyCounterMetric(prefix, "tx-queue-drop", labelNames).Build(),
+			NewPropertyGaugeMetric(prefix, "actual-mtu", labelNames...).Build(),
+			NewPropertyGaugeMetric(prefix, "running", labelNames...).WithConverter(metricFromBool).Build(),
+			NewPropertyGaugeMetric(prefix, "disabled", labelNames...).WithConverter(metricFromBool).Build(),
+			NewPropertyCounterMetric(prefix, "rx-byte", labelNames...).Build(),
+			NewPropertyCounterMetric(prefix, "tx-byte", labelNames...).Build(),
+			NewPropertyCounterMetric(prefix, "rx-packet", labelNames...).Build(),
+			NewPropertyCounterMetric(prefix, "tx-packet", labelNames...).Build(),
+			NewPropertyCounterMetric(prefix, "rx-error", labelNames...).Build(),
+			NewPropertyCounterMetric(prefix, "tx-error", labelNames...).Build(),
+			NewPropertyCounterMetric(prefix, "rx-drop", labelNames...).Build(),
+			NewPropertyCounterMetric(prefix, "tx-drop", labelNames...).Build(),
+			NewPropertyCounterMetric(prefix, "link-downs", labelNames...).Build(),
+			NewPropertyCounterMetric(prefix, "tx-queue-drop", labelNames...).Build(),
 		},
 	}
 }

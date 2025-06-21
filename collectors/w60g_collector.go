@@ -22,18 +22,16 @@ type w60gInterfaceCollector struct {
 func neww60gInterfaceCollector() RouterOSCollector {
 	const prefix = "w60ginterface"
 
-	labelNames := []string{"name", "address", "interface"}
-
 	return &w60gInterfaceCollector{
 		metrics: PropertyMetricList{
-			NewPropertyGaugeMetric(prefix, "signal", labelNames).Build(),
-			NewPropertyGaugeMetric(prefix, "rssi", labelNames).Build(),
-			NewPropertyGaugeMetric(prefix, "tx-mcs", labelNames).Build(),
-			NewPropertyGaugeMetric(prefix, "frequency", labelNames).Build(),
-			NewPropertyGaugeMetric(prefix, "tx-phy-rate", labelNames).Build(),
-			NewPropertyGaugeMetric(prefix, "tx-sector", labelNames).Build(),
-			NewPropertyGaugeMetric(prefix, "distance", labelNames).Build(),
-			NewPropertyGaugeMetric(prefix, "tx-packet-error-rate", labelNames).Build(),
+			NewPropertyGaugeMetric(prefix, "signal", LabelInterface).Build(),
+			NewPropertyGaugeMetric(prefix, "rssi", LabelInterface).Build(),
+			NewPropertyGaugeMetric(prefix, "tx-mcs", LabelInterface).Build(),
+			NewPropertyGaugeMetric(prefix, "frequency", LabelInterface).Build(),
+			NewPropertyGaugeMetric(prefix, "tx-phy-rate", LabelInterface).Build(),
+			NewPropertyGaugeMetric(prefix, "tx-sector", LabelInterface).Build(),
+			NewPropertyGaugeMetric(prefix, "distance", LabelInterface).Build(),
+			NewPropertyGaugeMetric(prefix, "tx-packet-error-rate", LabelInterface).Build(),
 		},
 	}
 }

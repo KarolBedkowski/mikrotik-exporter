@@ -19,20 +19,19 @@ type queueCollector struct {
 }
 
 func newQueueCollector() RouterOSCollector {
-	monitorLabelNames := []string{"name", "address"}
-	labelNames := []string{"name", "address", "simple_queue_name", "queue", "comment"}
+	labelNames := []string{"simple_queue_name", "queue", LabelComment}
 
 	const sqPrefix = "simple_queue"
 
 	return &queueCollector{
-		monitorQueuedBytes:   NewPropertyGaugeMetric("queue", "queued-bytes", monitorLabelNames).Build(),
-		monitorQueuedPackets: NewPropertyGaugeMetric("queue", "queued-packets", monitorLabelNames).Build(),
+		monitorQueuedBytes:   NewPropertyGaugeMetric("queue", "queued-bytes").Build(),
+		monitorQueuedPackets: NewPropertyGaugeMetric("queue", "queued-packets").Build(),
 
 		metrics: PropertyMetricList{
-			NewPropertyRxTxMetric(sqPrefix, "packets", labelNames).WithRxTxConverter(metricFromQueueTxRx).Build(),
-			NewPropertyRxTxMetric(sqPrefix, "bytes", labelNames).WithRxTxConverter(metricFromQueueTxRx).Build(),
-			NewPropertyRxTxMetric(sqPrefix, "queued-packets", labelNames).WithRxTxConverter(metricFromQueueTxRx).Build(),
-			NewPropertyRxTxMetric(sqPrefix, "queued-bytes", labelNames).WithRxTxConverter(metricFromQueueTxRx).Build(),
+			NewPropertyRxTxMetric(sqPrefix, "packets", labelNames...).WithRxTxConverter(metricFromQueueTxRx).Build(),
+			NewPropertyRxTxMetric(sqPrefix, "bytes", labelNames...).WithRxTxConverter(metricFromQueueTxRx).Build(),
+			NewPropertyRxTxMetric(sqPrefix, "queued-packets", labelNames...).WithRxTxConverter(metricFromQueueTxRx).Build(),
+			NewPropertyRxTxMetric(sqPrefix, "queued-bytes", labelNames...).WithRxTxConverter(metricFromQueueTxRx).Build(),
 		},
 	}
 }

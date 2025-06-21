@@ -17,10 +17,8 @@ type scriptCollector struct {
 }
 
 func newScriptCollector() RouterOSCollector {
-	labelNames := []string{"name", "address", "script"}
-
 	return &scriptCollector{
-		metric: description("", "script", "metrics from scripts", labelNames),
+		metric: description("", "script", "metrics from scripts", LabelDevName, LabelDevAddress, "script"),
 	}
 }
 

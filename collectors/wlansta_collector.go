@@ -19,15 +19,15 @@ type wlanSTACollector struct {
 func newWlanSTACollector() RouterOSCollector {
 	const prefix = "wlan_station"
 
-	labelNames := []string{"name", "address", "interface", "mac_address"}
+	labelNames := []string{LabelInterface, "mac_address"}
 
 	return &wlanSTACollector{
 		metrics: PropertyMetricList{
-			NewPropertyGaugeMetric(prefix, "signal-to-noise", labelNames).Build(),
-			NewPropertyGaugeMetric(prefix, "signal-strength", labelNames).Build(),
-			NewPropertyRxTxMetric(prefix, "packets", labelNames).Build(),
-			NewPropertyRxTxMetric(prefix, "bytes", labelNames).Build(),
-			NewPropertyRxTxMetric(prefix, "frames", labelNames).Build(),
+			NewPropertyGaugeMetric(prefix, "signal-to-noise", labelNames...).Build(),
+			NewPropertyGaugeMetric(prefix, "signal-strength", labelNames...).Build(),
+			NewPropertyRxTxMetric(prefix, "packets", labelNames...).Build(),
+			NewPropertyRxTxMetric(prefix, "bytes", labelNames...).Build(),
+			NewPropertyRxTxMetric(prefix, "frames", labelNames...).Build(),
 		},
 	}
 }

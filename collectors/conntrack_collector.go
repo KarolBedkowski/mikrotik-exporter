@@ -19,13 +19,11 @@ type conntrackCollector struct {
 func newConntrackCollector() RouterOSCollector {
 	const prefix = "conntrack"
 
-	labelNames := []string{"name", "address"}
-
 	return &conntrackCollector{
-		totalEntries: NewPropertyGaugeMetric(prefix, "total-entries", labelNames).
+		totalEntries: NewPropertyGaugeMetric(prefix, "total-entries").
 			WithHelp("Number of tracked connections").
 			Build(),
-		maxEntries: NewPropertyGaugeMetric(prefix, "max-entries", labelNames).
+		maxEntries: NewPropertyGaugeMetric(prefix, "max-entries").
 			WithHelp("Conntrack table capacity").
 			Build(),
 	}

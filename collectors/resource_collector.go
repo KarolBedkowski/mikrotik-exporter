@@ -21,26 +21,24 @@ type resourceCollector struct {
 func newResourceCollector() RouterOSCollector {
 	const prefix = "system"
 
-	labelNames := []string{"name", "address"}
-
 	return &resourceCollector{
 		metrics: PropertyMetricList{
-			NewPropertyGaugeMetric(prefix, "free-memory", labelNames).Build(),
-			NewPropertyGaugeMetric(prefix, "total-memory", labelNames).Build(),
-			NewPropertyGaugeMetric(prefix, "cpu-load", labelNames).Build(),
-			NewPropertyGaugeMetric(prefix, "free-hdd-space", labelNames).Build(),
-			NewPropertyGaugeMetric(prefix, "total-hdd-space", labelNames).Build(),
-			NewPropertyGaugeMetric(prefix, "cpu-frequency", labelNames).Build(),
-			NewPropertyGaugeMetric(prefix, "bad-blocks", labelNames).Build(),
-			NewPropertyCounterMetric(prefix, "uptime", labelNames).
+			NewPropertyGaugeMetric(prefix, "free-memory").Build(),
+			NewPropertyGaugeMetric(prefix, "total-memory").Build(),
+			NewPropertyGaugeMetric(prefix, "cpu-load").Build(),
+			NewPropertyGaugeMetric(prefix, "free-hdd-space").Build(),
+			NewPropertyGaugeMetric(prefix, "total-hdd-space").Build(),
+			NewPropertyGaugeMetric(prefix, "cpu-frequency").Build(),
+			NewPropertyGaugeMetric(prefix, "bad-blocks").Build(),
+			NewPropertyCounterMetric(prefix, "uptime").
 				WithName("uptime_seconds").
 				WithConverter(metricFromDuration).
 				Build(),
-			NewPropertyGaugeMetric(prefix, "cpu-count", labelNames).Build(),
+			NewPropertyGaugeMetric(prefix, "cpu-count").Build(),
 		},
 
 		versionDesc: description("system", "routeros", "Board and system version",
-			[]string{"name", "address", "board_name", "version"}),
+			LabelDevName, LabelDevAddress, "board_name", "version"),
 	}
 }
 

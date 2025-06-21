@@ -22,11 +22,11 @@ type certsCollector struct {
 func newCertsCollector() RouterOSCollector {
 	const prefix = "cert"
 
-	labelNames := []string{"name", "address", "cert-name", "common-name", "issuer", "serial-number"}
+	labelNames := []string{"cert-name", "common-name", "issuer", "serial-number"}
 
 	return &certsCollector{
 		metrics: PropertyMetricList{
-			NewPropertyGaugeMetric(prefix, "invalid-after", labelNames).WithConverter(parseTS).Build(),
+			NewPropertyGaugeMetric(prefix, "invalid-after", labelNames...).WithConverter(parseTS).Build(),
 		},
 	}
 }

@@ -20,22 +20,22 @@ func newARPCollector() RouterOSCollector {
 	const prefix = "arp"
 
 	// list of labels exposed in metric
-	labelNames := []string{"name", "address", "client_address", "interface", "mac_address", "comment"}
-	statusLabelNames := []string{"name", "address", "client_address", "interface", "mac_address", "comment", "status"}
+	labelNames := []string{"client_address", LabelInterface, "mac_address", LabelComment}
+	statusLabelNames := []string{"client_address", LabelInterface, "mac_address", LabelComment, "status"}
 
 	return &arpCollector{
 		metrics: PropertyMetricList{
 			// get mac-address but rename metric to <prefix>_entry, apply labels and use constant value (1)
 			// for all entries
-			NewPropertyConstMetric(prefix, "mac-address", labelNames).WithName("entry").Build(),
+			NewPropertyConstMetric(prefix, "mac-address", labelNames...).WithName("entry").Build(),
 			// get `dynamic` value, convert this bool value to 1/0
-			NewPropertyGaugeMetric(prefix, "dynamic", labelNames).WithConverter(metricFromBool).Build(),
-			NewPropertyGaugeMetric(prefix, "dhcp", labelNames).WithConverter(metricFromBool).Build(),
-			NewPropertyGaugeMetric(prefix, "invalid", labelNames).WithConverter(metricFromBool).Build(),
-			NewPropertyGaugeMetric(prefix, "published", labelNames).WithConverter(metricFromBool).Build(),
-			NewPropertyGaugeMetric(prefix, "complete", labelNames).WithConverter(metricFromBool).Build(),
+			NewPropertyGaugeMetric(prefix, "dynamic", labelNames...).WithConverter(metricFromBool).Build(),
+			NewPropertyGaugeMetric(prefix, "dhcp", labelNames...).WithConverter(metricFromBool).Build(),
+			NewPropertyGaugeMetric(prefix, "invalid", labelNames...).WithConverter(metricFromBool).Build(),
+			NewPropertyGaugeMetric(prefix, "published", labelNames...).WithConverter(metricFromBool).Build(),
+			NewPropertyGaugeMetric(prefix, "complete", labelNames...).WithConverter(metricFromBool).Build(),
 		},
-		statuses: NewPropertyGaugeMetric(prefix, "mac-address", statusLabelNames).
+		statuses: NewPropertyGaugeMetric(prefix, "mac-address", statusLabelNames...).
 			WithName("status").
 			WithConverter(metricConstantValue).
 			Build(),
@@ -48,7 +48,8 @@ func (c *arpCollector) Describe(ch chan<- *prometheus.Desc) {
 
 func (c *arpCollector) Collect(ctx *CollectorContext) error {
 	// list of props must contain all values for labels and metrics
-	reply, err := ctx.client.Run("/ip/arp/print", "?disabled=false",
+	reply, err := ctx.client.Run("/ip/arp/print",
+		"?disabled=false",
 		"=.proplist=address,mac-address,interface,comment,dynamic,dhcp,complete,status,"+
 			"invalid,published")
 	if err != nil {

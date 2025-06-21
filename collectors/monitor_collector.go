@@ -18,15 +18,13 @@ type monitorCollector struct {
 }
 
 func newMonitorCollector() RouterOSCollector {
-	labelNames := []string{"name", "address", "interface"}
-
 	const prefix = "monitor"
 
 	return &monitorCollector{
 		metrics: PropertyMetricList{
-			NewPropertyGaugeMetric(prefix, "status", labelNames).WithConverter(metricFromLinkStatus).Build(),
-			NewPropertyGaugeMetric(prefix, "rate", labelNames).WithConverter(metricFromRate).Build(),
-			NewPropertyGaugeMetric(prefix, "full-duplex", labelNames).WithConverter(metricFromBool).Build(),
+			NewPropertyGaugeMetric(prefix, "status", LabelInterface).WithConverter(metricFromLinkStatus).Build(),
+			NewPropertyGaugeMetric(prefix, "rate", LabelInterface).WithConverter(metricFromRate).Build(),
+			NewPropertyGaugeMetric(prefix, "full-duplex", LabelInterface).WithConverter(metricFromBool).Build(),
 		},
 	}
 }

@@ -18,12 +18,10 @@ type dnsCollector struct {
 func newDNSCollector() RouterOSCollector {
 	const prefix = "dns"
 
-	labelNames := []string{"name", "address"}
-
 	return &dnsCollector{
 		metrics: PropertyMetricList{
-			NewPropertyGaugeMetric(prefix, "cache-used", labelNames).WithName("cache_used_bytes").Build(),
-			NewPropertyGaugeMetric(prefix, "cache-size", labelNames).WithName("cache_size_bytes").Build(),
+			NewPropertyGaugeMetric(prefix, "cache-used").WithName("cache_used_bytes").Build(),
+			NewPropertyGaugeMetric(prefix, "cache-size").WithName("cache_size_bytes").Build(),
 		},
 	}
 }

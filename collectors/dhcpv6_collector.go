@@ -18,10 +18,8 @@ type dhcpv6Collector struct {
 func newDHCPv6Collector() RouterOSCollector {
 	const prefix = "dhcpv6"
 
-	labelNames := []string{"name", "address", "server"}
-
 	return &dhcpv6Collector{
-		bindingCount: NewRetGaugeMetric(prefix, "binding", labelNames).
+		bindingCount: NewRetGaugeMetric(prefix, "binding", "server").
 			WithHelp("number of active bindings per DHCPv6 server").
 			Build(),
 	}

@@ -18,10 +18,8 @@ type dhcpCollector struct {
 func newDHCPCollector() RouterOSCollector {
 	const prefix = "dhcp"
 
-	labelNames := []string{"name", "address", "server"}
-
 	return &dhcpCollector{
-		leasesActiveCount: NewRetGaugeMetric(prefix, "leases_active", labelNames).
+		leasesActiveCount: NewRetGaugeMetric(prefix, "leases_active", "server").
 			WithHelp("number of active leases per DHCP server").
 			Build(),
 	}

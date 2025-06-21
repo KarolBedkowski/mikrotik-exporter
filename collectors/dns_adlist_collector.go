@@ -21,12 +21,10 @@ type dnsAdlistCollector struct {
 func newDNSAdlistCollector() RouterOSCollector {
 	const prefix = "dns_adlist"
 
-	labelNames := []string{"name", "address", "url"}
-
 	return &dnsAdlistCollector{
 		metrics: PropertyMetricList{
-			NewPropertyCounterMetric(prefix, "match-count", labelNames).WithName("match_count_total").Build(),
-			NewPropertyGaugeMetric(prefix, "name-count", labelNames).WithName("name_count").Build(),
+			NewPropertyCounterMetric(prefix, "match-count", "url").WithName("match_count_total").Build(),
+			NewPropertyGaugeMetric(prefix, "name-count", "url").WithName("name_count").Build(),
 		},
 	}
 }

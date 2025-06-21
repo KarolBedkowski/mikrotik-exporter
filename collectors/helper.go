@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
@@ -50,7 +51,7 @@ func descriptionForPropertyNameHelpText(prefix, property string,
 	)
 }
 
-func description(prefix, name, helpText string, labelNames []string) *prometheus.Desc {
+func description(prefix, name, helpText string, labelNames ...string) *prometheus.Desc {
 	return prometheus.NewDesc(
 		prometheus.BuildFQName(config.Namespace, prefix, metricStringCleanup(name)),
 		helpText,
@@ -271,59 +272,59 @@ type PropertyMetricBuilder struct {
 // NewPropertyCounterMetric create new PropertyMetricBuilder for counter type metric with `prefix` and value from
 // `property` with `labels`. First two labels are generated (device name and address) are added automatically
 // but must be included in list; additional must filled.
-func NewPropertyCounterMetric(prefix, property string, labels []string) *PropertyMetricBuilder {
+func NewPropertyCounterMetric(prefix, property string, labels ...string) *PropertyMetricBuilder {
 	return &PropertyMetricBuilder{
 		prefix:     prefix,
 		property:   property,
 		metricType: metricCounter,
-		labels:     labels,
+		labels:     append([]string{LabelDevName, LabelDevAddress}, labels...),
 	}
 }
 
 // NewPropertyGaugeMetric create new PropertyMetricBuilder for gauge type metric with `prefix` and value from
 // `property` with `labels`. First two labels are generated (device name and address) are added automatically
 // but must be included in list; additional must filled.
-func NewPropertyGaugeMetric(prefix, property string, labels []string) *PropertyMetricBuilder {
+func NewPropertyGaugeMetric(prefix, property string, labels ...string) *PropertyMetricBuilder {
 	return &PropertyMetricBuilder{
 		prefix:     prefix,
 		property:   property,
 		metricType: metricGauge,
-		labels:     labels,
+		labels:     append([]string{LabelDevName, LabelDevAddress}, labels...),
 	}
 }
 
 // NewPropertyRxTxMetric create new PropertyMetricBuilder for two counter type metrics (rx_, tx_) with `prefix`
 // and values from `property`. First two labels are generated (device name and address)
 // are added automatically but must be included in list; additional must filled.
-func NewPropertyRxTxMetric(prefix, property string, labels []string) *PropertyMetricBuilder {
+func NewPropertyRxTxMetric(prefix, property string, labels ...string) *PropertyMetricBuilder {
 	return &PropertyMetricBuilder{
 		prefix:     prefix,
 		property:   property,
 		metricType: metricRxTx,
-		labels:     labels,
+		labels:     append([]string{LabelDevName, LabelDevAddress}, labels...),
 	}
 }
 
 // NewPropertyStatusMetric create new PropertyMetricBuilder that handle each value as separate metric with
 // postfix `_<value>`. Value from property set 1 to matching metrics and 0 to rest.
-func NewPropertyStatusMetric(prefix, property string, labels []string, values ...string) *PropertyMetricBuilder {
+func NewPropertyStatusMetric(prefix, property string, values []string, labels ...string) *PropertyMetricBuilder {
 	return &PropertyMetricBuilder{
 		prefix:     prefix,
 		property:   property,
 		metricType: metricStatus,
-		labels:     labels,
+		labels:     append([]string{LabelDevName, LabelDevAddress}, labels...),
 		values:     values,
 	}
 }
 
 // NewPropertyConstMetric create new PropertyMetricBuilder that set metric to 1 always if `property` is in
 // reply.
-func NewPropertyConstMetric(prefix, property string, labels []string) *PropertyMetricBuilder {
+func NewPropertyConstMetric(prefix, property string, labels ...string) *PropertyMetricBuilder {
 	return &PropertyMetricBuilder{
 		prefix:     prefix,
 		property:   property,
 		metricType: metricConst,
-		labels:     labels,
+		labels:     append([]string{LabelDevName, LabelDevAddress}, labels...),
 	}
 }
 
@@ -366,8 +367,11 @@ func (p *PropertyMetricBuilder) WithRxTxConverter(vc TXRXValueConverter) *Proper
 // / Build create PropertyMetric from configuration.
 func (p *PropertyMetricBuilder) Build() PropertyMetric {
 	p.prepare()
-
 	slog.Debug("build metric", "b", p)
+
+	if err := p.check(); err != nil {
+		slog.Error("build metrics error", "b", p, "err", err)
+	}
 
 	switch p.metricType {
 	case metricCounter:
@@ -433,6 +437,43 @@ func (p *PropertyMetricBuilder) prepare() {
 	}
 }
 
+func (p *PropertyMetricBuilder) check() error {
+	var errs *multierror.Error
+
+	// check for duplicated labels
+	for i, l := range p.labels {
+		if i == 0 {
+			continue
+		}
+
+		for _, ll := range p.labels[:i-1] {
+			if l == ll {
+				errs = multierror.Append(errs, newBuilderError("duplicated label %q", l))
+			}
+		}
+	}
+
+	if !slices.Contains(p.labels, LabelDevName) {
+		errs = multierror.Append(errs, newBuilderError("missing label %q", LabelDevName))
+	}
+
+	if !slices.Contains(p.labels, LabelDevAddress) {
+		errs = multierror.Append(errs, newBuilderError("missing label %q", LabelDevAddress))
+	}
+
+	return errs.ErrorOrNil()
+}
+
+type BuilderError string
+
+func newBuilderError(format string, v ...any) BuilderError {
+	return BuilderError(fmt.Sprintf(format, v...))
+}
+
+func (b BuilderError) Error() string {
+	return string(b)
+}
+
 // --------------------------------------
 
 // RetMetricBuilder build metric collector for `ret` returned value.
@@ -446,12 +487,12 @@ type RetMetricBuilder struct {
 	metricType     metricType
 }
 
-func NewRetGaugeMetric(prefix, property string, labels []string) RetMetricBuilder {
+func NewRetGaugeMetric(prefix, property string, labels ...string) RetMetricBuilder {
 	return RetMetricBuilder{
 		prefix:     prefix,
 		property:   property,
 		metricType: metricGauge,
-		labels:     labels,
+		labels:     append([]string{LabelDevName, LabelDevAddress}, labels...),
 	}
 }
 

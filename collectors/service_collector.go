@@ -22,7 +22,7 @@ func newServiceConnCollector() RouterOSCollector {
 
 	return &serviceConnCollector{
 		metrics: description(prefix, "active_connections_count", "number of active connection for service",
-			[]string{"name", "address", "service"}),
+			LabelDevName, LabelDevAddress, "service"),
 	}
 }
 

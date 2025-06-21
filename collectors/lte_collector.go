@@ -19,15 +19,15 @@ type lteCollector struct {
 func newLteCollector() RouterOSCollector {
 	const prefix = "lte_interface"
 
-	labelNames := []string{"name", "address", "interface", "cell_id", "primary_band"}
+	labelNames := []string{LabelInterface, "cell_id", "primary_band"}
 
 	return &lteCollector{
 		metrics: PropertyMetricList{
-			NewPropertyGaugeMetric(prefix, "rssi", labelNames).Build(),
-			NewPropertyGaugeMetric(prefix, "rsrp", labelNames).Build(),
-			NewPropertyGaugeMetric(prefix, "rsrq", labelNames).Build(),
-			NewPropertyGaugeMetric(prefix, "sinr", labelNames).Build(),
-			NewPropertyGaugeMetric(prefix, "status", labelNames).
+			NewPropertyGaugeMetric(prefix, "rssi", labelNames...).Build(),
+			NewPropertyGaugeMetric(prefix, "rsrp", labelNames...).Build(),
+			NewPropertyGaugeMetric(prefix, "rsrq", labelNames...).Build(),
+			NewPropertyGaugeMetric(prefix, "sinr", labelNames...).Build(),
+			NewPropertyGaugeMetric(prefix, "status", labelNames...).
 				WithName("connected").
 				WithConverter(metricFromLTEStatus).
 				Build(),

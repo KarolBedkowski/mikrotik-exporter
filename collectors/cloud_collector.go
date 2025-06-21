@@ -15,11 +15,9 @@ type cloudCollector struct {
 }
 
 func newCloudCollector() RouterOSCollector {
-	labelNames := []string{"name", "address", "status"}
-
 	return &cloudCollector{
 		// create metrics with postfix and set it to value 1 or 0 according to `status` property.
-		ifaceStatus: NewPropertyConstMetric("cloud", "status", labelNames).Build(),
+		ifaceStatus: NewPropertyConstMetric("cloud", "status", "status").Build(),
 	}
 }
 

@@ -22,33 +22,33 @@ func newIpsecCollector() RouterOSCollector {
 		prefixPeers = "ipsec_active_peers"
 	)
 
-	labels := []string{"src_address", "dst_address", "comment"}
-	labelsPeers := []string{"src_address", "dst_address", "comment", "side"}
+	labels := []string{"src_address", "dst_address", LabelComment}
+	labelsPeers := []string{"src_address", "dst_address", LabelComment, "side"}
 
 	return &ipsecCollector{
 		metrics: PropertyMetricList{
-			NewPropertyGaugeMetric(prefix, "ph2-state", labels).WithConverter(metricFromState).Build(),
-			NewPropertyGaugeMetric(prefix, "invalid", labels).WithConverter(metricFromBool).Build(),
-			NewPropertyGaugeMetric(prefix, "active", labels).WithConverter(metricFromBool).Build(),
+			NewPropertyGaugeMetric(prefix, "ph2-state", labels...).WithConverter(metricFromState).Build(),
+			NewPropertyGaugeMetric(prefix, "invalid", labels...).WithConverter(metricFromBool).Build(),
+			NewPropertyGaugeMetric(prefix, "active", labels...).WithConverter(metricFromBool).Build(),
 		},
 		activePeers: PropertyMetricList{
-			NewPropertyGaugeMetric(prefixPeers, "rx-bytes", labelsPeers).Build(),
-			NewPropertyGaugeMetric(prefixPeers, "tx-bytes", labelsPeers).Build(),
-			NewPropertyGaugeMetric(prefixPeers, "rx-packets", labelsPeers).Build(),
-			NewPropertyGaugeMetric(prefixPeers, "tx-packets", labelsPeers).Build(),
-			NewPropertyGaugeMetric(prefixPeers, "state", labelsPeers).
+			NewPropertyGaugeMetric(prefixPeers, "rx-bytes", labelsPeers...).Build(),
+			NewPropertyGaugeMetric(prefixPeers, "tx-bytes", labelsPeers...).Build(),
+			NewPropertyGaugeMetric(prefixPeers, "rx-packets", labelsPeers...).Build(),
+			NewPropertyGaugeMetric(prefixPeers, "tx-packets", labelsPeers...).Build(),
+			NewPropertyGaugeMetric(prefixPeers, "state", labelsPeers...).
 				WithConverter(metricFromState).
 				WithName("established").
 				Build(),
-			NewPropertyGaugeMetric(prefixPeers, "uptime", labelsPeers).
+			NewPropertyGaugeMetric(prefixPeers, "uptime", labelsPeers...).
 				WithConverter(metricFromDuration).
 				WithName("uptime_seconds").
 				Build(),
-			NewPropertyGaugeMetric(prefixPeers, "last-seen", labelsPeers).
+			NewPropertyGaugeMetric(prefixPeers, "last-seen", labelsPeers...).
 				WithConverter(metricFromDuration).
 				WithName("last_seen_seconds").
 				Build(),
-			NewPropertyGaugeMetric(prefixPeers, "responder", labelsPeers).
+			NewPropertyGaugeMetric(prefixPeers, "responder", labelsPeers...).
 				WithConverter(metricFromBool).
 				Build(),
 		},
