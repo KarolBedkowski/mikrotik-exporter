@@ -45,6 +45,7 @@ func (c *interfaceCollector) Describe(ch chan<- *prometheus.Desc) {
 
 func (c *interfaceCollector) Collect(ctx *CollectorContext) error {
 	reply, err := ctx.client.Run("/interface/print",
+		"?disabled=false",
 		"=.proplist=name,type,disabled,comment,slave,actual-mtu,running,rx-byte,tx-byte,"+
 			"rx-packet,tx-packet,rx-error,tx-error,rx-drop,tx-drop,link-downs,tx-queue-drop")
 	if err != nil {
