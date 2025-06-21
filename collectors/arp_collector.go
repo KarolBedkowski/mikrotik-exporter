@@ -27,10 +27,7 @@ func newARPCollector() RouterOSCollector {
 		metrics: PropertyMetricList{
 			// get mac-address but rename metric to <prefix>_entry, apply labels and use constant value (1)
 			// for all entries
-			NewPropertyGaugeMetric(prefix, "mac-address", labelNames).
-				WithName("entry").
-				WithConverter(metricConstantValue).
-				Build(),
+			NewPropertyConstMetric(prefix, "mac-address", labelNames).WithName("entry").Build(),
 			// get `dynamic` value, convert this bool value to 1/0
 			NewPropertyGaugeMetric(prefix, "dynamic", labelNames).WithConverter(metricFromBool).Build(),
 			NewPropertyGaugeMetric(prefix, "dhcp", labelNames).WithConverter(metricFromBool).Build(),

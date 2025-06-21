@@ -58,9 +58,9 @@ func newCapsmanCollector() RouterOSCollector {
 				WithConverter(metricFromBool).
 				Build(),
 		},
-		interfacesStatus: NewPropertyGaugeMetric(prefixIface, "current-state", ifaceStatusLabelNames).
+		interfacesStatus: NewPropertyConstMetric(prefixIface, "current-state", ifaceStatusLabelNames).
 			WithName("state").
-			WithConverter(metricConstantValue).Build(),
+			Build(),
 		radiosProvisionedDesc: NewPropertyGaugeMetric("capsman", "provisioned", radioLabelNames).
 			WithName("radio_provisioned").
 			WithHelp("Status of provision remote radios").

@@ -29,10 +29,7 @@ func newNeighborCollector() RouterOSCollector {
 
 	return &neighborCollector{
 		metrics: PropertyMetricList{
-			NewPropertyGaugeMetric(prefix, "address", labelNames).
-				WithName("entry").
-				WithConverter(metricConstantValue).
-				Build(),
+			NewPropertyConstMetric(prefix, "address", labelNames).WithName("entry").Build(),
 		},
 	}
 }
