@@ -218,6 +218,31 @@ func (s statusPropertyMetric) Collect(reply *proto.Sentence,
 	return nil
 }
 
+type constPropertyMetric struct {
+	desc     *prometheus.Desc
+	property string
+}
+
+func (p *constPropertyMetric) Describe(ch chan<- *prometheus.Desc) {
+	ch <- p.desc
+}
+
+func (p *constPropertyMetric) Collect(reply *proto.Sentence,
+	ctx *CollectorContext,
+) error {
+	_, ok := reply.Map[p.property]
+	if !ok {
+		ctx.logger.Debug(fmt.Sprintf("property %s value not found", p.property),
+			"property", p.property, "labels", ctx.labels, "reply_map", reply.Map)
+
+		return nil
+	}
+
+	ctx.ch <- prometheus.MustNewConstMetric(p.desc, prometheus.GaugeValue, 1.0, ctx.labels...)
+
+	return nil
+}
+
 // --------------------------------------------
 
 type metricType int
@@ -227,6 +252,7 @@ const (
 	metricGauge
 	metricRxTx
 	metricStatus
+	metricConst
 )
 
 // PropertyMetricBuilder build metric collector that read given property from reply.
@@ -278,6 +304,8 @@ func NewPropertyRxTxMetric(prefix, property string, labels []string) *PropertyMe
 	}
 }
 
+// NewPropertyStatusMetric create new PropertyMetricBuilder that handle each value as separate metric with
+// postfix `_<value>`. Value from property set 1 to matching metrics and 0 to rest.
 func NewPropertyStatusMetric(prefix, property string, labels []string, values ...string) *PropertyMetricBuilder {
 	return &PropertyMetricBuilder{
 		prefix:     prefix,
@@ -285,6 +313,17 @@ func NewPropertyStatusMetric(prefix, property string, labels []string, values ..
 		metricType: metricStatus,
 		labels:     labels,
 		values:     values,
+	}
+}
+
+// NewPropertyConstMetric create new PropertyMetricBuilder that set metric to 1 always if `property` is in
+// reply.
+func NewPropertyConstMetric(prefix, property string, labels []string) *PropertyMetricBuilder {
+	return &PropertyMetricBuilder{
+		prefix:     prefix,
+		property:   property,
+		metricType: metricConst,
+		labels:     labels,
 	}
 }
 
@@ -349,6 +388,11 @@ func (p *PropertyMetricBuilder) Build() PropertyMetric {
 
 	case metricStatus:
 		return newStatusPropertyMetric(p.prefix, p.metricName, p.property, p.metricHelp, p.labels, p.values)
+
+	case metricConst:
+		desc := descriptionForPropertyNameHelpText(p.prefix, p.metricName, p.labels, p.metricHelp)
+
+		return &constPropertyMetric{desc, p.property}
 	}
 
 	panic("unknown metric type")
