@@ -1,5 +1,7 @@
 package collectors
 
+// TODO: skipping disabled; check
+
 import (
 	"fmt"
 	"strconv"
@@ -59,7 +61,7 @@ func (c *wlanIFCollector) Collect(ctx *CollectorContext) error {
 }
 
 func (c *wlanIFCollector) fetchInterfaceNames(ctx *CollectorContext) ([]string, error) {
-	reply, err := ctx.client.Run("/interface/wireless/print", "=.proplist=name")
+	reply, err := ctx.client.Run("/interface/wireless/print", "?disabled=false", "=.proplist=name")
 	if err != nil {
 		return nil, fmt.Errorf("fetch wireless error: %w", err)
 	}
