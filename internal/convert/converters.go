@@ -10,11 +10,12 @@ package convert
 import (
 	"fmt"
 	"math"
-	"mikrotik-exporter/routeros"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
+
+	"mikrotik-exporter/routeros"
 )
 
 var (

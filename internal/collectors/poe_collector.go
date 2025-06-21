@@ -2,8 +2,9 @@ package collectors
 
 import (
 	"fmt"
-	"mikrotik-exporter/internal/metrics"
 	"strings"
+
+	"mikrotik-exporter/internal/metrics"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"

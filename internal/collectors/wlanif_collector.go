@@ -52,7 +52,7 @@ func (c *wlanIFCollector) Collect(ctx *metrics.CollectorContext) error {
 	}
 
 	for _, re := range reply.Re {
-		// skip disabled interfaces without frequency; if there is frequeny - interface is managed by capsman
+		// skip disabled interfaces without frequency; if there is frequency - interface is managed by capsman
 		if re.Map["disabled"] == "true" && re.Map["frequency"] == "" {
 			continue
 		}

@@ -6,6 +6,7 @@ package collectors
 
 import (
 	"fmt"
+
 	"mikrotik-exporter/internal/convert"
 	"mikrotik-exporter/internal/metrics"
 

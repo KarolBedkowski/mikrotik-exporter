@@ -9,9 +9,10 @@ import (
 	"slices"
 
 	"mikrotik-exporter/internal/metrics"
-	routeros "mikrotik-exporter/routeros"
 
 	"github.com/prometheus/client_golang/prometheus"
+
+	routeros "mikrotik-exporter/routeros"
 )
 
 type RouterOSCollector interface {

@@ -6,8 +6,9 @@ package metrics
 import (
 	"fmt"
 	"log/slog"
-	"mikrotik-exporter/internal/config"
 	"slices"
+
+	"mikrotik-exporter/internal/config"
 
 	"github.com/prometheus/client_golang/prometheus"
 

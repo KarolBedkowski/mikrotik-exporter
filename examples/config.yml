@@ -48,62 +48,62 @@ devices:
 # default features (profile)
 features:
   arp: false
-  dns: false
-  dns_adlist: false
+  capsman: true
   certs: true
   cloud: true
   conntrack: true
   dhcp: true
   dhcpl: true
   dhcpv6: true
+  dns: false
+  dns_adlist: false
   firewall: true
   firmware: true
   health: true
+  interface: true
   ip: true
-  routes: true
-  poe: true
-  pools: true
-  optics: true
-  w60g: true
-  wlansta: true
-  capsman: true
-  wlanif: true
-  monitor: true
-  neighbor: false
   ipsec: true
   lte: true
+  monitor: true
+  neighbor: false
   netwatch: true
+  optics: true
+  poe: true
+  pools: true
   queue: true
-  interface: true
-  service: false
+  routes: true
   scripts: false
+  service: false
+  w60g: true
+  wlanif: true
+  wlansta: true
   # always captured
   resource: true
 
 # custom profiles
 profiles:
   router:
+    capsman: true
     certs: true
+    cloud: true
+    conntrack: true
     dhcp: true
     dhcpl: true
-    routes: true
-    pools: true
-    capsman: true
-    conntrack: true
-    health: true
     firewall: true
+    health: true
     monitor: true
-    wlanif: true
     netwatch: true
-    resource: true
-    queue: true
     poe: true
-    cloud: true
-  basic:
+    pools: true
+    queue: true
     resource: true
-    netwatch: true
+    routes: true
     wlanif: true
-    monitor: true
+  basic:
+    cloud: true
     conntrack: true
     health: true
-    cloud: true
+    monitor: true
+    netwatch: true
+    resource: true
+    wlanif: true

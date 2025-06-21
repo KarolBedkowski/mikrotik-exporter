@@ -10,9 +10,10 @@ package metrics
 import (
 	"fmt"
 	"log/slog"
+	"strings"
+
 	"mikrotik-exporter/internal/convert"
 	"mikrotik-exporter/routeros"
-	"strings"
 
 	"github.com/prometheus/client_golang/prometheus"
 )

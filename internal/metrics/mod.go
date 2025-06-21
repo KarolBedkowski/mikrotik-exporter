@@ -1,10 +1,11 @@
 package metrics
 
 import (
-	"mikrotik-exporter/internal/config"
-	"mikrotik-exporter/routeros/proto"
 	"strconv"
 	"strings"
+
+	"mikrotik-exporter/internal/config"
+	"mikrotik-exporter/routeros/proto"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
@@ -48,7 +49,7 @@ func Description(prefix, name, helpText string, labelNames ...string) *prometheu
 // PropertyMetric define metric collector that read values from configured property.
 type PropertyMetric interface {
 	Describe(ch chan<- *prometheus.Desc)
-	Collect(reply *proto.Sentence, ctx *CollectorContext) error
+	Collect(re *proto.Sentence, ctx *CollectorContext) error
 }
 
 // --------------------------------------------

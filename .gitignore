@@ -35,6 +35,7 @@ mikrotik-exporter-*
 test-config.yml
 
 tmp/
+dist/
 
 
 !.gitignore

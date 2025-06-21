@@ -1,3 +1,4 @@
+---
 version: "2"
 linters:
   default: all
@@ -52,8 +53,8 @@ linters:
       - examples$
 formatters:
   enable:
+    # - gci
     - goimports
-    - gci
     - gofumpt
   exclusions:
     generated: lax
@@ -62,3 +63,14 @@ formatters:
       - third_party$
       - builtin$
       - examples$
+  settings:
+    goimports:
+      # A list of prefixes, which, if set, checks import paths
+      # with the given prefixes are grouped after 3rd-party packages.
+      # Default: []
+      local-prefixes:
+        - mikrotik-exporter
+    gofumpt:
+      # Choose whether to use the extra rules.
+      # Default: false
+      extra-rules: true

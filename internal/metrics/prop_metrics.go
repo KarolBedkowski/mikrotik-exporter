@@ -10,10 +10,11 @@ package metrics
 import (
 	"fmt"
 	"log/slog"
-	"mikrotik-exporter/internal/convert"
-	"mikrotik-exporter/routeros/proto"
 	"slices"
 	"strings"
+
+	"mikrotik-exporter/internal/convert"
+	"mikrotik-exporter/routeros/proto"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
