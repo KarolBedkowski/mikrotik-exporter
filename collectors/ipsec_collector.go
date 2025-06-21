@@ -68,7 +68,9 @@ func (c *ipsecCollector) Collect(ctx *CollectorContext) error {
 }
 
 func (c *ipsecCollector) collectPolicy(ctx *CollectorContext) error {
-	reply, err := ctx.client.Run("/ip/ipsec/policy/print", "?disabled=false", "?dynamic=false",
+	reply, err := ctx.client.Run("/ip/ipsec/policy/print",
+		"?disabled=false",
+		"?dynamic=false",
 		"=.proplist=src-address,dst-address,comment,ph2-state,invalid,active")
 	if err != nil {
 		return fmt.Errorf("fetch ipsec policy error: %w", err)

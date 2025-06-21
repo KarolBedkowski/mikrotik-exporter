@@ -28,7 +28,8 @@ func (c *netwatchCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *netwatchCollector) Collect(ctx *CollectorContext) error {
-	reply, err := ctx.client.Run("/tool/netwatch/print", "?disabled=false",
+	reply, err := ctx.client.Run("/tool/netwatch/print",
+		"?disabled=false",
 		"=.proplist=host,comment,status")
 	if err != nil {
 		return fmt.Errorf("fetch netwatch error: %w", err)
