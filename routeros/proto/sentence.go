@@ -1,6 +1,9 @@
 package proto
 
-import "fmt"
+import (
+	"fmt"
+	"log/slog"
+)
 
 // Sentence is a line read from a RouterOS device.
 type Sentence struct {
@@ -35,4 +38,12 @@ func (sen *Sentence) AsList() []Pair {
 	}
 
 	return res
+}
+
+func (sen *Sentence) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.Any("map", sen.Map),
+		slog.String("word", sen.Word),
+		slog.String("tag", sen.Tag),
+	)
 }
