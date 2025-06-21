@@ -16,10 +16,10 @@ type netwatchCollector struct {
 }
 
 func newNetwatchCollector() RouterOSCollector {
-	labelNames := []string{"name", "address", "host", "comment"}
+	labelNames := []string{"name", "address", "host", "comment", "status"}
 
 	return &netwatchCollector{
-		metric: NewPropertyStatusMetric("netwatch", "status", labelNames, "up", "unknown", "down").Build(),
+		metric: NewPropertyConstMetric("netwatch", "status", labelNames).Build(),
 	}
 }
 
@@ -37,7 +37,7 @@ func (c *netwatchCollector) Collect(ctx *CollectorContext) error {
 	var errs *multierror.Error
 
 	for _, re := range reply.Re {
-		lctx := ctx.withLabelsFromMap(re.Map, "host", "comment")
+		lctx := ctx.withLabelsFromMap(re.Map, "host", "comment", "status")
 		if err := c.metric.Collect(re, &lctx); err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("collect error %w", err))
 		}
