@@ -36,7 +36,7 @@ func (c *monitorCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *monitorCollector) Collect(ctx *CollectorContext) error {
-	reply, err := ctx.client.Run("/interface/ethernet/print", "=.proplist=name")
+	reply, err := ctx.client.Run("/interface/ethernet/print", "?disabled=false", "=.proplist=name")
 	if err != nil {
 		return fmt.Errorf("fetch ethernet error: %w", err)
 	}
