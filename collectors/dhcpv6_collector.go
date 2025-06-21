@@ -36,7 +36,7 @@ func (c *dhcpv6Collector) Collect(ctx *CollectorContext) error {
 		return nil
 	}
 
-	reply, err := ctx.client.Run("/ipv6/dhcp-server/print", "=.proplist=name")
+	reply, err := ctx.client.Run("/ipv6/dhcp-server/print", "?disabled=false", "=.proplist=name")
 	if err != nil {
 		return fmt.Errorf("fetch dhcp6 server names error: %w", err)
 	}
