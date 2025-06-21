@@ -54,9 +54,6 @@ func newCapsmanCollector() RouterOSCollector {
 			NewPropertyGaugeMetric(prefixIface, "inactive", ifaceLabelNames).
 				WithConverter(metricFromBool).
 				Build(),
-			NewPropertyGaugeMetric(prefixIface, "disabled", ifaceLabelNames).
-				WithConverter(metricFromBool).
-				Build(),
 		},
 		interfacesStatus: NewPropertyConstMetric(prefixIface, "current-state", ifaceStatusLabelNames).
 			WithName("state").
@@ -106,6 +103,7 @@ func (c *capsmanCollector) collectRegistrations(ctx *CollectorContext) error {
 
 func (c *capsmanCollector) collectInterfaces(ctx *CollectorContext) error {
 	reply, err := ctx.client.Run("/caps-man/interface/print",
+		"?disabled=false",
 		"=.proplist=name,mac-address,configuration,current-state,master-interface,"+
 			"current-authorized-clients,current-registered-clients,running,master,inactive,disabled")
 	if err != nil {
