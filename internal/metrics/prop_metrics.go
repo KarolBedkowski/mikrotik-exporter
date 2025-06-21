@@ -296,8 +296,8 @@ func (p *PropertyMetricBuilder) WithHelp(help string) *PropertyMetricBuilder {
 
 // WithConverter add converter that change value form property to float64.
 func (p *PropertyMetricBuilder) WithConverter(vc ValueConverter) *PropertyMetricBuilder {
-	if p.metricType == metricRxTx {
-		panic("can't set ValueConverter for rxtx metric")
+	if p.metricType != metricCounter && p.metricType != metricGauge {
+		panic("can't set ValueConverter for not counter/gauge metric")
 	}
 
 	p.valueConverter = vc
