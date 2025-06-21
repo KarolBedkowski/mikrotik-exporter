@@ -24,19 +24,19 @@ var (
 	scrapeDurationDesc = prometheus.NewDesc(
 		prometheus.BuildFQName(config.Namespace, "scrape", "collector_duration_seconds"),
 		"mikrotik_exporter: duration of a device collector scrape",
-		[]string{"device"},
+		[]string{"device", "name"},
 		nil,
 	)
 	scrapeSuccessDesc = prometheus.NewDesc(
 		prometheus.BuildFQName(config.Namespace, "scrape", "collector_success"),
 		"mikrotik_exporter: whether a device collector succeeded",
-		[]string{"device"},
+		[]string{"device", "name"},
 		nil,
 	)
 	scrapeErrorsDesc = prometheus.NewDesc(
 		prometheus.BuildFQName(config.Namespace, "scrape", "errors"),
 		"mikrotik_exporter: number of failed collection per device",
-		[]string{"device"},
+		[]string{"device", "name"},
 		nil,
 	)
 )
@@ -314,10 +314,10 @@ func (c *mikrotikCollector) collectFromDevice(d *deviceCollector, ch chan<- prom
 	}
 
 	ch <- prometheus.MustNewConstMetric(scrapeDurationDesc, prometheus.GaugeValue,
-		duration.Seconds(), name)
-	ch <- prometheus.MustNewConstMetric(scrapeSuccessDesc, prometheus.GaugeValue, success, name)
+		duration.Seconds(), name, name)
+	ch <- prometheus.MustNewConstMetric(scrapeSuccessDesc, prometheus.GaugeValue, success, name, name)
 	ch <- prometheus.MustNewConstMetric(scrapeErrorsDesc, prometheus.GaugeValue,
-		float64(numFailed), name)
+		float64(numFailed), name, name)
 }
 
 // --------------------------------------------
