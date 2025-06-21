@@ -56,7 +56,9 @@ func (c *opticsCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *opticsCollector) Collect(ctx *CollectorContext) error {
-	reply, err := ctx.client.Run("/interface/ethernet/print", "=.proplist=name,default-name")
+	reply, err := ctx.client.Run("/interface/ethernet/print",
+		"?disabled=false",
+		"=.proplist=name,default-name")
 	if err != nil {
 		return fmt.Errorf("fetch ethernet error: %w", err)
 	}
