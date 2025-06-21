@@ -29,7 +29,7 @@ var (
 	configFile  = flag.String("config-file", "", "config file to load")
 	device      = flag.String("device", "", "single device to monitor")
 	insecure    = flag.Bool("insecure", false, "skips verification of server certificate when using TLS (not recommended)")
-	logFormat   = flag.String("log-format", "logfmt", "log format logfmt or json (default logfmt)")
+	logFormat   = flag.String("log-format", "", "log format logfmt/json/tint")
 	logLevel    = flag.String("log-level", "info", "log level")
 	metricsPath = flag.String("path", "/metrics", "path to answer requests on")
 	password    = flag.String("password", "", "password for authentication for single device")
