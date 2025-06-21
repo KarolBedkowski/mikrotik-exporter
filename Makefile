@@ -17,7 +17,7 @@ LDFLAGS=\
 
 .PHONY: build
 build:
-	go build -o mikrotik-exporter -ldflags "$(LDFLAGS)" .
+	go build -o mikrotik-exporter -ldflags "$(LDFLAGS)" ./cli/
 
 .PHONY: build_arm64
 build_arm64:

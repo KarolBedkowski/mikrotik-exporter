@@ -1,0 +1,72 @@
+package collectors
+
+import (
+	"fmt"
+
+	"mikrotik-exporter/internal/metrics"
+
+	"github.com/hashicorp/go-multierror"
+	"github.com/prometheus/client_golang/prometheus"
+)
+
+func init() {
+	registerCollector("firewall", newFirewallCollector, "retrieves firewall metrics")
+}
+
+type firewallCollector struct {
+	metrics metrics.PropertyMetricList
+}
+
+func newFirewallCollector() RouterOSCollector {
+	const prefix = "firewall"
+
+	labelNames := []string{"firewall", "chain", metrics.LabelComment}
+
+	return &firewallCollector{
+		metrics: metrics.PropertyMetricList{
+			metrics.NewPropertyCounterMetric(prefix, "packets", labelNames...).Build(),
+			metrics.NewPropertyCounterMetric(prefix, "bytes", labelNames...).Build(),
+		},
+	}
+}
+
+func (c *firewallCollector) Describe(ch chan<- *prometheus.Desc) {
+	c.metrics.Describe(ch)
+}
+
+func (c *firewallCollector) Collect(ctx *metrics.CollectorContext) error {
+	var errs *multierror.Error
+
+	for fw, chains := range ctx.Device.FWCollectorSettings {
+		for _, chain := range chains {
+			errs = multierror.Append(nil,
+				c.collectStats(fw, chain, ctx))
+		}
+	}
+
+	return errs.ErrorOrNil()
+}
+
+func (c *firewallCollector) collectStats(firewall, chain string, ctx *metrics.CollectorContext) error {
+	reply, err := ctx.Client.Run("/ip/firewall/"+firewall+"/print",
+		"=stats=", "=chain="+chain, "?disabled=no",
+		"=.proplist=comment,bytes,packets")
+	if err != nil {
+		return fmt.Errorf("fetch fw stats %s/%s error: %w", firewall, chain, err)
+	}
+
+	var errs *multierror.Error
+
+	for _, re := range reply.Re {
+		if comment := re.Map["comment"]; comment != "" {
+			lctx := ctx.WithLabels(firewall, chain, comment)
+
+			if err := c.metrics.Collect(re, &lctx); err != nil {
+				errs = multierror.Append(errs,
+					fmt.Errorf("collect fw %s/%s error: %w", firewall, chain, err))
+			}
+		}
+	}
+
+	return errs.ErrorOrNil()
+}
