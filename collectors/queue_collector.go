@@ -29,7 +29,6 @@ func newQueueCollector() RouterOSCollector {
 		monitorQueuedPackets: NewPropertyGaugeMetric("queue", "queued-packets", monitorLabelNames).Build(),
 
 		metrics: PropertyMetricList{
-			NewPropertyGaugeMetric(sqPrefix, "disabled", labelNames).WithConverter(metricFromBool).Build(),
 			NewPropertyRxTxMetric(sqPrefix, "packets", labelNames).WithRxTxConverter(metricFromQueueTxRx).Build(),
 			NewPropertyRxTxMetric(sqPrefix, "bytes", labelNames).WithRxTxConverter(metricFromQueueTxRx).Build(),
 			NewPropertyRxTxMetric(sqPrefix, "queued-packets", labelNames).WithRxTxConverter(metricFromQueueTxRx).Build(),
@@ -80,7 +79,8 @@ func (c *queueCollector) collectQueue(ctx *CollectorContext) error {
 
 func (c *queueCollector) collectSimpleQueue(ctx *CollectorContext) error {
 	reply, err := ctx.client.Run("/queue/simple/print",
-		"=.proplist=name,queue,comment,disabled,bytes,packets,queued-bytes,queued-packets")
+		"?disabled=false",
+		"=.proplist=name,queue,comment,bytes,packets,queued-bytes,queued-packets")
 	if err != nil {
 		return fmt.Errorf("fetch simple queue error: %w", err)
 	}
