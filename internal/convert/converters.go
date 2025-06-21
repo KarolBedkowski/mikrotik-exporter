@@ -31,6 +31,14 @@ func init() {
 }
 
 // ----------------------------------------------------------------------------
+type (
+	// ValueConverter convert value from api to metric.
+	ValueConverter func(value string) (float64, error)
+	// TXRXValueConverter convert value from api to metric; dedicated to tx/rx metrics.
+	TXRXValueConverter func(value string) (float64, float64, error)
+)
+
+// ----------------------------------------------------------------------------
 
 func ParseTS(value string) (float64, error) {
 	if value == "" {
@@ -144,4 +152,20 @@ func ExtractPropertyFromReplay(reply *routeros.Reply, name string) []string {
 	}
 
 	return values
+}
+
+// ----------------------------------------------------------------------------
+
+func TruncAfterAt(next ValueConverter) ValueConverter {
+	return func(value string) (float64, error) {
+		if value == "" {
+			return 0.0, ErrEmptyValue
+		}
+
+		if i := strings.Index(value, "@"); i > -1 {
+			value = value[:i]
+		}
+
+		return next(value)
+	}
 }

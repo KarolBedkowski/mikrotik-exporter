@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"mikrotik-exporter/internal/config"
+	"mikrotik-exporter/internal/convert"
 	"mikrotik-exporter/routeros/proto"
 
 	"github.com/hashicorp/go-multierror"
@@ -13,9 +14,9 @@ import (
 
 type (
 	// ValueConverter convert value from api to metric.
-	ValueConverter func(value string) (float64, error)
+	ValueConverter = convert.ValueConverter
 	// TXRXValueConverter convert value from api to metric; dedicated to tx/rx metrics.
-	TXRXValueConverter func(value string) (float64, float64, error)
+	TXRXValueConverter = convert.TXRXValueConverter
 )
 
 // --------------------------------------------

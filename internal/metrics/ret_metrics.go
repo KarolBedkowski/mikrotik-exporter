@@ -20,7 +20,7 @@ import (
 
 // --------------------------------------
 
-// RetMetricBuilder build metric collector for `ret` returned value.
+// RetMetricBuilder build metric collector for `ret` returned value (like count).
 type RetMetricBuilder struct {
 	valueConverter ValueConverter
 	prefix         string

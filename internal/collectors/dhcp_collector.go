@@ -15,15 +15,17 @@ func init() {
 }
 
 type dhcpCollector struct {
-	leasesActiveCount metrics.RetMetric
+	leasesActiveCount metrics.PropertyMetric
 }
 
 func newDHCPCollector() RouterOSCollector {
 	const prefix = "dhcp"
 
 	return &dhcpCollector{
-		leasesActiveCount: metrics.NewRetGaugeMetric(prefix, "leases_active", "server").
+		leasesActiveCount: metrics.NewPropertyGaugeMetric(prefix, "ret", "server").
+			WithName("leases_active").
 			WithHelp("number of active leases per DHCP server").
+			WithConverter(convert.TruncAfterAt(convert.MetricFromString)).
 			Build(),
 	}
 }
@@ -57,7 +59,7 @@ func (c *dhcpCollector) collectForDHCPServer(ctx *metrics.CollectorContext, dhcp
 
 	lctx := ctx.WithLabels(dhcpServer)
 
-	if err := c.leasesActiveCount.Collect(reply, &lctx); err != nil {
+	if err := c.leasesActiveCount.Collect(reply.Done, &lctx); err != nil {
 		return fmt.Errorf("collect active leases for %s error: %w", dhcpServer, err)
 	}
 
