@@ -32,7 +32,7 @@ func (c *dhcpCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *dhcpCollector) Collect(ctx *CollectorContext) error {
-	reply, err := ctx.client.Run("/ip/dhcp-server/print", "=.proplist=name")
+	reply, err := ctx.client.Run("/ip/dhcp-server/print", "?disabled=false", "=.proplist=name")
 	if err != nil {
 		return fmt.Errorf("fetch dhcp-server error: %w", err)
 	}
