@@ -2,9 +2,9 @@ package collectors
 
 import (
 	"fmt"
-	"strings"
-
+	"mikrotik-exporter/internal/convert"
 	"mikrotik-exporter/internal/metrics"
+	"strings"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
@@ -47,7 +47,7 @@ func (c *lteCollector) Collect(ctx *metrics.CollectorContext) error {
 		return fmt.Errorf("fetch lte interface names error: %w", err)
 	}
 
-	names := metrics.ExtractPropertyFromReplay(reply, "name")
+	names := convert.ExtractPropertyFromReplay(reply, "name")
 
 	var errs *multierror.Error
 

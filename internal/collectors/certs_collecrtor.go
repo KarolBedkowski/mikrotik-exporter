@@ -6,7 +6,7 @@ package collectors
 
 import (
 	"fmt"
-
+	"mikrotik-exporter/internal/convert"
 	"mikrotik-exporter/internal/metrics"
 
 	"github.com/hashicorp/go-multierror"
@@ -28,7 +28,7 @@ func newCertsCollector() RouterOSCollector {
 
 	return &certsCollector{
 		metrics: metrics.PropertyMetricList{
-			metrics.NewPropertyGaugeMetric(prefix, "invalid-after", labelNames...).WithConverter(metrics.ParseTS).Build(),
+			metrics.NewPropertyGaugeMetric(prefix, "invalid-after", labelNames...).WithConverter(convert.ParseTS).Build(),
 		},
 	}
 }

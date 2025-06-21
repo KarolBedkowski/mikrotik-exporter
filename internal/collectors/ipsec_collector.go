@@ -2,7 +2,7 @@ package collectors
 
 import (
 	"fmt"
-
+	"mikrotik-exporter/internal/convert"
 	"mikrotik-exporter/internal/metrics"
 
 	"github.com/hashicorp/go-multierror"
@@ -30,8 +30,8 @@ func newIpsecCollector() RouterOSCollector {
 	return &ipsecCollector{
 		metrics: metrics.PropertyMetricList{
 			metrics.NewPropertyGaugeMetric(prefix, "ph2-state", labels...).WithConverter(metricFromState).Build(),
-			metrics.NewPropertyGaugeMetric(prefix, "invalid", labels...).WithConverter(metrics.MetricFromBool).Build(),
-			metrics.NewPropertyGaugeMetric(prefix, "active", labels...).WithConverter(metrics.MetricFromBool).Build(),
+			metrics.NewPropertyGaugeMetric(prefix, "invalid", labels...).WithConverter(convert.MetricFromBool).Build(),
+			metrics.NewPropertyGaugeMetric(prefix, "active", labels...).WithConverter(convert.MetricFromBool).Build(),
 		},
 		activePeers: metrics.PropertyMetricList{
 			metrics.NewPropertyGaugeMetric(prefixPeers, "rx-bytes", labelsPeers...).Build(),
@@ -43,15 +43,15 @@ func newIpsecCollector() RouterOSCollector {
 				WithName("established").
 				Build(),
 			metrics.NewPropertyGaugeMetric(prefixPeers, "uptime", labelsPeers...).
-				WithConverter(metrics.MetricFromDuration).
+				WithConverter(convert.MetricFromDuration).
 				WithName("uptime_seconds").
 				Build(),
 			metrics.NewPropertyGaugeMetric(prefixPeers, "last-seen", labelsPeers...).
-				WithConverter(metrics.MetricFromDuration).
+				WithConverter(convert.MetricFromDuration).
 				WithName("last_seen_seconds").
 				Build(),
 			metrics.NewPropertyGaugeMetric(prefixPeers, "responder", labelsPeers...).
-				WithConverter(metrics.MetricFromBool).
+				WithConverter(convert.MetricFromBool).
 				Build(),
 		},
 	}

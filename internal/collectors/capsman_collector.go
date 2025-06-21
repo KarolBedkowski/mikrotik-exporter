@@ -36,7 +36,7 @@ func newCapsmanCollector() RouterOSCollector {
 	return &capsmanCollector{
 		metrics: metrics.PropertyMetricList{
 			metrics.NewPropertyCounterMetric(prefix, "uptime", labelNames...).
-				WithConverter(metrics.MetricFromDuration).
+				WithConverter(convert.MetricFromDuration).
 				WithName("uptime_seconds").
 				Build(),
 			metrics.NewPropertyGaugeMetric(prefix, "tx-signal", labelNames...).Build(),
@@ -48,13 +48,13 @@ func newCapsmanCollector() RouterOSCollector {
 			metrics.NewPropertyGaugeMetric(prefixIface, "current-authorized-clients", ifaceLabelNames...).Build(),
 			metrics.NewPropertyGaugeMetric(prefixIface, "current-registered-clients", ifaceLabelNames...).Build(),
 			metrics.NewPropertyGaugeMetric(prefixIface, "running", ifaceLabelNames...).
-				WithConverter(metrics.MetricFromBool).
+				WithConverter(convert.MetricFromBool).
 				Build(),
 			metrics.NewPropertyGaugeMetric(prefixIface, "master", ifaceLabelNames...).
-				WithConverter(metrics.MetricFromBool).
+				WithConverter(convert.MetricFromBool).
 				Build(),
 			metrics.NewPropertyGaugeMetric(prefixIface, "inactive", ifaceLabelNames...).
-				WithConverter(metrics.MetricFromBool).
+				WithConverter(convert.MetricFromBool).
 				Build(),
 		},
 		interfacesStatus: metrics.NewPropertyConstMetric(prefixIface, "current-state", ifaceStatusLabelNames...).
@@ -63,7 +63,7 @@ func newCapsmanCollector() RouterOSCollector {
 		radiosProvisionedDesc: metrics.NewPropertyGaugeMetric("capsman", "provisioned", radioLabelNames...).
 			WithName("radio_provisioned").
 			WithHelp("Status of provision remote radios").
-			WithConverter(metrics.MetricFromBool).
+			WithConverter(convert.MetricFromBool).
 			Build(),
 	}
 }

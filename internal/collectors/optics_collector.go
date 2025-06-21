@@ -2,6 +2,7 @@ package collectors
 
 import (
 	"fmt"
+	"mikrotik-exporter/internal/convert"
 	"mikrotik-exporter/internal/metrics"
 	"strings"
 
@@ -27,11 +28,11 @@ func newOpticsCollector() RouterOSCollector {
 		metrics: metrics.PropertyMetricList{
 			metrics.NewPropertyGaugeMetric(prefix, "sfp-rx-loss", metrics.LabelInterface).
 				WithHelp("RX status").
-				WithConverter(metrics.MetricFromBool).
+				WithConverter(convert.MetricFromBool).
 				Build(),
 			metrics.NewPropertyGaugeMetric(prefix, "sfp-tx-fault", metrics.LabelInterface).
 				WithHelp("TX status").
-				WithConverter(metrics.MetricFromBool).
+				WithConverter(convert.MetricFromBool).
 				Build(),
 			metrics.NewPropertyGaugeMetric(prefix, "sfp-rx-power", metrics.LabelInterface).
 				WithHelp("RX power in dBM").

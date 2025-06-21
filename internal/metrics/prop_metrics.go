@@ -1,73 +1,23 @@
 package metrics
 
+//
+// prop_metrics.go
+// Copyright (C) 2025 Karol Będkowski <Karol Będkowski@kkomp>
+//
+// Distributed under terms of the GPLv3 license.
+//
+
 import (
-	"errors"
 	"fmt"
 	"log/slog"
+	"mikrotik-exporter/internal/convert"
+	"mikrotik-exporter/routeros/proto"
 	"slices"
 	"strings"
-
-	"mikrotik-exporter/internal/config"
-	"mikrotik-exporter/routeros"
-	"mikrotik-exporter/routeros/proto"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
 )
-
-var (
-	ErrEmptyValue      = errors.New("empty value")
-	ErrInvalidDuration = errors.New("invalid duration value sent to regex")
-)
-
-type (
-	// ValueConverter convert value from api to metric.
-	ValueConverter func(value string) (float64, error)
-	// TXRXValueConverter convert value from api to metric; dedicated to tx/rx metrics.
-	TXRXValueConverter func(value string) (float64, float64, error)
-)
-
-// --------------------------------------------
-
-type InvalidInputError string
-
-func (i InvalidInputError) Error() string {
-	return "invalid input: " + string(i)
-}
-
-// --------------------------------------------
-
-func descriptionForPropertyName(prefix, property string, labelNames []string) *prometheus.Desc { //nolint:unused
-	return descriptionForPropertyNameHelpText(prefix, property, labelNames, property)
-}
-
-func descriptionForPropertyNameHelpText(prefix, property string,
-	labelNames []string, helpText string,
-) *prometheus.Desc {
-	return prometheus.NewDesc(
-		prometheus.BuildFQName(config.Namespace, prefix, MetricStringCleanup(property)),
-		helpText,
-		labelNames,
-		nil,
-	)
-}
-
-func Description(prefix, name, helpText string, labelNames ...string) *prometheus.Desc {
-	return prometheus.NewDesc(
-		prometheus.BuildFQName(config.Namespace, prefix, MetricStringCleanup(name)),
-		helpText,
-		labelNames,
-		nil,
-	)
-}
-
-// --------------------------------------
-
-// PropertyMetric define metric collector that read values from configured property.
-type PropertyMetric interface {
-	Describe(ch chan<- *prometheus.Desc)
-	Collect(reply *proto.Sentence, ctx *CollectorContext) error
-}
 
 // --------------------------------------
 
@@ -111,6 +61,8 @@ func (p *simplePropertyMetric) Collect(reply *proto.Sentence, ctx *CollectorCont
 	return nil
 }
 
+// --------------------------------------------
+
 // rxTxPropertyMetric collect counter metrics from given property and put it into two metrics _tx i _rx.
 type rxTxPropertyMetric struct {
 	rxDesc         *prometheus.Desc
@@ -149,6 +101,8 @@ func (p rxTxPropertyMetric) Collect(reply *proto.Sentence, ctx *CollectorContext
 
 	return nil
 }
+
+// --------------------------------------------
 
 type statusPropertyMetricDV struct {
 	value string
@@ -214,6 +168,8 @@ func (s statusPropertyMetric) Collect(reply *proto.Sentence, ctx *CollectorConte
 	return nil
 }
 
+// --------------------------------------------
+
 type constPropertyMetric struct {
 	desc     *prometheus.Desc
 	property string
@@ -237,7 +193,7 @@ func (p *constPropertyMetric) Collect(reply *proto.Sentence, ctx *CollectorConte
 	return nil
 }
 
-// --------------------------------------------
+// ----------------------------------------------------------------------------
 
 type metricType int
 
@@ -248,6 +204,8 @@ const (
 	metricStatus
 	metricConst
 )
+
+// --------------------------------------------
 
 // PropertyMetricBuilder build metric collector that read given property from reply.
 type PropertyMetricBuilder struct {
@@ -422,11 +380,11 @@ func (p *PropertyMetricBuilder) prepare() {
 	}
 
 	if p.valueConverter == nil {
-		p.valueConverter = MetricFromString
+		p.valueConverter = convert.MetricFromString
 	}
 
 	if p.rxTxValueConverter == nil {
-		p.rxTxValueConverter = SplitStringToFloatsOnComma
+		p.rxTxValueConverter = convert.SplitStringToFloatsOnComma
 	}
 }
 
@@ -455,184 +413,4 @@ func (p *PropertyMetricBuilder) check() error {
 	}
 
 	return errs.ErrorOrNil()
-}
-
-type BuilderError string
-
-func newBuilderError(format string, v ...any) BuilderError {
-	return BuilderError(fmt.Sprintf(format, v...))
-}
-
-func (b BuilderError) Error() string {
-	return string(b)
-}
-
-// --------------------------------------
-
-// RetMetricBuilder build metric collector for `ret` returned value.
-type RetMetricBuilder struct {
-	valueConverter ValueConverter
-	prefix         string
-	property       string
-	metricName     string
-	metricHelp     string
-	labels         []string
-	metricType     metricType
-}
-
-func NewRetGaugeMetric(prefix, property string, labels ...string) RetMetricBuilder {
-	return RetMetricBuilder{
-		prefix:     prefix,
-		property:   property,
-		metricType: metricGauge,
-		labels:     append([]string{LabelDevName, LabelDevAddress}, labels...),
-	}
-}
-
-func (r RetMetricBuilder) WithName(name string) RetMetricBuilder {
-	r.metricName = name
-
-	return r
-}
-
-func (r RetMetricBuilder) WithHelp(help string) RetMetricBuilder {
-	r.metricHelp = help
-
-	return r
-}
-
-func (r RetMetricBuilder) WithConverter(vc ValueConverter) RetMetricBuilder {
-	r.valueConverter = vc
-
-	return r
-}
-
-func (r RetMetricBuilder) Build() RetMetric {
-	metricName := r.metricName
-	if metricName == "" {
-		metricName = r.property
-		if r.metricType == metricCounter {
-			metricName += "_total"
-		}
-	}
-
-	metricHelp := r.metricHelp
-	if metricHelp == "" {
-		metricHelp = r.property + " for " + r.prefix
-	}
-
-	valueConverter := MetricFromString
-	if r.valueConverter != nil {
-		valueConverter = r.valueConverter
-	}
-
-	slog.Debug("build metric",
-		"name", metricName,
-		"help", metricHelp,
-		"prefix", r.prefix,
-		"labels", fmt.Sprintf("%v", r.labels),
-		"type", r.metricType,
-		"property", r.property,
-	)
-
-	if r.metricType == metricGauge {
-		desc := descriptionForPropertyNameHelpText(r.prefix, metricName, r.labels, metricHelp)
-
-		return &retGaugeCollector{desc, valueConverter, r.property}
-	}
-
-	panic("unknown metric type")
-}
-
-// --------------------------------------
-
-// RetMetric collect metrics from `ret` value returned in reply.
-type RetMetric interface {
-	Describe(ch chan<- *prometheus.Desc)
-	Collect(reply *routeros.Reply, ctx *CollectorContext) error
-}
-
-type retGaugeCollector struct {
-	desc           *prometheus.Desc
-	valueConverter ValueConverter
-	property       string
-}
-
-func (r *retGaugeCollector) Describe(ch chan<- *prometheus.Desc) {
-	ch <- r.desc
-}
-
-func (r *retGaugeCollector) Collect(reply *routeros.Reply, ctx *CollectorContext) error {
-	propertyVal := reply.Done.Map["ret"]
-	if propertyVal == "" {
-		return nil
-	}
-
-	if i := strings.Index(propertyVal, "@"); i > -1 {
-		propertyVal = propertyVal[:i]
-	}
-
-	value, err := r.valueConverter(propertyVal)
-	if err != nil {
-		return fmt.Errorf("parse ret value %v error: %w", propertyVal, err)
-	}
-
-	ctx.Ch <- prometheus.MustNewConstMetric(r.desc, prometheus.GaugeValue, value, ctx.Labels...)
-
-	return nil
-}
-
-// --------------------------------------
-
-// metrics.PropertyMetricList is list of PropertyMetric that can be collected at once.
-type PropertyMetricList []PropertyMetric
-
-func (p PropertyMetricList) Describe(ch chan<- *prometheus.Desc) {
-	for _, m := range p {
-		m.Describe(ch)
-	}
-}
-
-func (p PropertyMetricList) Collect(re *proto.Sentence, ctx *CollectorContext) error {
-	var errs *multierror.Error
-
-	for _, m := range p {
-		if err := m.Collect(re, ctx); err != nil {
-			errs = multierror.Append(errs, err)
-		}
-	}
-
-	return errs.ErrorOrNil()
-}
-
-// --------------------------------------------
-
-// ExtractPropertyFromReplay get all values from reply for property `name`.
-func ExtractPropertyFromReplay(reply *routeros.Reply, name string) []string { //nolint:unparam
-	values := make([]string, 0, len(reply.Re))
-
-	for _, re := range reply.Re {
-		values = append(values, re.Map[name])
-	}
-
-	return values
-}
-
-// --------------------------------------------
-
-func CountByProperty(re []*proto.Sentence, property string) map[string]int {
-	counter := make(map[string]int)
-
-	for _, re := range re {
-		pool := re.Map[property]
-		cnt := 1
-
-		if count, ok := counter[pool]; ok {
-			cnt = count + 1
-		}
-
-		counter[pool] = cnt
-	}
-
-	return counter
 }

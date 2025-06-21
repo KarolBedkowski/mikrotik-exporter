@@ -31,11 +31,11 @@ func newARPCollector() RouterOSCollector {
 			// for all entries
 			metrics.NewPropertyConstMetric(prefix, "mac-address", labelNames...).WithName("entry").Build(),
 			// get `dynamic` value, convert this bool value to 1/0
-			metrics.NewPropertyGaugeMetric(prefix, "dynamic", labelNames...).WithConverter(metrics.MetricFromBool).Build(),
-			metrics.NewPropertyGaugeMetric(prefix, "dhcp", labelNames...).WithConverter(metrics.MetricFromBool).Build(),
-			metrics.NewPropertyGaugeMetric(prefix, "invalid", labelNames...).WithConverter(metrics.MetricFromBool).Build(),
-			metrics.NewPropertyGaugeMetric(prefix, "published", labelNames...).WithConverter(metrics.MetricFromBool).Build(),
-			metrics.NewPropertyGaugeMetric(prefix, "complete", labelNames...).WithConverter(metrics.MetricFromBool).Build(),
+			metrics.NewPropertyGaugeMetric(prefix, "dynamic", labelNames...).WithConverter(convert.MetricFromBool).Build(),
+			metrics.NewPropertyGaugeMetric(prefix, "dhcp", labelNames...).WithConverter(convert.MetricFromBool).Build(),
+			metrics.NewPropertyGaugeMetric(prefix, "invalid", labelNames...).WithConverter(convert.MetricFromBool).Build(),
+			metrics.NewPropertyGaugeMetric(prefix, "published", labelNames...).WithConverter(convert.MetricFromBool).Build(),
+			metrics.NewPropertyGaugeMetric(prefix, "complete", labelNames...).WithConverter(convert.MetricFromBool).Build(),
 		},
 		statuses: metrics.NewPropertyConstMetric(prefix, "mac-address", statusLabelNames...).WithName("status").Build(),
 	}

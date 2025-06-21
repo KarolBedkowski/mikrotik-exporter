@@ -6,15 +6,14 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
+	"mikrotik-exporter/internal/collector"
+	"mikrotik-exporter/internal/collectors"
+	"mikrotik-exporter/internal/config"
 	"net/http"
 	"os"
 	"sort"
 	"strings"
 	"time"
-
-	"mikrotik-exporter/internal/collector"
-	"mikrotik-exporter/internal/collectors"
-	"mikrotik-exporter/internal/config"
 
 	"github.com/coreos/go-systemd/v22/daemon"
 	"github.com/prometheus/client_golang/prometheus"

@@ -2,9 +2,9 @@ package collectors
 
 import (
 	"fmt"
-	"strings"
-
+	"mikrotik-exporter/internal/convert"
 	"mikrotik-exporter/internal/metrics"
+	"strings"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
@@ -48,7 +48,7 @@ func (c *w60gInterfaceCollector) Collect(ctx *metrics.CollectorContext) error {
 		return fmt.Errorf("fetch w60g error: %w", err)
 	}
 
-	ifaces := metrics.ExtractPropertyFromReplay(reply, "name")
+	ifaces := convert.ExtractPropertyFromReplay(reply, "name")
 	if len(ifaces) == 0 {
 		return nil
 	}

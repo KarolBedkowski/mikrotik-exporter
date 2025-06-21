@@ -2,7 +2,7 @@ package collectors
 
 import (
 	"fmt"
-
+	"mikrotik-exporter/internal/convert"
 	"mikrotik-exporter/internal/metrics"
 
 	"github.com/hashicorp/go-multierror"
@@ -32,8 +32,12 @@ func newQueueCollector() RouterOSCollector {
 		metrics: metrics.PropertyMetricList{
 			metrics.NewPropertyRxTxMetric(sqPrefix, "packets", labelNames...).WithRxTxConverter(metricFromQueueTxRx).Build(),
 			metrics.NewPropertyRxTxMetric(sqPrefix, "bytes", labelNames...).WithRxTxConverter(metricFromQueueTxRx).Build(),
-			metrics.NewPropertyRxTxMetric(sqPrefix, "queued-packets", labelNames...).WithRxTxConverter(metricFromQueueTxRx).Build(),
-			metrics.NewPropertyRxTxMetric(sqPrefix, "queued-bytes", labelNames...).WithRxTxConverter(metricFromQueueTxRx).Build(),
+			metrics.NewPropertyRxTxMetric(sqPrefix, "queued-packets", labelNames...).
+				WithRxTxConverter(metricFromQueueTxRx).
+				Build(),
+			metrics.NewPropertyRxTxMetric(sqPrefix, "queued-bytes", labelNames...).
+				WithRxTxConverter(metricFromQueueTxRx).
+				Build(),
 		},
 	}
 }
@@ -52,7 +56,7 @@ func (c *queueCollector) Collect(ctx *metrics.CollectorContext) error {
 }
 
 func metricFromQueueTxRx(value string) (float64, float64, error) {
-	return metrics.SplitStringToFloats(value, "/")
+	return convert.SplitStringToFloats(value, "/") //nolint:wrapcheck
 }
 
 func (c *queueCollector) collectQueue(ctx *metrics.CollectorContext) error {

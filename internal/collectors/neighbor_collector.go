@@ -24,8 +24,9 @@ func newNeighborCollector() RouterOSCollector {
 	// values for first two labels (dev_name and dev_address) are added automatically;
 	// rest must be loaded in Collect.
 	labelNames := []string{
-		"about", "address4", "discovered-by", metrics.LabelInterface, "ipv6", "platform", "software-id", "version", "neighbor-address",
-		"address6", "board", "identity", "interface-name", "mac-address", "system-caps", "system-description",
+		"about", "address4", "discovered-by", metrics.LabelInterface, "ipv6", "platform", "software-id", "version",
+		"neighbor-address", "address6", "board", "identity", "interface-name", "mac-address", "system-caps",
+		"system-description",
 	}
 
 	return &neighborCollector{

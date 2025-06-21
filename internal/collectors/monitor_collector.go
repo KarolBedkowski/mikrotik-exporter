@@ -2,9 +2,9 @@ package collectors
 
 import (
 	"fmt"
-	"strings"
-
+	"mikrotik-exporter/internal/convert"
 	"mikrotik-exporter/internal/metrics"
+	"strings"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
@@ -26,7 +26,9 @@ func newMonitorCollector() RouterOSCollector {
 		metrics: metrics.PropertyMetricList{
 			metrics.NewPropertyGaugeMetric(prefix, "status", metrics.LabelInterface).WithConverter(metricFromLinkStatus).Build(),
 			metrics.NewPropertyGaugeMetric(prefix, "rate", metrics.LabelInterface).WithConverter(metricFromRate).Build(),
-			metrics.NewPropertyGaugeMetric(prefix, "full-duplex", metrics.LabelInterface).WithConverter(metrics.MetricFromBool).Build(),
+			metrics.NewPropertyGaugeMetric(prefix, "full-duplex", metrics.LabelInterface).
+				WithConverter(convert.MetricFromBool).
+				Build(),
 		},
 	}
 }
@@ -41,7 +43,7 @@ func (c *monitorCollector) Collect(ctx *metrics.CollectorContext) error {
 		return fmt.Errorf("fetch ethernet error: %w", err)
 	}
 
-	eths := metrics.ExtractPropertyFromReplay(reply, "name")
+	eths := convert.ExtractPropertyFromReplay(reply, "name")
 
 	return c.collectForMonitor(eths, ctx)
 }

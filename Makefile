@@ -23,7 +23,7 @@ build:
 build_arm64:
 	GOARCH=arm64 \
 	GOOS=linux \
-	go build -v -o mikrotik-exporter-linux-arm64  --ldflags "$(LDFLAGS)"
+	go build -v -o mikrotik-exporter-linux-arm64  --ldflags "$(LDFLAGS)" ./cli/
 
 .PHONY: run
 run:

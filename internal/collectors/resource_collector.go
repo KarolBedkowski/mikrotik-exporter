@@ -2,7 +2,7 @@ package collectors
 
 import (
 	"fmt"
-
+	"mikrotik-exporter/internal/convert"
 	"mikrotik-exporter/internal/metrics"
 	"mikrotik-exporter/routeros/proto"
 
@@ -34,7 +34,7 @@ func newResourceCollector() RouterOSCollector {
 			metrics.NewPropertyGaugeMetric(prefix, "bad-blocks").Build(),
 			metrics.NewPropertyCounterMetric(prefix, "uptime").
 				WithName("uptime_seconds").
-				WithConverter(metrics.MetricFromDuration).
+				WithConverter(convert.MetricFromDuration).
 				Build(),
 			metrics.NewPropertyGaugeMetric(prefix, "cpu-count").Build(),
 		},

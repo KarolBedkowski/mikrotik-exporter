@@ -2,7 +2,7 @@ package collectors
 
 import (
 	"fmt"
-
+	"mikrotik-exporter/internal/convert"
 	"mikrotik-exporter/internal/metrics"
 
 	"github.com/hashicorp/go-multierror"
@@ -28,14 +28,14 @@ func newWireguardCollector() RouterOSCollector {
 	return &wireguardCollector{
 		peers: metrics.PropertyMetricList{
 			metrics.NewPropertyGaugeMetric(prefix, "last-handshake", peerLabelNames...).
-				WithConverter(metrics.MetricFromDuration).
+				WithConverter(convert.MetricFromDuration).
 				Build(),
 			metrics.NewPropertyCounterMetric(prefix, "rx", peerLabelNames...).Build(),
 			metrics.NewPropertyCounterMetric(prefix, "tx", peerLabelNames...).Build(),
 		},
 		wg: metrics.PropertyMetricList{
 			metrics.NewPropertyGaugeMetric(prefix, "running", wgLabelNames...).
-				WithConverter(metrics.MetricFromBool).
+				WithConverter(convert.MetricFromBool).
 				Build(),
 		},
 	}

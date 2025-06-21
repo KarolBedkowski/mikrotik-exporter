@@ -1,4 +1,4 @@
-package metrics
+package convert
 
 //
 // converters.go
@@ -10,6 +10,7 @@ package metrics
 import (
 	"fmt"
 	"math"
+	"mikrotik-exporter/routeros"
 	"regexp"
 	"strconv"
 	"strings"
@@ -28,6 +29,8 @@ func init() {
 	}
 }
 
+// ----------------------------------------------------------------------------
+
 func ParseTS(value string) (float64, error) {
 	if value == "" {
 		return 0.0, nil
@@ -41,22 +44,12 @@ func ParseTS(value string) (float64, error) {
 	return float64(t.Unix()), nil
 }
 
-func MetricStringCleanup(in string) string {
-	return strings.ReplaceAll(in, "-", "_")
-}
+// ----------------------------------------------------------------------------
 
-func CleanHostName(hostname string) string {
-	if hostname != "" {
-		if hostname[0] == '"' {
-			hostname = hostname[1 : len(hostname)-1]
-		}
-
-		// QuoteToASCII because of broken DHCP clients
-		hostname = strconv.QuoteToASCII(hostname)
-		hostname = hostname[1 : len(hostname)-1]
+func SplitStringToFloatsOn(sep string) func(string) (float64, float64, error) {
+	return func(metric string) (float64, float64, error) {
+		return SplitStringToFloats(metric, sep)
 	}
-
-	return hostname
 }
 
 // splitStringToFloatsOnComma get two floats from `metric` separated by comma.
@@ -65,7 +58,7 @@ func SplitStringToFloatsOnComma(metric string) (float64, float64, error) {
 }
 
 // splitStringToFloats split `metric` to two floats on `separator.
-func SplitStringToFloats(metric string, separator string) (float64, float64, error) {
+func SplitStringToFloats(metric, separator string) (float64, float64, error) {
 	if metric == "" {
 		return math.NaN(), math.NaN(), ErrEmptyValue
 	}
@@ -90,6 +83,8 @@ func SplitStringToFloats(metric string, separator string) (float64, float64, err
 
 	return m1, m2, nil
 }
+
+// ----------------------------------------------------------------------------
 
 // metricFromDuration convert formatted `duration` to duration in seconds as float64.
 func MetricFromDuration(duration string) (float64, error) {
@@ -135,4 +130,17 @@ func MetricConstantValue(value string) (float64, error) {
 	_ = value
 
 	return 1.0, nil
+}
+
+// ----------------------------------------------------------------------------
+
+// ExtractPropertyFromReplay get all values from reply for property `name`.
+func ExtractPropertyFromReplay(reply *routeros.Reply, name string) []string {
+	values := make([]string, 0, len(reply.Re))
+
+	for _, re := range reply.Re {
+		values = append(values, re.Map[name])
+	}
+
+	return values
 }

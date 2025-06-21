@@ -2,7 +2,7 @@ package collectors
 
 import (
 	"fmt"
-
+	"mikrotik-exporter/internal/convert"
 	"mikrotik-exporter/internal/metrics"
 
 	"github.com/hashicorp/go-multierror"
@@ -20,7 +20,8 @@ type scriptCollector struct {
 
 func newScriptCollector() RouterOSCollector {
 	return &scriptCollector{
-		metric: metrics.Description("", "script", "metrics from scripts", metrics.LabelDevName, metrics.LabelDevAddress, "script"),
+		metric: metrics.Description("", "script", "metrics from scripts",
+			metrics.LabelDevName, metrics.LabelDevAddress, "script"),
 	}
 }
 
@@ -44,7 +45,7 @@ func (c *scriptCollector) collectScript(ctx *metrics.CollectorContext, script st
 	}
 
 	if v, ok := reply.Done.Map["ret"]; ok {
-		value, err := metrics.MetricFromString(v)
+		value, err := convert.MetricFromString(v)
 		if err != nil {
 			return fmt.Errorf("parse script %s result %v error: %w", script, v, err)
 		}

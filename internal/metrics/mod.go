@@ -1,85 +1,95 @@
 package metrics
 
-//
-// mod.go
-// Copyright (C) 2024 Karol Będkowski <Karol Będkowski@kkomp>.
 import (
-	"log/slog"
-	"slices"
-
 	"mikrotik-exporter/internal/config"
-	routeros "mikrotik-exporter/routeros"
+	"mikrotik-exporter/routeros/proto"
+	"strconv"
+	"strings"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-// ----------------------------------------------------------------------------
+type (
+	// ValueConverter convert value from api to metric.
+	ValueConverter func(value string) (float64, error)
+	// TXRXValueConverter convert value from api to metric; dedicated to tx/rx metrics.
+	TXRXValueConverter func(value string) (float64, float64, error)
+)
 
-type CollectorContext struct {
-	Ch        chan<- prometheus.Metric
-	Device    *config.Device
-	Client    *routeros.Client
-	collector string
+// --------------------------------------------
 
-	Logger *slog.Logger
-
-	Labels []string
+func descriptionForPropertyName(prefix, property string, labelNames []string) *prometheus.Desc { //nolint:unused
+	return descriptionForPropertyNameHelpText(prefix, property, labelNames, property)
 }
 
-func NewCollectorContext(ch chan<- prometheus.Metric, device *config.Device, client *routeros.Client,
-	collector string, logger *slog.Logger,
-) CollectorContext {
-	return CollectorContext{
-		Ch:        ch,
-		Device:    device,
-		Client:    client,
-		collector: collector,
-		Labels:    []string{device.Name, device.Address},
-		Logger:    logger,
-	}
+func descriptionForPropertyNameHelpText(prefix, property string,
+	labelNames []string, helpText string,
+) *prometheus.Desc {
+	return prometheus.NewDesc(
+		prometheus.BuildFQName(config.Namespace, prefix, MetricStringCleanup(property)),
+		helpText,
+		labelNames,
+		nil,
+	)
 }
 
-func (c CollectorContext) WithLabels(labels ...string) CollectorContext {
-	return CollectorContext{
-		Ch:        c.Ch,
-		Device:    c.Device,
-		Client:    c.Client,
-		collector: c.collector,
-		Labels:    append([]string{c.Device.Name, c.Device.Address}, labels...),
-		Logger:    c.Logger,
-	}
+func Description(prefix, name, helpText string, labelNames ...string) *prometheus.Desc {
+	return prometheus.NewDesc(
+		prometheus.BuildFQName(config.Namespace, prefix, MetricStringCleanup(name)),
+		helpText,
+		labelNames,
+		nil,
+	)
 }
 
-func (c CollectorContext) WithLabelsFromMap(values map[string]string, labelName ...string) CollectorContext {
-	labels := []string{c.Device.Name, c.Device.Address}
-	for _, n := range labelName {
-		labels = append(labels, values[n])
-	}
+// --------------------------------------
 
-	return CollectorContext{
-		Ch:        c.Ch,
-		Device:    c.Device,
-		Client:    c.Client,
-		collector: c.collector,
-		Labels:    labels,
-		Logger:    c.Logger,
-	}
+// PropertyMetric define metric collector that read values from configured property.
+type PropertyMetric interface {
+	Describe(ch chan<- *prometheus.Desc)
+	Collect(reply *proto.Sentence, ctx *CollectorContext) error
 }
 
-func (c CollectorContext) AppendLabelsFromMap(values map[string]string, labelName ...string) CollectorContext {
-	labels := slices.Clone(c.Labels)
-	for _, n := range labelName {
-		labels = append(labels, values[n])
-	}
+// --------------------------------------------
 
-	return CollectorContext{
-		Ch:        c.Ch,
-		Device:    c.Device,
-		Client:    c.Client,
-		collector: c.collector,
-		Labels:    labels,
-		Logger:    c.Logger,
+// metrics.PropertyMetricList is list of PropertyMetric that can be collected at once.
+type PropertyMetricList []PropertyMetric
+
+func (p PropertyMetricList) Describe(ch chan<- *prometheus.Desc) {
+	for _, m := range p {
+		m.Describe(ch)
 	}
 }
 
-// ----------------------------------------------------------------------------
+func (p PropertyMetricList) Collect(re *proto.Sentence, ctx *CollectorContext) error {
+	var errs *multierror.Error
+
+	for _, m := range p {
+		if err := m.Collect(re, ctx); err != nil {
+			errs = multierror.Append(errs, err)
+		}
+	}
+
+	return errs.ErrorOrNil()
+}
+
+// --------------------------------------------
+
+func MetricStringCleanup(in string) string {
+	return strings.ReplaceAll(in, "-", "_")
+}
+
+func CleanHostName(hostname string) string {
+	if hostname != "" {
+		if hostname[0] == '"' {
+			hostname = hostname[1 : len(hostname)-1]
+		}
+
+		// QuoteToASCII because of broken DHCP clients
+		hostname = strconv.QuoteToASCII(hostname)
+		hostname = hostname[1 : len(hostname)-1]
+	}
+
+	return hostname
+}

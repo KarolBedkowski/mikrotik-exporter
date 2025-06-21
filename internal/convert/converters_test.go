@@ -1,4 +1,4 @@
-package metrics
+package convert
 
 import (
 	"math"
@@ -59,7 +59,7 @@ func TestSplitStringToFloats(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		f1, f2, err := splitStringToFloatsOnComma(testCase.input)
+		f1, f2, err := SplitStringToFloatsOnComma(testCase.input)
 
 		switch testCase.hasError {
 		case true:
@@ -123,7 +123,7 @@ func TestParseDuration(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		f, err := metricFromDuration(testCase.input)
+		f, err := MetricFromDuration(testCase.input)
 
 		switch testCase.hasError {
 		case true:

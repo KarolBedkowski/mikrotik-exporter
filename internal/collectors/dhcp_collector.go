@@ -2,7 +2,7 @@ package collectors
 
 import (
 	"fmt"
-
+	"mikrotik-exporter/internal/convert"
 	"mikrotik-exporter/internal/metrics"
 
 	"github.com/hashicorp/go-multierror"
@@ -39,7 +39,7 @@ func (c *dhcpCollector) Collect(ctx *metrics.CollectorContext) error {
 
 	var errs *multierror.Error
 
-	for _, n := range metrics.ExtractPropertyFromReplay(reply, "name") {
+	for _, n := range convert.ExtractPropertyFromReplay(reply, "name") {
 		if err := c.collectForDHCPServer(ctx, n); err != nil {
 			errs = multierror.Append(errs, err)
 		}

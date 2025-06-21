@@ -2,7 +2,7 @@ package collectors
 
 import (
 	"fmt"
-
+	"mikrotik-exporter/internal/convert"
 	"mikrotik-exporter/internal/metrics"
 
 	"github.com/hashicorp/go-multierror"
@@ -23,12 +23,12 @@ func newIPCollector() RouterOSCollector {
 	return &ipCollector{
 		metrics: metrics.PropertyMetricList{
 			metrics.NewPropertyCounterMetric(prefix, "ipv4-fast-path-active").
-				WithConverter(metrics.MetricFromBool).
+				WithConverter(convert.MetricFromBool).
 				Build(),
 			metrics.NewPropertyCounterMetric(prefix, "ipv4-fast-path-bytes").Build(),
 			metrics.NewPropertyCounterMetric(prefix, "ipv4-fast-path-packets").Build(),
 			metrics.NewPropertyCounterMetric(prefix, "ipv4-fasttrack-active").
-				WithConverter(metrics.MetricFromBool).
+				WithConverter(convert.MetricFromBool).
 				Build(),
 			metrics.NewPropertyCounterMetric(prefix, "ipv4-fasttrack-bytes").Build(),
 			metrics.NewPropertyCounterMetric(prefix, "ipv4-fasttrack-packets").Build(),
