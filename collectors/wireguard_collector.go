@@ -13,23 +13,23 @@ func init() {
 }
 
 type wireguardCollector struct {
-	metrics PropertyMetricList
-	wg      PropertyMetricList
+	peers PropertyMetricList
+	wg    PropertyMetricList
 }
 
 func newWireguardCollector() RouterOSCollector {
 	const prefix = "wireguard"
 
-	labelNames := []string{"name", "address", "public_key", "comment", "disabled"}
+	peerLabelNames := []string{"name", "address", "public_key", "comment", "disabled"}
 	wgLabelNames := []string{"name", "address", "public_key", "wg_name", "comment"}
 
 	return &wireguardCollector{
-		metrics: PropertyMetricList{
-			NewPropertyGaugeMetric(prefix, "last-handshake", labelNames).
+		peers: PropertyMetricList{
+			NewPropertyGaugeMetric(prefix, "last-handshake", peerLabelNames).
 				WithConverter(metricFromDuration).
 				Build(),
-			NewPropertyCounterMetric(prefix, "rx", labelNames).Build(),
-			NewPropertyCounterMetric(prefix, "tx", labelNames).Build(),
+			NewPropertyCounterMetric(prefix, "rx", peerLabelNames).Build(),
+			NewPropertyCounterMetric(prefix, "tx", peerLabelNames).Build(),
 		},
 		wg: PropertyMetricList{
 			NewPropertyGaugeMetric(prefix, "running", wgLabelNames).
@@ -40,7 +40,8 @@ func newWireguardCollector() RouterOSCollector {
 }
 
 func (c *wireguardCollector) Describe(ch chan<- *prometheus.Desc) {
-	c.metrics.Describe(ch)
+	c.peers.Describe(ch)
+	c.wg.Describe(ch)
 }
 
 func (c *wireguardCollector) Collect(ctx *CollectorContext) error {
@@ -60,13 +61,14 @@ func (c *wireguardCollector) Collect(ctx *CollectorContext) error {
 
 		lctx := ctx.withLabels(pubKey, re.Map["comment"], re.Map["disabled"])
 
-		if err := c.metrics.Collect(re, &lctx); err != nil {
+		if err := c.peers.Collect(re, &lctx); err != nil {
 			errs = multierror.Append(errs,
 				fmt.Errorf("collect wireguard %v error: %w", re, err))
 		}
 	}
 
 	reply, err = ctx.client.Run("/interface/wireguard/print",
+		"?disabled=false",
 		"=.proplist=comment,public-key,comment,disabled,running,name")
 	if err != nil {
 		errs = multierror.Append(fmt.Errorf("fetch wireguard status error: %w", err))
