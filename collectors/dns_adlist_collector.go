@@ -36,7 +36,9 @@ func (c *dnsAdlistCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *dnsAdlistCollector) Collect(ctx *CollectorContext) error {
-	reply, err := ctx.client.Run("/ip/dns/adlist/print", "=.proplist=url,match-count,name-count")
+	reply, err := ctx.client.Run("/ip/dns/adlist/print",
+		"?disabled=false",
+		"=.proplist=url,match-count,name-count")
 	if err != nil {
 		return fmt.Errorf("fetch dns adlist stats error: %w", err)
 	}
