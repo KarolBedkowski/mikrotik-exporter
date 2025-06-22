@@ -73,8 +73,14 @@ func createCollectors(cfg *config.Config) collectorInstances {
 	colls := make(map[string]collectors.RouterOSCollector)
 
 	for _, k := range cfg.AllEnabledFeatures() {
-		colls[k] = collectors.InstanateCollector(k)
-		slog.Default().Debug("new collector", "collector", k)
+		col := collectors.InstanateCollector(k)
+		if col != nil {
+			colls[k] = col
+
+			slog.Default().Debug("new collector", "collector", k)
+		} else {
+			slog.Default().Error("unknown collector " + k)
+		}
 	}
 
 	return colls

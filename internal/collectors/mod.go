@@ -49,7 +49,7 @@ func InstanateCollector(name string) RouterOSCollector {
 		return f.instFunc()
 	}
 
-	panic("unknown collector: " + name)
+	return nil
 }
 
 func AvailableCollectorsNames() []string {
