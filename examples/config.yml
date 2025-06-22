@@ -58,6 +58,7 @@ features:
   disk: true
   dns: false
   dns_adlist: false
+  dude: false
   firewall: true
   firmware: true
   health: true
