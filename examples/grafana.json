@@ -404,7 +404,7 @@
           "expr": "mikrotik_system_cpu_load{dev_name=~\"$devname\"}",
           "hide": false,
           "instant": false,
-          "legendFormat": "load {{name}}",
+          "legendFormat": "{{dev_name}}",
           "range": true,
           "refId": "A"
         }
@@ -505,7 +505,7 @@
           "expr": "1-mikrotik_system_free_memory{dev_name=~\"$devname\"} / mikrotik_system_total_memory{dev_name=~\"$devname\"}",
           "hide": false,
           "instant": false,
-          "legendFormat": "load {{name}}",
+          "legendFormat": "{{dev_name}}",
           "range": true,
           "refId": "A"
         }
@@ -595,7 +595,7 @@
           "calcs": [],
           "displayMode": "list",
           "placement": "bottom",
-          "showLegend": true
+          "showLegend": false
         },
         "tooltip": {
           "hideZeros": false,
@@ -616,7 +616,7 @@
           "format": "time_series",
           "hide": false,
           "instant": false,
-          "legendFormat": "__auto",
+          "legendFormat": "{{dev_name}}",
           "range": true,
           "refId": "B"
         }
@@ -719,7 +719,7 @@
           "expr": "mikrotik_health_temperature{dev_name=~\"$devname\"}",
           "hide": false,
           "instant": false,
-          "legendFormat": "{{name}}",
+          "legendFormat": "{{dev_name}}",
           "range": true,
           "refId": "B"
         }
@@ -1357,7 +1357,7 @@
           "expr": "mikrotik_wlan_interface_noise_floor{dev_name=~\"$devname\"}",
           "hide": false,
           "instant": false,
-          "legendFormat": "{{name}} {{interface}}",
+          "legendFormat": "{{dev_name}} {{interface}}",
           "range": true,
           "refId": "B"
         }
@@ -1551,21 +1551,23 @@
               "__name__": true,
               "address": true,
               "channel": false,
-              "instance": false,
+              "dev_address": true,
+              "dev_name": false,
+              "instance": true,
               "job": true,
               "name": true
             },
             "includeByName": {},
             "indexByName": {
               "Time": 0,
-              "Value": 8,
+              "Value": 7,
               "__name__": 1,
-              "address": 2,
-              "channel": 7,
+              "channel": 6,
+              "dev_address": 8,
+              "dev_name": 2,
               "instance": 3,
               "interface": 4,
-              "job": 5,
-              "name": 6
+              "job": 5
             },
             "renameByName": {}
           }
@@ -2011,8 +2013,8 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "count(mikrotik_neighbor_entry{dev_name=~\"$devname\"})",
-          "legendFormat": "__auto",
+          "expr": "count by(dev_name) (mikrotik_neighbor_entry{dev_name=~\"$devname\"})",
+          "legendFormat": "{{dev_name}}",
           "range": true,
           "refId": "A",
           "datasource": {
@@ -2107,8 +2109,8 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "rate(mikrotik_dns_adlist_match_count_total{dev_name=~\"$devname\"}[$__rate_interval]) or vector(0)",
-          "legendFormat": "count",
+          "expr": "rate(mikrotik_dns_adlist_match_count_total{dev_name=~\"$devname\"}[$__rate_interval])",
+          "legendFormat": "{{dev_name}}",
           "range": true,
           "refId": "A",
           "datasource": {
@@ -2191,7 +2193,7 @@
           "calcs": [],
           "displayMode": "list",
           "placement": "bottom",
-          "showLegend": true
+          "showLegend": false
         },
         "tooltip": {
           "hideZeros": false,
@@ -2207,8 +2209,8 @@
             "uid": "${DS_PROMETHEUS-REAL}"
           },
           "editorMode": "code",
-          "expr": "sum by (status)(mikrotik_arp_entry{dev_name=~\"$devname\"})",
-          "legendFormat": "__auto",
+          "expr": "count by(dev_name) (mikrotik_arp_entry{dev_name=~\"$devname\"})",
+          "legendFormat": "{{dev_name}}",
           "range": true,
           "refId": "A"
         }
@@ -2302,7 +2304,7 @@
         {
           "editorMode": "code",
           "expr": "mikrotik_conntrack_total_entries{dev_name=~\"$devname\"}",
-          "legendFormat": "__auto",
+          "legendFormat": "{{dev_name}}",
           "range": true,
           "refId": "A",
           "datasource": {
@@ -2404,7 +2406,7 @@
           },
           "editorMode": "code",
           "expr": "rate(mikrotik_ip_ipv4_fast_path_bytes_total{dev_name=~\"$devname\"}[5m])",
-          "legendFormat": "FP bytes",
+          "legendFormat": "FP bytes {{dev_name}}",
           "range": true,
           "refId": "A"
         },
@@ -2416,7 +2418,7 @@
           "editorMode": "code",
           "expr": "rate(mikrotik_ip_ipv4_fasttrack_bytes_total{dev_name=~\"$devname\"}[5m])",
           "hide": false,
-          "legendFormat": "FT bytes",
+          "legendFormat": "FT bytes {{dev_name}}",
           "range": true,
           "refId": "B"
         }
@@ -2512,7 +2514,7 @@
           {
             "matcher": {
               "id": "byRegexp",
-              "options": "/^out/"
+              "options": "/^tx/"
             },
             "properties": [
               {
@@ -2554,7 +2556,7 @@
           "expr": "sum by(interface, ssid) (rate(mikrotik_capsman_station_rx_bytes_total{dev_name=~\"$devname\"}[$__rate_interval]))",
           "hide": false,
           "instant": false,
-          "legendFormat": "in {{interface}} {{ssid}}",
+          "legendFormat": "rx {{interface}} {{ssid}}",
           "range": true,
           "refId": "C"
         },
@@ -2567,7 +2569,7 @@
           "expr": "sum by(interface, ssid) (rate(mikrotik_capsman_station_tx_bytes_total{dev_name=~\"$devname\"}[$__rate_interval]))",
           "hide": false,
           "instant": false,
-          "legendFormat": "out {{interface}} {{ssid}}",
+          "legendFormat": "tx {{interface}} {{ssid}}",
           "range": true,
           "refId": "D"
         }
@@ -2870,10 +2872,10 @@
             "uid": "${DS_PROMETHEUS-REAL}"
           },
           "editorMode": "code",
-          "expr": "count by(name) (mikrotik_capsman_station_uptime_seconds{dev_name=~\"$devname\"})    ",
+          "expr": "count by(dev_name) (mikrotik_capsman_station_uptime_seconds{dev_name=~\"$devname\"})    ",
           "hide": false,
           "instant": false,
-          "legendFormat": "{{name}}",
+          "legendFormat": "{{dev_name}}",
           "range": true,
           "refId": "A"
         }
@@ -3248,7 +3250,7 @@
           "expr": "mikrotik_wireguard_running{dev_name=~\"$devname\"}",
           "format": "table",
           "instant": true,
-          "legendFormat": "__auto",
+          "legendFormat": "{{dev_name}}",
           "range": false,
           "refId": "A"
         }
@@ -3260,9 +3262,11 @@
           "options": {
             "include": {
               "names": [
+                "public_key",
                 "wg_name",
                 "Value",
-                "public_key"
+                "dev_name",
+                "dev_address"
               ]
             }
           }
@@ -3374,7 +3378,7 @@
           "expr": "rate(mikrotik_wireguard_rx_total{dev_name=~\"$devname\"}[$__rate_interval])",
           "hide": false,
           "instant": false,
-          "legendFormat": "rx {{comment}}",
+          "legendFormat": "rx {{dev_name}} {{comment}}",
           "range": true,
           "refId": "C"
         },
@@ -3387,7 +3391,7 @@
           "expr": "rate(mikrotik_wireguard_tx_total{dev_name=~\"$devname\"}[$__rate_interval])",
           "hide": false,
           "instant": false,
-          "legendFormat": "tx {{comment}}",
+          "legendFormat": "tx {{dev_name}} {{comment}}",
           "range": true,
           "refId": "D"
         }
@@ -3498,17 +3502,21 @@
             },
             "includeByName": {},
             "indexByName": {
-              "Time": 1,
-              "Value": 8,
-              "__name__": 2,
-              "address": 3,
-              "comment": 6,
-              "disabled": 7,
-              "instance": 4,
-              "job": 5,
-              "name": 0
+              "Time": 6,
+              "Value": 5,
+              "__name__": 7,
+              "comment": 2,
+              "dev_address": 1,
+              "dev_name": 0,
+              "disabled": 3,
+              "instance": 8,
+              "job": 9,
+              "public_key": 4
             },
-            "renameByName": {}
+            "renameByName": {
+              "Time": "",
+              "Value": "Last seen"
+            }
           }
         }
       ],
@@ -3589,7 +3597,7 @@
           {
             "matcher": {
               "id": "byRegexp",
-              "options": "/^tx/"
+              "options": "/^tx /"
             },
             "properties": [
               {
@@ -3625,7 +3633,7 @@
         {
           "editorMode": "code",
           "expr": "rate(mikrotik_simple_queue_rx_bytes_total{dev_name=~\"$devname\"}[$__rate_interval])",
-          "legendFormat": "rx {{simple_queue_name}}",
+          "legendFormat": "rx {{dev_name}} {{simple_queue_name}}",
           "range": true,
           "refId": "A",
           "datasource": {
@@ -3641,7 +3649,7 @@
           "editorMode": "code",
           "expr": "rate(mikrotik_simple_queue_tx_bytes_total{dev_name=~\"$devname\"}[$__rate_interval])",
           "hide": false,
-          "legendFormat": "tx {{simple_queue_name}}",
+          "legendFormat": "tx {{dev_name}} {{simple_queue_name}}",
           "range": true,
           "refId": "B"
         }
@@ -3747,7 +3755,7 @@
         {
           "editorMode": "code",
           "expr": "rate(mikrotik_simple_queue_rx_queued_bytes_total{dev_name=~\"$devname\"}[$__rate_interval])",
-          "legendFormat": "rx {{simple_queue_name}}",
+          "legendFormat": "rx {{dev_name}} {{simple_queue_name}}",
           "range": true,
           "refId": "A",
           "datasource": {
@@ -3763,7 +3771,7 @@
           "editorMode": "code",
           "expr": "rate(mikrotik_simple_queue_tx_queued_bytes_total{dev_name=~\"$devname\"}[$__rate_interval])",
           "hide": false,
-          "legendFormat": "tx {{simple_queue_name}}",
+          "legendFormat": "tx {{dev_name}} {{simple_queue_name}}",
           "range": true,
           "refId": "B"
         }
@@ -3889,7 +3897,8 @@
           "expr": "rate(mikrotik_interface_rx_byte_total{interface=~\"$interface\", dev_name=~\"$devname\"}[$__rate_interval])",
           "hide": false,
           "instant": false,
-          "legendFormat": "rx",
+          "interval": "",
+          "legendFormat": "rx {{dev_name}} {{interface}}",
           "range": true,
           "refId": "C"
         },
@@ -3902,7 +3911,7 @@
           "expr": "rate(mikrotik_interface_tx_byte_total{interface=~\"$interface\", dev_name=~\"$devname\"}[$__rate_interval])",
           "hide": false,
           "instant": false,
-          "legendFormat": "tx",
+          "legendFormat": "tx {{dev_name}} {{interface}}",
           "range": true,
           "refId": "D"
         }
@@ -4014,7 +4023,7 @@
           "expr": "rate(mikrotik_interface_rx_packet_total{interface=~\"$interface\", dev_name=~\"$devname\"}[$__rate_interval])",
           "hide": false,
           "instant": false,
-          "legendFormat": "tx",
+          "legendFormat": "rx {{dev_name}} {{interface}}",
           "range": true,
           "refId": "C"
         },
@@ -4027,7 +4036,7 @@
           "expr": "rate(mikrotik_interface_tx_packet_total{interface=~\"$interface\", dev_name=~\"$devname\"}[$__rate_interval])",
           "hide": false,
           "instant": false,
-          "legendFormat": "rx",
+          "legendFormat": "tx {{dev_name}} {{interface}}",
           "range": true,
           "refId": "D"
         }
@@ -4139,7 +4148,7 @@
           "expr": "rate(mikrotik_interface_rx_drop_total{interface=~\"$interface\", dev_name=~\"$devname\"}[$__rate_interval])",
           "hide": false,
           "instant": false,
-          "legendFormat": "rx drop",
+          "legendFormat": "rx drop {{dev_name}} {{interface}}",
           "range": true,
           "refId": "C"
         },
@@ -4152,7 +4161,7 @@
           "expr": "rate(mikrotik_interface_tx_drop_total{interface=~\"$interface\", dev_name=~\"$devname\"}[$__rate_interval])",
           "hide": false,
           "instant": false,
-          "legendFormat": "tx drop",
+          "legendFormat": "tx drop {{dev_name}} {{interface}}",
           "range": true,
           "refId": "D"
         },
@@ -4165,7 +4174,7 @@
           "expr": "rate(mikrotik_interface_tx_queue_drop_total{interface=~\"$interface\", dev_name=~\"$devname\"}[$__rate_interval])",
           "hide": false,
           "instant": false,
-          "legendFormat": "tx queue drop",
+          "legendFormat": "tx queue drop {{dev_name}} {{interface}}",
           "range": true,
           "refId": "A"
         }
@@ -4277,7 +4286,7 @@
           "expr": "rate(mikrotik_interface_rx_error_total{interface=~\"$interface\", dev_name=~\"$devname\"}[$__rate_interval])",
           "hide": false,
           "instant": false,
-          "legendFormat": "rx",
+          "legendFormat": "rx {{dev_name}} {{interface}}",
           "range": true,
           "refId": "C"
         },
@@ -4290,7 +4299,7 @@
           "expr": "rate(mikrotik_interface_tx_error_total{interface=~\"$interface\", dev_name=~\"$devname\"}[$__rate_interval])",
           "hide": false,
           "instant": false,
-          "legendFormat": "tx",
+          "legendFormat": "tx {{dev_name}} {{interface}}",
           "range": true,
           "refId": "D"
         }
@@ -4551,7 +4560,7 @@
             "uid": "${DS_PROMETHEUS-REAL}"
           },
           "editorMode": "code",
-          "expr": "mikrotik_scrape_collector_duration_seconds{device=\"$devname\"}",
+          "expr": "mikrotik_scrape_collector_duration_seconds{device=~\"$devname\"}",
           "hide": false,
           "instant": false,
           "legendFormat": "__auto",
@@ -4649,7 +4658,7 @@
             "uid": "${DS_PROMETHEUS-REAL}"
           },
           "editorMode": "code",
-          "expr": "rate(mikrotik_scrape_errors{device=\"$devname\"}[5m])",
+          "expr": "rate(mikrotik_scrape_errors{device=~\"$devname\"}[5m])",
           "hide": false,
           "instant": false,
           "legendFormat": "__auto",
@@ -4692,7 +4701,7 @@
       {
         "allowCustomValue": false,
         "current": {},
-        "definition": "label_values(mikrotik_interface_running{dev_name=~\"\"},interface)",
+        "definition": "label_values(mikrotik_interface_running{dev_name=~\"$devname\"},interface)",
         "description": "",
         "includeAll": true,
         "label": "Interface",
@@ -4701,7 +4710,7 @@
         "options": [],
         "query": {
           "qryType": 1,
-          "query": "label_values(mikrotik_interface_running{dev_name=~\"\"},interface)",
+          "query": "label_values(mikrotik_interface_running{dev_name=~\"$devname\"},interface)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 2,
@@ -4719,6 +4728,6 @@
   "timezone": "Europe/Warsaw",
   "title": "Routeros",
   "uid": "f0eaee6e-c144-46ed-b52b-9b9dcc1f532c",
-  "version": 58,
+  "version": 63,
   "weekStart": ""
 }
