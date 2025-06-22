@@ -125,7 +125,7 @@ func (c *mikrotikCollector) Collect(ch chan<- prometheus.Metric) {
 func (c *mikrotikCollector) collectFromDevice(d *deviceCollector, ch chan<- prometheus.Metric) {
 	name := d.device.Name
 	logger := c.logger.With("device", name)
-	logger.Debug("start collect for device")
+	logger.Debug("start collect for device", "device", &d.device)
 
 	begin := time.Now()
 	numFailed, err := d.collect(ch)
