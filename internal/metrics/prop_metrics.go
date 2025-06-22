@@ -204,6 +204,7 @@ const (
 	metricRxTx
 	metricStatus
 	metricConst
+	metricRet
 )
 
 // --------------------------------------------
@@ -280,6 +281,18 @@ func NewPropertyConstMetric(prefix, property string, labels ...string) *Property
 	}
 }
 
+// NewPropertyRetMetric create new PropertyMetricBuilder for metrics received from `reply.Done` (i.e. `count-only`
+// metrics stored in `reply.Done['ret']`.
+func NewPropertyRetMetric(prefix, name string, labels ...string) *PropertyMetricBuilder {
+	return &PropertyMetricBuilder{
+		prefix:     prefix,
+		property:   "ret",
+		metricName: name,
+		metricType: metricRet,
+		labels:     append([]string{LabelDevName, LabelDevAddress}, labels...),
+	}
+}
+
 // WithName set name for metric.
 func (p *PropertyMetricBuilder) WithName(name string) *PropertyMetricBuilder {
 	p.metricName = name
@@ -296,7 +309,7 @@ func (p *PropertyMetricBuilder) WithHelp(help string) *PropertyMetricBuilder {
 
 // WithConverter add converter that change value form property to float64.
 func (p *PropertyMetricBuilder) WithConverter(vc ValueConverter) *PropertyMetricBuilder {
-	if p.metricType != metricCounter && p.metricType != metricGauge {
+	if p.metricType != metricCounter && p.metricType != metricGauge && p.metricType != metricRet {
 		panic("can't set ValueConverter for not counter/gauge metric")
 	}
 
@@ -349,6 +362,11 @@ func (p *PropertyMetricBuilder) Build() PropertyMetric {
 		desc := descriptionForPropertyNameHelpText(p.prefix, p.metricName, p.labels, p.metricHelp)
 
 		return &constPropertyMetric{desc, p.property}
+
+	case metricRet:
+		desc := descriptionForPropertyNameHelpText(p.prefix, p.metricName, p.labels, p.metricHelp)
+
+		return &simplePropertyMetric{desc, convert.TruncAfterAt(p.valueConverter), p.property, prometheus.GaugeValue}
 	}
 
 	panic("unknown metric type")

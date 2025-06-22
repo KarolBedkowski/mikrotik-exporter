@@ -15,8 +15,8 @@ func init() {
 }
 
 type routesCollector struct {
-	count         metrics.RetMetric
-	countProtocol metrics.RetMetric
+	count         metrics.PropertyMetric
+	countProtocol metrics.PropertyMetric
 	protocols     []string
 }
 
@@ -24,10 +24,10 @@ func newRoutesCollector() RouterOSCollector {
 	const prefix = "routes"
 
 	return &routesCollector{
-		count: metrics.NewRetGaugeMetric("", prefix, "ip_version").
+		count: metrics.NewPropertyRetMetric(prefix, "", "ip_version").
 			WithHelp("number of routes in RIB").
 			Build(),
-		countProtocol: metrics.NewRetGaugeMetric(prefix, "protocol", "ip_version", "protocol").
+		countProtocol: metrics.NewPropertyRetMetric(prefix, "protocol", "ip_version", "protocol").
 			WithHelp("number of routes per protocol in RIB").
 			Build(),
 		protocols: []string{"bgp", "static", "ospf", "dynamic", "connect", "rip"},
@@ -71,7 +71,7 @@ func (c *routesCollector) collectCount(ipVersion, topic string, ctx *metrics.Col
 
 	lctx := ctx.WithLabels(ipVersion)
 
-	if err := c.count.Collect(reply, &lctx); err != nil {
+	if err := c.count.Collect(reply.Done, &lctx); err != nil {
 		return fmt.Errorf("collect router %s %s error: %w", topic, ipVersion, err)
 	}
 
@@ -86,7 +86,7 @@ func (c *routesCollector) collectCountProtocol(ipVersion, topic, protocol string
 
 	lctx := ctx.WithLabels(ipVersion, protocol)
 
-	if err := c.countProtocol.Collect(reply, &lctx); err != nil {
+	if err := c.countProtocol.Collect(reply.Done, &lctx); err != nil {
 		return fmt.Errorf("collect count protocol %s %s error: %w", topic, protocol, err)
 	}
 

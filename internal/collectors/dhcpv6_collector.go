@@ -15,14 +15,14 @@ func init() {
 }
 
 type dhcpv6Collector struct {
-	bindingCount metrics.RetMetric
+	bindingCount metrics.PropertyMetric
 }
 
 func newDHCPv6Collector() RouterOSCollector {
 	const prefix = "dhcpv6"
 
 	return &dhcpv6Collector{
-		bindingCount: metrics.NewRetGaugeMetric(prefix, "binding", "server").
+		bindingCount: metrics.NewPropertyRetMetric(prefix, "binding", "server").
 			WithHelp("number of active bindings per DHCPv6 server").
 			Build(),
 	}
@@ -62,7 +62,7 @@ func (c *dhcpv6Collector) collectForDHCPServer(ctx *metrics.CollectorContext, dh
 
 	lctx := ctx.WithLabels(dhcpServer)
 
-	if err := c.bindingCount.Collect(reply, &lctx); err != nil {
+	if err := c.bindingCount.Collect(reply.Done, &lctx); err != nil {
 		return fmt.Errorf("collect error: %w", err)
 	}
 
