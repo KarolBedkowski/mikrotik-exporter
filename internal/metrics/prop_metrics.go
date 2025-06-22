@@ -36,10 +36,17 @@ func (p *simplePropertyMetric) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (p *simplePropertyMetric) Collect(reply *proto.Sentence, ctx *CollectorContext) error {
+	if len(reply.Map) == 0 {
+		ctx.Logger.Warn("empty replay from device",
+			"property", p.property, "labels", ctx.Labels, "reply", reply)
+
+		return nil
+	}
+
 	propertyVal, ok := reply.Map[p.property]
 	if !ok {
 		ctx.Logger.Debug(fmt.Sprintf("property %s value not found", p.property),
-			"property", p.property, "labels", ctx.Labels, "reply_map", reply.Map)
+			"property", p.property, "labels", ctx.Labels, "reply", reply)
 
 		return nil
 	}
@@ -78,6 +85,12 @@ func (p rxTxPropertyMetric) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (p rxTxPropertyMetric) Collect(reply *proto.Sentence, ctx *CollectorContext) error {
+	if len(reply.Map) == 0 {
+		ctx.Logger.Warn("empty replay from device", "property", p.property, "labels", ctx.Labels, "reply", reply)
+
+		return nil
+	}
+
 	propertyVal, ok := reply.Map[p.property]
 	if !ok {
 		ctx.Logger.Debug(fmt.Sprintf("property %s value not found", p.property),
@@ -136,6 +149,12 @@ func (s statusPropertyMetric) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (s statusPropertyMetric) Collect(reply *proto.Sentence, ctx *CollectorContext) error {
+	if len(reply.Map) == 0 {
+		ctx.Logger.Warn("empty replay from device", "property", s.property, "labels", ctx.Labels, "reply", reply)
+
+		return nil
+	}
+
 	propertyVal, ok := reply.Map[s.property]
 	if !ok {
 		ctx.Logger.Debug(fmt.Sprintf("property %s value not found", s.property),
@@ -181,6 +200,12 @@ func (p *constPropertyMetric) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (p *constPropertyMetric) Collect(reply *proto.Sentence, ctx *CollectorContext) error {
+	if len(reply.Map) == 0 {
+		ctx.Logger.Warn("empty replay from device", "property", p.property, "labels", ctx.Labels, "reply", reply)
+
+		return nil
+	}
+
 	_, ok := reply.Map[p.property]
 	if !ok {
 		ctx.Logger.Debug(fmt.Sprintf("property %s value not found", p.property),
