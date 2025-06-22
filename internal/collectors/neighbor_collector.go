@@ -41,9 +41,16 @@ func (c *neighborCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *neighborCollector) Collect(ctx *metrics.CollectorContext) error {
-	reply, err := ctx.Client.Run("/ip/neighbor/print",
-		"=.proplist=about,address4,discovered-by,interface,ipv6,platform,software-id,version,address,"+
-			"address6,board,identity,interface-name,mac-address,system-caps,system-description")
+	proplist := "=.proplist=address4,discovered-by,interface,ipv6,platform,software-id,version,address," +
+		"address6,board,identity,interface-name,mac-address,system-caps,system-description"
+
+	// RO6 not know some properties so return none...
+	if ctx.Device.FirmwareVersion.Major < 7 { //nolint:mnd
+		proplist = "=.proplist=address4,interface,ipv6,platform,software-id,version,address," +
+			"address6,board,identity,interface-name,mac-address,system-caps,system-description"
+	}
+
+	reply, err := ctx.Client.Run("/ip/neighbor/print", proplist)
 	if err != nil {
 		return fmt.Errorf("fetch neighbor error: %w", err)
 	}
