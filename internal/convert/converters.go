@@ -30,7 +30,7 @@ func init() {
 	}
 }
 
-// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------.
 type (
 	// ValueConverter convert value from api to metric.
 	ValueConverter func(value string) (float64, error)
@@ -46,6 +46,11 @@ func ParseTS(value string) (float64, error) {
 	}
 
 	t, err := time.Parse("2006-01-02 15:04:05", value)
+	if err == nil {
+		return float64(t.Unix()), nil
+	}
+
+	t, err = time.Parse("Jan/02/2006 15:04:05", value)
 	if err != nil {
 		return 0.0, fmt.Errorf("parse time %s error: %w", value, err)
 	}
