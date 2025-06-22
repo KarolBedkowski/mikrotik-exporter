@@ -204,6 +204,25 @@ type Device struct {
 	FirmwareVersion FirmwareVersion `yaml:"-"`
 }
 
+func (d *Device) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.String("name", d.Name),
+		slog.Bool("disabled", d.Disabled),
+		slog.Any("version", &d.FirmwareVersion),
+		slog.String("address", d.Address),
+		slog.Any("srv", d.Srv),
+		slog.String("user", d.User),
+		slog.String("port", d.Port),
+		slog.Bool("tls", d.TLS),
+		slog.Int("timeout", d.Timeout),
+		slog.Bool("insecure", d.Insecure),
+		slog.Bool("ipv6_disabled", d.IPv6Disabled),
+		slog.String("profile", d.Profile),
+		slog.Any("fw_collector_settings", d.FWCollectorSettings),
+		slog.Any("scripts", d.Scripts),
+	)
+}
+
 func (d *Device) validate(profiles map[string]Features) error {
 	return multierror.Append(nil,
 		d.validateConnConf(),
@@ -272,6 +291,28 @@ type FirmwareVersion struct {
 
 func (f *FirmwareVersion) LogValue() slog.Value {
 	return slog.GroupValue(slog.String("version", fmt.Sprintf("%d.%d.%d", f.Major, f.Minor, f.Patch)))
+}
+
+func (f *FirmwareVersion) Compare(major, minor, patch int) int {
+	if f.Major < major {
+		return -1
+	} else if f.Major > major {
+		return 1
+	}
+
+	if f.Minor < minor {
+		return -1
+	} else if f.Minor > minor {
+		return 1
+	}
+
+	if f.Patch < patch {
+		return -1
+	} else if f.Patch > patch {
+		return 1
+	}
+
+	return 0
 }
 
 // --------------------------------------

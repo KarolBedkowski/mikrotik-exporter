@@ -36,6 +36,10 @@ func (c *dnsAdlistCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *dnsAdlistCollector) Collect(ctx *metrics.CollectorContext) error {
+	if ctx.Device.FirmwareVersion.Compare(7, 15, 0) < 0 { //nolint:mnd
+		return NotSupportedError("dns_adlist")
+	}
+
 	reply, err := ctx.Client.Run("/ip/dns/adlist/print",
 		"?disabled=false",
 		"=.proplist=url,match-count,name-count")

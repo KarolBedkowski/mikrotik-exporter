@@ -48,6 +48,10 @@ func (c *wireguardCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *wireguardCollector) Collect(ctx *metrics.CollectorContext) error {
+	if ctx.Device.FirmwareVersion.Major < 7 { //nolint:mnd
+		return NotSupportedError("dns_adlist")
+	}
+
 	reply, err := ctx.Client.Run("/interface/wireguard/peers/print",
 		"=.proplist=comment,public-key,comment,disabled,last-handshake,rx,tx")
 	if err != nil {

@@ -70,3 +70,11 @@ type UnexpectedResponseError struct {
 func (u UnexpectedResponseError) Error() string {
 	return fmt.Sprintf("%s: %v", u.msg, u.reply)
 }
+
+// ----------------------------------------------------------------------------
+
+type NotSupportedError string
+
+func (n NotSupportedError) Error() string {
+	return string(n) + " is not supported"
+}

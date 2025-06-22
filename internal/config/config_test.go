@@ -263,3 +263,34 @@ func TestDeviceFeatures(t *testing.T) {
 
 	}
 }
+
+func TestFirmwareVersionCompare(t *testing.T) {
+	tests := [][]int{
+		{5, 10, 15, 0},
+		{1, 10, 15, 1},
+		{1, 5, 15, 1},
+		{1, 5, 10, 1},
+		{1, 5, 20, 1},
+		{1, 15, 20, 1},
+		{5, 9, 20, 1},
+		{5, 9, 10, 1},
+		{5, 9, 0, 1},
+		{5, 10, 1, 1},
+		{5, 10, 10, 1},
+		{6, 10, 15, -1},
+		{5, 15, 15, -1},
+		{5, 10, 20, -1},
+		{6, 10, 20, -1},
+		{6, 1, 20, -1},
+		{6, 10, 16, -1},
+		{6, 10, 1, -1},
+	}
+
+	ver := FirmwareVersion{5, 10, 15}
+
+	for _, tc := range tests {
+		if r := ver.Compare(tc[0], tc[1], tc[2]); r != tc[3] {
+			t.Fatalf("compare failed for %v; expected %d got %d", tc, tc[3], r)
+		}
+	}
+}
