@@ -83,13 +83,14 @@ func main() {
 		os.Exit(0)
 	}
 
-	logger := config.SetupLogging(logLevel, logFormat)
-	cfg := loadConfig(logger)
+	config.SetupLogging(logLevel, logFormat)
 
-	startServer(cfg, logger)
+	cfg := loadConfig()
+
+	startServer(cfg)
 }
 
-func loadConfig(logger *slog.Logger) *config.Config {
+func loadConfig() *config.Config {
 	var (
 		cfg *config.Config
 		err error
@@ -102,7 +103,7 @@ func loadConfig(logger *slog.Logger) *config.Config {
 	}
 
 	if err != nil {
-		logger.Error("could not load config", "error", err)
+		slog.Default().Error("could not load config", "error", err)
 
 		os.Exit(3) //nolint:mnd
 	}
@@ -168,12 +169,14 @@ func loadConfigFromFlags() (*config.Config, error) {
 	}, nil
 }
 
-func startServer(cfg *config.Config, logger *slog.Logger) {
+func startServer(cfg *config.Config) {
+	logger := slog.Default()
+
 	if err := enableSDNotify(); err != nil {
 		logger.Warn("enable systemd watchdog error", "err", err)
 	}
 
-	h, err := createMetricsHandler(cfg, logger)
+	h, err := createMetricsHandler(cfg)
 	if err != nil {
 		panic(err)
 	}
@@ -226,8 +229,8 @@ func startServer(cfg *config.Config, logger *slog.Logger) {
 	}
 }
 
-func createMetricsHandler(cfg *config.Config, logger *slog.Logger) (http.Handler, error) {
-	collector := collector.NewCollector(cfg, logger)
+func createMetricsHandler(cfg *config.Config) (http.Handler, error) {
+	collector := collector.NewCollector(cfg)
 
 	promhttp.Handler()
 
@@ -248,7 +251,7 @@ func createMetricsHandler(cfg *config.Config, logger *slog.Logger) (http.Handler
 
 	return promhttp.HandlerFor(registry,
 		promhttp.HandlerOpts{
-			ErrorLog:            slog.NewLogLogger(logger.Handler(), slog.LevelError),
+			ErrorLog:            slog.NewLogLogger(slog.Default().Handler(), slog.LevelError),
 			ErrorHandling:       promhttp.ContinueOnError,
 			DisableCompression:  disableCompression,
 			MaxRequestsInFlight: 1,

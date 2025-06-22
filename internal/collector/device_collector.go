@@ -1,0 +1,194 @@
+package collector
+
+//
+// device_collector.go
+//
+// Distributed under terms of the GPLv3 license.
+//
+
+import (
+	"crypto/tls"
+	"fmt"
+	"log/slog"
+	"net"
+	"time"
+
+	"mikrotik-exporter/internal/collectors"
+	"mikrotik-exporter/internal/config"
+	"mikrotik-exporter/internal/metrics"
+	"mikrotik-exporter/routeros"
+
+	"github.com/hashicorp/go-multierror"
+	"github.com/prometheus/client_golang/prometheus"
+)
+
+type (
+	deviceCollectorRC struct {
+		collector collectors.RouterOSCollector
+		name      string
+	}
+
+	deviceCollector struct {
+		logger     *slog.Logger
+		cl         *routeros.Client
+		device     config.Device
+		collectors []deviceCollectorRC
+		isSrv      bool
+	}
+)
+
+func newDeviceCollector(device config.Device, collectors []deviceCollectorRC) *deviceCollector {
+	if device.TLS {
+		if (device.Port) == "" {
+			device.Port = config.APIPortTLS
+		}
+	} else {
+		if (device.Port) == "" {
+			device.Port = config.APIPort
+		}
+	}
+
+	if device.Timeout == 0 {
+		device.Timeout = config.DefaultTimeout
+	}
+
+	return &deviceCollector{
+		device:     device,
+		collectors: collectors,
+		isSrv:      device.Srv != nil,
+		logger:     slog.Default().With("device", device.Name),
+	}
+}
+
+func (dc *deviceCollector) disconnect() {
+	// close connection for srv-defined targets
+	if dc.isSrv {
+		if dc.cl != nil {
+			dc.cl.Close()
+			dc.cl = nil
+		}
+	}
+}
+
+func (dc *deviceCollector) connect() (*routeros.Client, error) {
+	// try do get connection from cache
+	if dc.cl != nil {
+		// check is connection alive
+		if reply, err := dc.cl.Run("/system/identity/print"); err == nil && len(reply.Re) > 0 {
+			return dc.cl, nil
+		}
+
+		dc.logger.Info("reconnecting")
+
+		// check failed, reconnect
+		dc.cl.Close()
+		dc.cl = nil
+	}
+
+	dc.logger.Debug("trying to Dial")
+
+	conn, err := dc.dial()
+	if err != nil {
+		return nil, err
+	}
+
+	dc.logger.Debug("done dialing")
+
+	client, err := routeros.NewClient(conn)
+	if err != nil {
+		return nil, fmt.Errorf("create client error: %w", err)
+	}
+
+	dc.logger.Debug("got client, trying to login")
+
+	if err := client.Login(dc.device.User, dc.device.Password); err != nil {
+		client.Close()
+
+		return nil, fmt.Errorf("login error: %w", err)
+	}
+
+	dc.logger.Debug("done with login")
+	dc.cl = client
+
+	return client, nil
+}
+
+func (dc *deviceCollector) dial() (net.Conn, error) {
+	var (
+		con     net.Conn
+		err     error
+		timeout = time.Duration(dc.device.Timeout) * time.Second
+	)
+
+	if !dc.device.TLS {
+		con, err = net.DialTimeout("tcp", dc.device.Address+":"+dc.device.Port, timeout)
+	} else {
+		con, err = tls.DialWithDialer(
+			&net.Dialer{
+				Timeout: timeout,
+			},
+			"tcp",
+			dc.device.Address+":"+dc.device.Port,
+			&tls.Config{
+				InsecureSkipVerify: dc.device.Insecure, // #nosec
+			},
+		)
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("dial error: %w", err)
+	}
+
+	return con, nil
+}
+
+// collect data for device and return number of failed collectors and
+// error if any.
+func (dc *deviceCollector) collect(ch chan<- prometheus.Metric) (int, error) {
+	client, err := dc.connect()
+	if err != nil {
+		// no connection so all collectors failed
+		return len(dc.collectors), fmt.Errorf("connect error: %w", err)
+	}
+
+	defer dc.disconnect()
+
+	var result *multierror.Error
+
+	for _, drc := range dc.collectors {
+		logger := dc.logger.With("collector", drc.name)
+		ctx := metrics.NewCollectorContext(ch, &dc.device, client, drc.name, logger)
+
+		logger.Debug("start collect")
+
+		if err = drc.collector.Collect(&ctx); err != nil {
+			result = multierror.Append(result, fmt.Errorf("collect %s error: %w", drc.name, err))
+		}
+	}
+
+	if err := result.ErrorOrNil(); err != nil {
+		return len(result.Errors), fmt.Errorf("collect error: %w", err)
+	}
+
+	return 0, nil
+}
+
+func (dc *deviceCollector) getIdentity() error {
+	cl, err := dc.connect()
+	if err != nil {
+		return fmt.Errorf("connect error: %w", err)
+	}
+
+	defer dc.disconnect()
+
+	reply, err := cl.Run("/system/identity/print")
+	if err != nil {
+		return fmt.Errorf("get identity error: %w", err)
+	}
+
+	if len(reply.Re) > 0 {
+		dc.device.Name = reply.Re[0].Map["name"]
+	}
+
+	return nil
+}
