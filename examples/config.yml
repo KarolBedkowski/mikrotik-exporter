@@ -55,6 +55,7 @@ features:
   dhcp: true
   dhcpl: true
   dhcpv6: true
+  disk: true
   dns: false
   dns_adlist: false
   firewall: true
