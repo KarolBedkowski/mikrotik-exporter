@@ -157,6 +157,12 @@ func (dc *deviceCollector) collect(ch chan<- prometheus.Metric) (int, error) {
 	defer dc.disconnect()
 
 	var result *multierror.Error
+	// get once version
+	if dc.device.FirmwareVersion.Major == 0 {
+		if err := dc.getVersion(client); err != nil {
+			dc.logger.Warn("get version error", "err", err)
+		}
+	}
 
 	for _, drc := range dc.collectors {
 		logger := dc.logger.With("collector", drc.name)
@@ -193,18 +199,20 @@ func (dc *deviceCollector) getIdentity() error {
 		dc.device.Name = reply.Re[0].Map["name"]
 	}
 
-	reply, err = cl.Run("/system/routerboard/print")
+	return nil
+}
+
+func (dc *deviceCollector) getVersion(client *routeros.Client) error {
+	reply, err := client.Run("/system/resource/print")
 	if err != nil {
 		return fmt.Errorf("get version error: %w", err)
 	}
 
-	if len(reply.Re) > 0 {
-		version := reply.Re[0].Map["current-firmware"]
+	version := reply.Re[0].Map["version"]
 
-		dc.device.FirmwareVersion, err = parseFirmwareVersion(version)
-		if err != nil {
-			return fmt.Errorf("parse version %q error: %w", version, err)
-		}
+	dc.device.FirmwareVersion, err = parseFirmwareVersion(version)
+	if err != nil {
+		return fmt.Errorf("parse version %q error: %w", version, err)
 	}
 
 	return nil
@@ -213,6 +221,8 @@ func (dc *deviceCollector) getIdentity() error {
 var ErrInvalidVersion = errors.New("invalid version")
 
 func parseFirmwareVersion(version string) (config.FirmwareVersion, error) {
+	version, _, _ = strings.Cut(version, " ")
+
 	parts := strings.Split(version, ".")
 	if len(parts) != 3 { //nolint:mnd
 		return config.FirmwareVersion{}, ErrInvalidVersion
