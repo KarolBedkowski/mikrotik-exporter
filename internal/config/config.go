@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"slices"
 	"strings"
 
@@ -199,6 +200,8 @@ type Device struct {
 	TLS                 bool                `yaml:"tls,omitempty"`
 	Insecure            bool                `yaml:"insecure,omitempty"`
 	Disabled            bool                `yaml:"disabled,omitempty"`
+
+	FirmwareVersion FirmwareVersion `yaml:"-"`
 }
 
 func (d *Device) validate(profiles map[string]Features) error {
@@ -257,6 +260,18 @@ func (d *Device) validateProfile(profiles map[string]Features) error {
 	}
 
 	return nil
+}
+
+// --------------------------------------
+
+type FirmwareVersion struct {
+	Major int
+	Minor int
+	Patch int
+}
+
+func (f *FirmwareVersion) LogValue() slog.Value {
+	return slog.GroupValue(slog.String("version", fmt.Sprintf("%d.%d.%d", f.Major, f.Minor, f.Patch)))
 }
 
 // --------------------------------------

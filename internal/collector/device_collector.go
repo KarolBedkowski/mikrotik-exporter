@@ -8,9 +8,12 @@ package collector
 
 import (
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net"
+	"strconv"
+	"strings"
 	"time"
 
 	"mikrotik-exporter/internal/collectors"
@@ -190,5 +193,45 @@ func (dc *deviceCollector) getIdentity() error {
 		dc.device.Name = reply.Re[0].Map["name"]
 	}
 
+	reply, err = cl.Run("/system/routerboard/print")
+	if err != nil {
+		return fmt.Errorf("get version error: %w", err)
+	}
+
+	if len(reply.Re) > 0 {
+		version := reply.Re[0].Map["current-firmware"]
+
+		dc.device.FirmwareVersion, err = parseFirmwareVersion(version)
+		if err != nil {
+			return fmt.Errorf("parse version %q error: %w", version, err)
+		}
+	}
+
 	return nil
+}
+
+var ErrInvalidVersion = errors.New("invalid version")
+
+func parseFirmwareVersion(version string) (config.FirmwareVersion, error) {
+	parts := strings.Split(version, ".")
+	if len(parts) != 3 { //nolint:mnd
+		return config.FirmwareVersion{}, ErrInvalidVersion
+	}
+
+	major, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return config.FirmwareVersion{}, fmt.Errorf("parse error: %w", err)
+	}
+
+	minor, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return config.FirmwareVersion{}, fmt.Errorf("parse error: %w", err)
+	}
+
+	patch, err := strconv.Atoi(parts[2])
+	if err != nil {
+		return config.FirmwareVersion{}, fmt.Errorf("parse error: %w", err)
+	}
+
+	return config.FirmwareVersion{Major: major, Minor: minor, Patch: patch}, nil
 }
