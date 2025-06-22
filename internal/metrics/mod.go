@@ -21,10 +21,6 @@ type (
 
 // --------------------------------------------
 
-func descriptionForPropertyName(prefix, property string, labelNames []string) *prometheus.Desc { //nolint:unused
-	return descriptionForPropertyNameHelpText(prefix, property, labelNames, property)
-}
-
 func descriptionForPropertyNameHelpText(prefix, property string,
 	labelNames []string, helpText string,
 ) *prometheus.Desc {
