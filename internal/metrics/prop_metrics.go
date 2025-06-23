@@ -402,10 +402,10 @@ func (p *PropertyMetricBuilder) LogValue() slog.Value {
 		slog.String("name", p.metricName),
 		slog.String("help", p.metricHelp),
 		slog.String("prefix", p.prefix),
-		slog.String("labels", fmt.Sprintf("%v", p.labels)),
-		slog.Int("type", int(p.metricType)),
+		slog.Any("labels", p.labels),
+		slog.Any("type", p.metricType),
 		slog.String("property", p.property),
-		slog.String("values", fmt.Sprintf("%v", p.values)),
+		slog.Any("values", p.values),
 	)
 }
 
