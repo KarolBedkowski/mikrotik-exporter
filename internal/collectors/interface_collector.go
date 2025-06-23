@@ -27,7 +27,6 @@ func newInterfaceCollector() RouterOSCollector {
 		metrics: metrics.PropertyMetricList{
 			metrics.NewPropertyGaugeMetric(prefix, "actual-mtu", labelNames...).Build(),
 			metrics.NewPropertyGaugeMetric(prefix, "running", labelNames...).WithConverter(convert.MetricFromBool).Build(),
-			metrics.NewPropertyGaugeMetric(prefix, "disabled", labelNames...).WithConverter(convert.MetricFromBool).Build(),
 			metrics.NewPropertyCounterMetric(prefix, "rx-byte", labelNames...).Build(),
 			metrics.NewPropertyCounterMetric(prefix, "tx-byte", labelNames...).Build(),
 			metrics.NewPropertyCounterMetric(prefix, "rx-packet", labelNames...).Build(),
