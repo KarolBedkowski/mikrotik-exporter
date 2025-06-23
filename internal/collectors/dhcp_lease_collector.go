@@ -26,8 +26,7 @@ func newDHCPLCollector() RouterOSCollector {
 
 	return &dhcpLeaseCollector{
 		leases: metrics.NewPropertyConstMetric("dhcp", "status", labelNames...).
-			WithName("leases_metrics").
-			WithHelp("number of metrics").
+			WithName("leases_status").
 			Build(),
 	}
 }
