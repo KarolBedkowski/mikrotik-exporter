@@ -38,20 +38,7 @@ func (c *serviceConnCollector) Collect(ctx *metrics.CollectorContext) error {
 		return fmt.Errorf("fetch service stats error: %w", err)
 	}
 
-	counter := make(map[string]int)
-
-	// count rows per service
-	for _, re := range reply.Re {
-		service := re.Map["name"]
-		cnt := 1
-
-		if c, ok := counter[service]; ok {
-			cnt = c + 1
-		}
-
-		counter[service] = cnt
-	}
-
+	counter := metrics.CountByProperty(reply.Re, "name")
 	for service, count := range counter {
 		ctx.Ch <- prometheus.MustNewConstMetric(c.metrics, prometheus.GaugeValue,
 			float64(count), ctx.Device.Name, ctx.Device.Address, service)
