@@ -50,7 +50,9 @@ func (c *arpCollector) Collect(ctx *metrics.CollectorContext) error {
 	// list of props must contain all values for labels and metrics
 	reply, err := ctx.Client.Run("/ip/arp/print",
 		"?disabled=false",
-		"?status!=failed",
+		"?status=failed",
+		"?#!", // neg status
+		"?#&", // and
 		"=.proplist=address,mac-address,interface,comment,dynamic,dhcp,complete,status,invalid,published")
 	if err != nil {
 		return fmt.Errorf("fetch arp error: %w", err)
