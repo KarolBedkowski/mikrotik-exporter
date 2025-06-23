@@ -391,7 +391,7 @@ func (p *PropertyMetricBuilder) Build() PropertyMetric {
 	case metricRet:
 		desc := descriptionForPropertyNameHelpText(p.prefix, p.metricName, p.labels, p.metricHelp)
 
-		return &simplePropertyMetric{desc, convert.TruncAfterAt(p.valueConverter), p.property, prometheus.GaugeValue}
+		return &simplePropertyMetric{desc, p.valueConverter, p.property, prometheus.GaugeValue}
 	}
 
 	panic("unknown metric type")
