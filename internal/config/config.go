@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"maps"
 	"slices"
 	"strings"
 
@@ -55,14 +56,52 @@ func (i InvalidFieldValueError) Error() string {
 
 // --------------------------------------
 
-type Features map[string]bool
+// / FeatureConf keep configuration for given feature as a dict.
+type FeatureConf map[any]any
+
+func (f FeatureConf) Enabled() bool {
+	return f.BoolValue("enabled", true)
+}
+
+func (f FeatureConf) BoolValue(name string, defaultValue bool) bool {
+	if f == nil {
+		return defaultValue
+	}
+
+	if v, ok := f[name]; ok {
+		if value, ok := v.(bool); ok {
+			return value
+		}
+	}
+
+	return defaultValue
+}
+
+// ------------------------------------
+
+// / Features is map of feature name -> feature configuration.
+// / Configuration can be bool value (enabled or not) or map (FeatureConf) or nil == bool == enabled.
+type Features map[string]any
+
+func (f Features) ConfigFor(name string) FeatureConf {
+	if c, ok := f[name].(FeatureConf); ok {
+		return c
+	}
+
+	return nil
+}
 
 func (f Features) FeatureNames() []string {
 	res := make([]string, 0, len(f))
 
-	for name, enabled := range f {
-		if enabled {
-			res = append(res, strings.ToLower(name))
+	for name, cfg := range f {
+		v, ok := cfg.(FeatureConf)
+		if !ok {
+			panic(fmt.Sprintf("invalid value for %q: %v", name, cfg))
+		}
+
+		if v.Enabled() {
+			res = append(res, name)
 		}
 	}
 
@@ -84,6 +123,37 @@ func (f Features) validate(collectors []string) error {
 	}
 
 	return result.ErrorOrNil()
+}
+
+// normalize create FeatureConf for each item in Features. Also convert name to lowercase.
+func (f Features) normalize() {
+	newValues := make(map[string]any, len(f))
+
+	for name, cfg := range f {
+		name = strings.ToLower(name)
+
+		if cfg == nil {
+			newValues[name] = FeatureConf{"enabled": true}
+
+			continue
+		}
+
+		switch v := cfg.(type) {
+		case bool:
+			newValues[name] = FeatureConf{"enabled": v}
+		case map[any]any:
+			newValues[name] = FeatureConf(v)
+		case FeatureConf:
+			newValues[name] = v
+		default:
+			slog.Default().Error("unknown feature value", "feature", name, "cfg", cfg)
+
+			newValues[name] = FeatureConf{"enabled": true}
+		}
+	}
+
+	clear(f)
+	maps.Copy(f, newValues)
 }
 
 // --------------------------------------
@@ -152,7 +222,7 @@ func (c *Config) validate(collectors []string) error {
 		}
 
 		// always enabled
-		features["resource"] = true
+		features["resource"] = nil
 	}
 
 	var errs *multierror.Error
@@ -170,6 +240,14 @@ func (c *Config) validate(collectors []string) error {
 	}
 
 	return nil
+}
+
+func (c *Config) normalize() {
+	c.Features.normalize()
+
+	for _, p := range c.Profiles {
+		p.normalize()
+	}
 }
 
 // --------------------------------------
@@ -339,7 +417,7 @@ func Load(r io.Reader, collectors []string) (*Config, error) {
 	}
 
 	// always enabled
-	cfg.Features["resource"] = true
+	cfg.Features["resource"] = nil
 
 	// remove disabled devices
 	cfg.Devices = filterDevices(cfg.Devices)
@@ -347,6 +425,8 @@ func Load(r io.Reader, collectors []string) (*Config, error) {
 	if err := cfg.validate(collectors); err != nil {
 		return nil, err
 	}
+
+	cfg.normalize()
 
 	return cfg, nil
 }

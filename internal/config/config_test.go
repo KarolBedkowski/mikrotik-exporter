@@ -80,14 +80,33 @@ func assertDevice(name, address, user, password string, c *Device, t *testing.T)
 
 func assertFeature(name string, f Features, t *testing.T) {
 	name = strings.ToLower(name)
-	if v, ok := f[name]; !ok || !v {
+	v, ok := f[name]
+	if !ok {
+		t.Fatalf("expected feature %s to be enabled - not in map ", name)
+	}
+
+	c, ok := v.(FeatureConf)
+	if !ok {
+		t.Fatalf("expected feature %s is not FeatureConf: %v ", name, v)
+	}
+
+	if !c.Enabled() {
 		t.Fatalf("expected feature %s to be enabled", name)
 	}
 }
 
 func assertNotFeature(name string, f Features, t *testing.T) {
 	name = strings.ToLower(name)
-	if v, ok := f[name]; ok && v {
+	v, ok := f[name]
+	if !ok {
+		t.Fatalf("expected feature %s to be disabled - not in map", name)
+	}
+	c, ok := v.(FeatureConf)
+	if !ok {
+		t.Fatalf("expected feature %s is not FeatureConf: %v ", name, v)
+	}
+
+	if c.Enabled() {
 		t.Fatalf("expected feature %s to be disabled", name)
 	}
 }
@@ -173,7 +192,8 @@ func TestFeatures(t *testing.T) {
 		features := make(Features)
 		features["abc"] = true
 		features["cde"] = true
-		features["fgh"] = true
+		features["fgh"] = FeatureConf{"enabled": true}
+		features.normalize()
 
 		collectors := []string{"abc", "cde", "fgh"}
 		if err := features.validate(collectors); err != nil {
@@ -208,6 +228,7 @@ func TestFeatures(t *testing.T) {
 		features["abc"] = true
 		features["cde"] = true
 		features["fgh"] = true
+		features.normalize()
 
 		names := features.FeatureNames()
 		sort.Strings(names)
@@ -218,6 +239,7 @@ func TestFeatures(t *testing.T) {
 		features["abc"] = false
 		features["cde"] = false
 		features["fgh"] = true
+		features.normalize()
 
 		names = features.FeatureNames()
 		if slices.Compare(names, []string{"fgh"}) != 0 {

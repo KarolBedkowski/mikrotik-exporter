@@ -78,7 +78,9 @@ features:
   service: false
   w60g: true
   wlanif: true
-  wlansta: true
+  # new format (v2) - dictionary of values
+  wlansta:
+    enabled: true
   # always captured
   resource: true
 
