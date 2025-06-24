@@ -15,16 +15,20 @@ func init() {
 }
 
 type capsmanCollector struct {
-	metrics               metrics.PropertyMetricList
-	interfaces            metrics.PropertyMetricList
-	interfacesStatus      metrics.PropertyMetric
+	// metric for each registered station.
+	stations metrics.PropertyMetric
+	// metrics for interfaces.
+	interfaces metrics.PropertyMetric
+	// status each interface.
+	interfacesStatus metrics.PropertyMetric
+	// status of provision remote radio.
 	radiosProvisionedDesc metrics.PropertyMetric
 }
 
 func newCapsmanCollector() RouterOSCollector {
 	const (
-		prefix      = "capsman_station"
-		prefixIface = "capsman_interface"
+		prefixStation = "capsman_station"
+		prefixIface   = "capsman_interface"
 	)
 
 	labelNames := []string{metrics.LabelInterface, "mac_address", "ssid", "eap_identity", metrics.LabelComment}
@@ -35,15 +39,15 @@ func newCapsmanCollector() RouterOSCollector {
 	}
 
 	return &capsmanCollector{
-		metrics: metrics.PropertyMetricList{
-			metrics.NewPropertyCounterMetric(prefix, "uptime", labelNames...).
+		stations: metrics.PropertyMetricList{
+			metrics.NewPropertyCounterMetric(prefixStation, "uptime", labelNames...).
 				WithConverter(convert.MetricFromDuration).
 				WithName("uptime_seconds").
 				Build(),
-			metrics.NewPropertyGaugeMetric(prefix, "tx-signal", labelNames...).Build(),
-			metrics.NewPropertyGaugeMetric(prefix, "rx-signal", labelNames...).Build(),
-			metrics.NewPropertyRxTxMetric(prefix, "packets", labelNames...).Build(),
-			metrics.NewPropertyRxTxMetric(prefix, "bytes", labelNames...).Build(),
+			metrics.NewPropertyGaugeMetric(prefixStation, "tx-signal", labelNames...).Build(),
+			metrics.NewPropertyGaugeMetric(prefixStation, "rx-signal", labelNames...).Build(),
+			metrics.NewPropertyRxTxMetric(prefixStation, "packets", labelNames...).Build(),
+			metrics.NewPropertyRxTxMetric(prefixStation, "bytes", labelNames...).Build(),
 		},
 		interfaces: metrics.PropertyMetricList{
 			metrics.NewPropertyGaugeMetric(prefixIface, "current-authorized-clients", ifaceLabelNames...).Build(),
@@ -73,7 +77,7 @@ func (c *capsmanCollector) Describe(ch chan<- *prometheus.Desc) {
 	c.radiosProvisionedDesc.Describe(ch)
 	c.interfaces.Describe(ch)
 	c.interfacesStatus.Describe(ch)
-	c.metrics.Describe(ch)
+	c.stations.Describe(ch)
 }
 
 func (c *capsmanCollector) Collect(ctx *metrics.CollectorContext) error {
@@ -85,6 +89,11 @@ func (c *capsmanCollector) Collect(ctx *metrics.CollectorContext) error {
 }
 
 func (c *capsmanCollector) collectRegistrations(ctx *metrics.CollectorContext) error {
+	// do not load stations details when not configured
+	if !ctx.FeatureCfg.BoolValue("stations", false) {
+		return nil
+	}
+
 	reply, err := ctx.Client.Run("/caps-man/registration-table/print",
 		"=.proplist=interface,mac-address,ssid,uptime,tx-signal,rx-signal,packets,bytes,eap-identity,comment")
 	if err != nil {
@@ -96,7 +105,7 @@ func (c *capsmanCollector) collectRegistrations(ctx *metrics.CollectorContext) e
 	for _, re := range reply.Re {
 		lctx := ctx.WithLabelsFromMap(re.Map, "interface", "mac-address", "ssid", "eap-identity", "comment")
 
-		if err := c.metrics.Collect(re, &lctx); err != nil {
+		if err := c.stations.Collect(re, &lctx); err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("collect registrations error: %w", err))
 		}
 	}

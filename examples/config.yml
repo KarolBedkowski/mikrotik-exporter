@@ -47,10 +47,14 @@ devices:
 
 # default features (profile)
 features:
+  # enable capsman
   arp:
     # disable metrics for each arp entry; keep only stats (default)
     details: false
-  capsman: true
+  # enable capsman
+  capsman:
+    # disable metric for each registered station (default)
+    stations: false
   certs: true
   cloud: true
   conntrack: true
@@ -59,7 +63,9 @@ features:
   dhcpv6: true
   disk: true
   dns: false
-  dns_adlist: false
+  # disable dns_adlist in 'new' format
+  dns_adlist:
+    enabled: false
   dude: false
   firewall: true
   firmware: true
