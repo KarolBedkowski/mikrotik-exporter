@@ -23,32 +23,35 @@ type CollectorContext struct {
 	Client    *routeros.Client
 	collector string
 
-	Logger *slog.Logger
+	Logger     *slog.Logger
+	FeatureCfg config.FeatureConf
 
 	Labels []string
 }
 
 func NewCollectorContext(ch chan<- prometheus.Metric, device *config.Device, client *routeros.Client,
-	collector string, logger *slog.Logger,
+	collector string, logger *slog.Logger, featureCfg config.FeatureConf,
 ) CollectorContext {
 	return CollectorContext{
-		Ch:        ch,
-		Device:    device,
-		Client:    client,
-		collector: collector,
-		Labels:    []string{device.Name, device.Address},
-		Logger:    logger,
+		Ch:         ch,
+		Device:     device,
+		Client:     client,
+		collector:  collector,
+		Labels:     []string{device.Name, device.Address},
+		Logger:     logger,
+		FeatureCfg: featureCfg,
 	}
 }
 
 func (c CollectorContext) WithLabels(labels ...string) CollectorContext {
 	return CollectorContext{
-		Ch:        c.Ch,
-		Device:    c.Device,
-		Client:    c.Client,
-		collector: c.collector,
-		Labels:    append([]string{c.Device.Name, c.Device.Address}, labels...),
-		Logger:    c.Logger,
+		Ch:         c.Ch,
+		Device:     c.Device,
+		Client:     c.Client,
+		collector:  c.collector,
+		Labels:     append([]string{c.Device.Name, c.Device.Address}, labels...),
+		Logger:     c.Logger,
+		FeatureCfg: c.FeatureCfg,
 	}
 }
 
@@ -59,12 +62,13 @@ func (c CollectorContext) WithLabelsFromMap(values map[string]string, labelName 
 	}
 
 	return CollectorContext{
-		Ch:        c.Ch,
-		Device:    c.Device,
-		Client:    c.Client,
-		collector: c.collector,
-		Labels:    labels,
-		Logger:    c.Logger,
+		Ch:         c.Ch,
+		Device:     c.Device,
+		Client:     c.Client,
+		collector:  c.collector,
+		Labels:     labels,
+		Logger:     c.Logger,
+		FeatureCfg: c.FeatureCfg,
 	}
 }
 
@@ -75,12 +79,13 @@ func (c CollectorContext) AppendLabelsFromMap(values map[string]string, labelNam
 	}
 
 	return CollectorContext{
-		Ch:        c.Ch,
-		Device:    c.Device,
-		Client:    c.Client,
-		collector: c.collector,
-		Labels:    labels,
-		Logger:    c.Logger,
+		Ch:         c.Ch,
+		Device:     c.Device,
+		Client:     c.Client,
+		collector:  c.collector,
+		Labels:     labels,
+		Logger:     c.Logger,
+		FeatureCfg: c.FeatureCfg,
 	}
 }
 

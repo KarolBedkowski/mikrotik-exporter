@@ -27,8 +27,9 @@ import (
 
 type (
 	deviceCollectorRC struct {
-		collector collectors.RouterOSCollector
-		name      string
+		collector   collectors.RouterOSCollector
+		name        string
+		featureConf config.FeatureConf
 	}
 
 	deviceCollector struct {
@@ -166,7 +167,7 @@ func (dc *deviceCollector) collect(ch chan<- prometheus.Metric) (int, error) {
 
 	for _, drc := range dc.collectors {
 		logger := dc.logger.With("collector", drc.name)
-		ctx := metrics.NewCollectorContext(ch, &dc.device, client, drc.name, logger)
+		ctx := metrics.NewCollectorContext(ch, &dc.device, client, drc.name, logger, drc.featureConf)
 
 		logger.Debug("start collect")
 

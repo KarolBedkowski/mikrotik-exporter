@@ -61,7 +61,7 @@ func NewCollector(cfg *config.Config) prometheus.Collector {
 	for _, dev := range cfg.Devices {
 		feat := cfg.DeviceFeatures(dev.Name)
 		featNames := feat.FeatureNames()
-		dcols := collectorInstances.get(featNames)
+		dcols := collectorInstances.get(featNames, feat)
 		dcs = append(dcs, newDeviceCollector(dev, dcols))
 
 		logger.Debug("new device", "device",

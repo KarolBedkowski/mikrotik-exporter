@@ -86,11 +86,11 @@ func createCollectors(cfg *config.Config) collectorInstances {
 	return colls
 }
 
-func (ci collectorInstances) get(names []string) []deviceCollectorRC {
+func (ci collectorInstances) get(names []string, features config.Features) []deviceCollectorRC {
 	dcols := make([]deviceCollectorRC, 0, len(names))
 
 	for _, n := range names {
-		dcols = append(dcols, deviceCollectorRC{ci[n], n})
+		dcols = append(dcols, deviceCollectorRC{ci[n], n, features.ConfigFor(n)})
 	}
 
 	return dcols
