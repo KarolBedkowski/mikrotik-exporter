@@ -15,8 +15,9 @@ func init() {
 }
 
 type arpCollector struct {
-	metrics  metrics.PropertyMetric
-	statuses metrics.PropertyMetric
+	metrics metrics.PropertyMetric
+	// statuses metrics.PropertyMetric
+	statuses *prometheus.Desc
 	invalid  metrics.PropertyMetric
 
 	statusesNames []string
@@ -37,16 +38,18 @@ func newARPCollector() RouterOSCollector {
 		metrics: metrics.NewPropertyGaugeMetric(prefix, "complete", labelNames...).
 			WithConverter(convert.MetricFromBool).
 			Build(),
-		statuses: metrics.NewPropertyRetMetric(prefix, "status", "status").Build(),
-		invalid:  metrics.NewPropertyRetMetric(prefix, "invalid").Build(),
+		statuses: metrics.Description(prefix, "status", "arp entry statuses",
+			metrics.LabelDevName, metrics.LabelDevAddress, "status"),
 
-		statusesNames: []string{"delay", "failed", "incomplete", "permanent", "probe", "reachable", "stale"},
+		invalid: metrics.NewPropertyRetMetric(prefix, "invalid").Build(),
+
+		statusesNames: []string{"failed", "incomplete"},
 	}
 }
 
 func (c *arpCollector) Describe(ch chan<- *prometheus.Desc) {
 	c.metrics.Describe(ch)
-	c.statuses.Describe(ch)
+	ch <- c.statuses
 	c.invalid.Describe(ch)
 }
 
@@ -62,7 +65,7 @@ func (c *arpCollector) collectEntries(ctx *metrics.CollectorContext) error {
 	// list of props must contain all values for labels and metrics
 	reply, err := ctx.Client.Run("/ip/arp/print",
 		"?complete=true",
-		"=.proplist=address,mac-address,interface,comment,dynamic,dhcp,complete")
+		"=.proplist=address,mac-address,interface,comment,dynamic,dhcp,complete,status")
 	if err != nil {
 		return fmt.Errorf("fetch arp error: %w", err)
 	}
@@ -80,6 +83,12 @@ func (c *arpCollector) collectEntries(ctx *metrics.CollectorContext) error {
 		}
 	}
 
+	// Count statuses for complete entries; failed and incomplete must be counted separately.
+	for status, count := range metrics.CountByProperty(reply.Re, "status") {
+		ctx.Ch <- prometheus.MustNewConstMetric(c.statuses, prometheus.GaugeValue, float64(count),
+			ctx.Device.Name, ctx.Device.Address, status)
+	}
+
 	return errs.ErrorOrNil()
 }
 
@@ -87,15 +96,18 @@ func (c *arpCollector) collectStatuses(ctx *metrics.CollectorContext) error {
 	var errs *multierror.Error
 
 	for _, status := range c.statusesNames {
-		reply, err := ctx.Client.Run("/ip/arp/print", "?disabled=false", "?status="+status, "=count-only=")
+		reply, err := ctx.Client.Run("/ip/arp/print", "?status="+status, "=count-only=")
 		if err != nil {
-			return fmt.Errorf("fetch arp status %q  error: %w", status, err)
+			errs = multierror.Append(errs, fmt.Errorf("fetch arp status %q  error: %w", status, err))
+
+			continue
 		}
 
-		lctx := ctx.WithLabels(status)
-
-		if err := c.statuses.Collect(reply.Done, &lctx); err != nil {
-			return fmt.Errorf("collect arp status %q error: %w", status, err)
+		if cnt, err := convert.MetricFromString(reply.Done.Map["ret"]); err == nil {
+			ctx.Ch <- prometheus.MustNewConstMetric(c.statuses, prometheus.GaugeValue, cnt,
+				ctx.Device.Name, ctx.Device.Address, status)
+		} else {
+			errs = multierror.Append(errs, fmt.Errorf("parse ret %v error: %w", reply, err))
 		}
 	}
 
@@ -103,7 +115,7 @@ func (c *arpCollector) collectStatuses(ctx *metrics.CollectorContext) error {
 }
 
 func (c *arpCollector) collectInvalid(ctx *metrics.CollectorContext) error {
-	reply, err := ctx.Client.Run("/ip/arp/print", "?disabled=false", "?invalid=true", "=count-only=")
+	reply, err := ctx.Client.Run("/ip/arp/print", "?invalid=true", "=count-only=")
 	if err != nil {
 		return fmt.Errorf("fetch arp invalid cnt  error: %w", err)
 	}
