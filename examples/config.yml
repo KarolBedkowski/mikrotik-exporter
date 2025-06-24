@@ -47,7 +47,9 @@ devices:
 
 # default features (profile)
 features:
-  arp: false
+  arp:
+    # disable metrics for each arp entry; keep only stats (default)
+    details: false
   capsman: true
   certs: true
   cloud: true
@@ -87,6 +89,9 @@ features:
 # custom profiles
 profiles:
   router:
+    arp:
+      # enable metrics for each arp entry
+      details: true
     capsman: true
     certs: true
     cloud: true

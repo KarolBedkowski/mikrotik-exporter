@@ -70,6 +70,19 @@ func (c *arpCollector) collectEntries(ctx *metrics.CollectorContext) error {
 		return fmt.Errorf("fetch arp error: %w", err)
 	}
 
+	// it's faster to get all complete entries and count statuses than count each status separately.
+
+	// Count statuses for complete entries; failed and incomplete must be counted separately.
+	for status, count := range metrics.CountByProperty(reply.Re, "status") {
+		ctx.Ch <- prometheus.MustNewConstMetric(c.statuses, prometheus.GaugeValue, float64(count),
+			ctx.Device.Name, ctx.Device.Address, status)
+	}
+
+	// do not load entries if not configured
+	if !ctx.FeatureCfg.BoolValue("details", false) {
+		return nil
+	}
+
 	var errs *multierror.Error
 
 	for _, re := range reply.Re {
@@ -81,12 +94,6 @@ func (c *arpCollector) collectEntries(ctx *metrics.CollectorContext) error {
 		if err := c.metrics.Collect(re, &lctx); err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("collect error: %w", err))
 		}
-	}
-
-	// Count statuses for complete entries; failed and incomplete must be counted separately.
-	for status, count := range metrics.CountByProperty(reply.Re, "status") {
-		ctx.Ch <- prometheus.MustNewConstMetric(c.statuses, prometheus.GaugeValue, float64(count),
-			ctx.Device.Name, ctx.Device.Address, status)
 	}
 
 	return errs.ErrorOrNil()
