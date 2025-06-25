@@ -15,7 +15,9 @@ func init() {
 }
 
 type dhcpLeaseCollector struct {
-	leases   metrics.PropertyMetric
+	// leases is one metric per lease; enabled by "details: true".
+	leases metrics.PropertyMetric
+	// statuses report number of leases by status.
 	statuses *prometheus.Desc
 }
 
@@ -31,7 +33,7 @@ func newDHCPLCollector() RouterOSCollector {
 		leases: metrics.NewPropertyConstMetric(prefix, "status", labelNames...).
 			WithName("leases_status").
 			Build(),
-		statuses: metrics.Description(prefix, "status", "Number of DHCP leases by status",
+		statuses: metrics.Description(prefix, "leases_by_status", "Number of DHCP leases by status",
 			metrics.LabelDevName, metrics.LabelDevAddress, "status"),
 	}
 }
