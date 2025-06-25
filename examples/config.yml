@@ -77,7 +77,9 @@ features:
   ipsec: true
   lte: true
   monitor: true
-  neighbor: false
+  neighbor:
+    # disable details - count only neighbours discovered by interface
+    details: false
   netwatch: true
   optics: true
   poe: true

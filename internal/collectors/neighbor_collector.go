@@ -16,6 +16,7 @@ func init() {
 
 type neighborCollector struct {
 	metrics metrics.PropertyMetricList
+	stats   *prometheus.Desc
 }
 
 func newNeighborCollector() RouterOSCollector {
@@ -33,6 +34,8 @@ func newNeighborCollector() RouterOSCollector {
 		metrics: metrics.PropertyMetricList{
 			metrics.NewPropertyConstMetric(prefix, "address", labelNames...).WithName("entry").Build(),
 		},
+		stats: metrics.Description(prefix, "discovered", "Number of discovered neighbors by interface",
+			metrics.LabelDevName, metrics.LabelDevAddress, "interface"),
 	}
 }
 
@@ -53,6 +56,17 @@ func (c *neighborCollector) Collect(ctx *metrics.CollectorContext) error {
 	reply, err := ctx.Client.Run("/ip/neighbor/print", proplist)
 	if err != nil {
 		return fmt.Errorf("fetch neighbor error: %w", err)
+	}
+
+	// Count statuses for complete entries; failed and incomplete must be counted separately.
+	for iface, count := range metrics.CountByProperty(reply.Re, "interface") {
+		ctx.Ch <- prometheus.MustNewConstMetric(c.stats, prometheus.GaugeValue, float64(count),
+			ctx.Device.Name, ctx.Device.Address, iface)
+	}
+
+	// do not load entries if not configured
+	if !ctx.FeatureCfg.BoolValue("details", false) {
+		return nil
 	}
 
 	var errs *multierror.Error
