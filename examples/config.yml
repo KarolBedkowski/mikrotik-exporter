@@ -59,7 +59,9 @@ features:
   cloud: true
   conntrack: true
   dhcp: true
-  dhcpl: true
+  dhcpl:
+    # disable details - count only number of lease in each state (default)
+    details: false
   dhcpv6: true
   disk: true
   dns: false

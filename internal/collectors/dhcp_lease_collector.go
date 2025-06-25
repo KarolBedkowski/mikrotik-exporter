@@ -15,24 +15,30 @@ func init() {
 }
 
 type dhcpLeaseCollector struct {
-	leases metrics.PropertyMetric
+	leases   metrics.PropertyMetric
+	statuses *prometheus.Desc
 }
 
 func newDHCPLCollector() RouterOSCollector {
+	const prefix = "dhcp"
+
 	labelNames := []string{
 		"activemacaddress", "server", "status", "activeaddress",
 		"hostname", metrics.LabelComment, "dhcp_address", "dhcp_macaddress",
 	}
 
 	return &dhcpLeaseCollector{
-		leases: metrics.NewPropertyConstMetric("dhcp", "status", labelNames...).
+		leases: metrics.NewPropertyConstMetric(prefix, "status", labelNames...).
 			WithName("leases_status").
 			Build(),
+		statuses: metrics.Description(prefix, "status", "Number of DHCP leases by status",
+			metrics.LabelDevName, metrics.LabelDevAddress, "status"),
 	}
 }
 
 func (c *dhcpLeaseCollector) Describe(ch chan<- *prometheus.Desc) {
 	c.leases.Describe(ch)
+	ch <- c.statuses
 }
 
 func (c *dhcpLeaseCollector) Collect(ctx *metrics.CollectorContext) error {
@@ -41,6 +47,17 @@ func (c *dhcpLeaseCollector) Collect(ctx *metrics.CollectorContext) error {
 		"=.proplist=active-mac-address,server,status,active-address,host-name,comment,address,mac-address")
 	if err != nil {
 		return fmt.Errorf("fetch dhcp lease error: %w", err)
+	}
+
+	// Count statuses
+	for status, count := range metrics.CountByProperty(reply.Re, "status") {
+		ctx.Ch <- prometheus.MustNewConstMetric(c.statuses, prometheus.GaugeValue, float64(count),
+			ctx.Device.Name, ctx.Device.Address, status)
+	}
+
+	// do not load entries if not configured
+	if !ctx.FeatureCfg.BoolValue("details", false) {
+		return nil
 	}
 
 	var errs *multierror.Error
