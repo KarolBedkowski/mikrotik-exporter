@@ -40,7 +40,9 @@ features:
   dhcpl: true
   dhcpv6: true
   ipsec: true
-  lte: true
+  lte:
+    settings1: 123
+    settings2: "abc"
   netwatch: true
   optics: true
   pools: true
@@ -60,7 +62,7 @@ profiles:
     firmware: true
     health: true
     ipsec: true
-    lte: true
+    lte:
     monitor: true
     netwatch: true
     optics: true
@@ -81,5 +83,8 @@ profiles:
     firmware: true
     health: true
     monitor: true
-    routes: true
-    wlanif: true
+    routes:
+      enabled: true
+    wlanif:
+    wlansta:
+      enabled: false

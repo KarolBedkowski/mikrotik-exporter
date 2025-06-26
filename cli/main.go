@@ -144,11 +144,11 @@ func loadConfigFromFlags() (*config.Config, error) {
 	}
 
 	features := make(config.Features)
-	features["resource"] = true
+	features["resource"] = config.NewFeatureConf()
 
 	if *withAllCollectors {
 		for _, c := range collectors.AvailableCollectorsNames() {
-			features[c] = true
+			features[c] = config.NewFeatureConf()
 		}
 	}
 
@@ -263,7 +263,7 @@ func updateConfigFromFlags(cfg *config.Config) {
 	flag.Visit(func(f *flag.Flag) {
 		if strings.HasPrefix(f.Name, "with-") && f.Name != "with-all" {
 			feat := strings.TrimPrefix(f.Name, "with-")
-			cfg.Features[feat] = true
+			cfg.Features[feat] = config.NewFeatureConf()
 		}
 	})
 }

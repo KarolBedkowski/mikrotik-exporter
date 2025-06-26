@@ -85,12 +85,7 @@ func assertFeature(name string, f Features, t *testing.T) {
 		t.Fatalf("expected feature %s to be enabled - not in map ", name)
 	}
 
-	c, ok := v.(FeatureConf)
-	if !ok {
-		t.Fatalf("expected feature %s is not FeatureConf: %v ", name, v)
-	}
-
-	if !c.Enabled() {
+	if !v.Enabled() {
 		t.Fatalf("expected feature %s to be enabled", name)
 	}
 }
@@ -101,12 +96,8 @@ func assertNotFeature(name string, f Features, t *testing.T) {
 	if !ok {
 		t.Fatalf("expected feature %s to be disabled - not in map", name)
 	}
-	c, ok := v.(FeatureConf)
-	if !ok {
-		t.Fatalf("expected feature %s is not FeatureConf: %v ", name, v)
-	}
 
-	if c.Enabled() {
+	if v.Enabled() {
 		t.Fatalf("expected feature %s to be disabled", name)
 	}
 }
@@ -190,10 +181,9 @@ func TestFeatures(t *testing.T) {
 		t.Parallel()
 
 		features := make(Features)
-		features["abc"] = true
-		features["cde"] = true
+		features["abc"] = NewFeatureConf()
+		features["cde"] = NewFeatureConf()
 		features["fgh"] = FeatureConf{"enabled": true}
-		features.normalize()
 
 		collectors := []string{"abc", "cde", "fgh"}
 		if err := features.validate(collectors); err != nil {
@@ -225,10 +215,9 @@ func TestFeatures(t *testing.T) {
 		t.Parallel()
 
 		features := make(Features)
-		features["abc"] = true
-		features["cde"] = true
-		features["fgh"] = true
-		features.normalize()
+		features["abc"] = NewFeatureConf()
+		features["cde"] = NewFeatureConf()
+		features["fgh"] = NewFeatureConf()
 
 		names := features.FeatureNames()
 		sort.Strings(names)
@@ -236,10 +225,9 @@ func TestFeatures(t *testing.T) {
 			t.Errorf("wrong names: %v", names)
 		}
 
-		features["abc"] = false
-		features["cde"] = false
-		features["fgh"] = true
-		features.normalize()
+		features["abc"] = FeatureConf{"enabled": false}
+		features["cde"] = FeatureConf{"enabled": false}
+		features["fgh"] = FeatureConf{"enabled": true}
 
 		names = features.FeatureNames()
 		if slices.Compare(names, []string{"fgh"}) != 0 {
@@ -283,6 +271,19 @@ func TestDeviceFeatures(t *testing.T) {
 			t.Errorf("invalid features for device %s: %v", dt.device, names)
 		}
 
+	}
+
+	// test custom config
+	feats := c.DeviceFeatures("test1") // default profile
+	lte := feats["lte"]
+	if v := lte["settings1"]; v != 123 {
+		t.Errorf("invalid setting1 for lte for test1 dev: %v", v)
+	}
+	if v := lte["settings2"]; v != "abc" {
+		t.Errorf("invalid setting2 for lte for test1 dev: %v", v)
+	}
+	if v := lte["enabled"]; v != true {
+		t.Errorf("invalid enabled for lte for test1 dev: %v", v)
 	}
 }
 
