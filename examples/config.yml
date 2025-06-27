@@ -89,6 +89,9 @@ features:
   scripts: false
   service: false
   w60g: true
+  wireguard:
+    # disable details; count only connected/waitine peers
+    details: false
   wlanif: true
   # new format (v2) - dictionary of values
   wlansta:

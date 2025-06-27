@@ -16,8 +16,9 @@ func init() {
 }
 
 type wireguardCollector struct {
-	peers metrics.PropertyMetricList
-	wg    metrics.PropertyMetricList
+	peers      metrics.PropertyMetricList
+	wg         metrics.PropertyMetricList
+	peersStats *prometheus.Desc
 }
 
 func newWireguardCollector() RouterOSCollector {
@@ -39,12 +40,16 @@ func newWireguardCollector() RouterOSCollector {
 				WithConverter(convert.MetricFromBool).
 				Build(),
 		},
+
+		peersStats: metrics.Description(prefix, "peers_status", "wg peer statistics",
+			metrics.LabelDevName, metrics.LabelDevAddress, "status"),
 	}
 }
 
 func (c *wireguardCollector) Describe(ch chan<- *prometheus.Desc) {
 	c.peers.Describe(ch)
 	c.wg.Describe(ch)
+	ch <- c.peersStats
 }
 
 func (c *wireguardCollector) Collect(ctx *metrics.CollectorContext) error {
@@ -52,10 +57,35 @@ func (c *wireguardCollector) Collect(ctx *metrics.CollectorContext) error {
 		return NotSupportedError("dns_adlist")
 	}
 
+	return multierror.Append(nil,
+		c.collectWG(ctx),
+		c.collectWGPeers(ctx),
+	).ErrorOrNil()
+}
+
+func (c *wireguardCollector) collectWGPeers(ctx *metrics.CollectorContext) error {
 	reply, err := ctx.Client.Run("/interface/wireguard/peers/print",
-		"=.proplist=comment,public-key,comment,disabled,last-handshake,rx,tx")
+		"=.proplist=comment,public-key,comment,disabled,last-handshake,rx,tx,current-endpoint-address")
 	if err != nil {
 		return fmt.Errorf("fetch wireguard peers stats error: %w", err)
+	}
+
+	connected := 0
+
+	for _, re := range reply.Re {
+		if re.Map["public-key"] != "" && re.Map["current-endpoint-address"] != "" {
+			connected++
+		}
+	}
+
+	ctx.Ch <- prometheus.MustNewConstMetric(c.peersStats, prometheus.GaugeValue, float64(connected),
+		ctx.Device.Name, ctx.Device.Address, "connected")
+	ctx.Ch <- prometheus.MustNewConstMetric(c.peersStats, prometheus.GaugeValue, float64(len(reply.Re)-connected),
+		ctx.Device.Name, ctx.Device.Address, "waiting")
+
+	// do not load entries if not configured
+	if !ctx.FeatureCfg.BoolValue("details", false) {
+		return nil
 	}
 
 	var errs *multierror.Error
@@ -74,7 +104,13 @@ func (c *wireguardCollector) Collect(ctx *metrics.CollectorContext) error {
 		}
 	}
 
-	reply, err = ctx.Client.Run("/interface/wireguard/print",
+	return errs.ErrorOrNil()
+}
+
+func (c *wireguardCollector) collectWG(ctx *metrics.CollectorContext) error {
+	var errs *multierror.Error
+
+	reply, err := ctx.Client.Run("/interface/wireguard/print",
 		"?disabled=false",
 		"=.proplist=comment,public-key,comment,disabled,running,name")
 	if err != nil {
