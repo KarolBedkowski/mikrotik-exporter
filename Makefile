@@ -1,10 +1,10 @@
 
-VERSION=`git describe --always | cut -d- -f1`
-DATE=`date +%Y%m%d%H%M%S`
-USER=`whoami`
-BRANCH=`git branch | grep '^\*' | cut -d ' ' -f 2`
-REVISION=`git describe --always`
-
+CURRENT_DIR = $(shell pwd)
+VERSION = $(shell git describe --always)
+REVISION = $(shell git rev-parse HEAD)
+DATE = $(shell date +%Y%m%d%H%M%S)
+USER = $(shell whoami)
+BRANCH = $(shell git rev-parse --abbrev-ref HEAD)
 
 LDFLAGS=\
 	-X github.com/prometheus/common/version.Version=$(VERSION) \
@@ -17,17 +17,25 @@ LDFLAGS=\
 
 .PHONY: build
 build:
-	go build -o mikrotik-exporter -ldflags "$(LDFLAGS)" ./cli/
+	go build -o mikrotik-exporter \
+		-ldflags "$(LDFLAGS)" \
+		-gcflags=-trimpath=$(CURRENT_DIR) \
+		-asmflags=-trimpath=$(CURRENT_DIR) \
+		./cli/
 
 .PHONY: build_arm64
 build_arm64:
 	GOARCH=arm64 \
 	GOOS=linux \
-	go build -v -o mikrotik-exporter-linux-arm64  --ldflags "$(LDFLAGS)" ./cli/
+	go build -v -o mikrotik-exporter-linux-arm64  \
+		--ldflags "$(LDFLAGS)" \
+		-gcflags=-trimpath=$(CURRENT_DIR) \
+		-asmflags=-trimpath=$(CURRENT_DIR) \
+		./cli/
 
 .PHONY: run
 run:
-	go run . -config-file config.yml -log-level debug
+	go run ./cli -- -config-file config.yml -log-level debug
 
 .PHONY: lint
 lint:
