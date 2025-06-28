@@ -75,6 +75,10 @@ features:
   interface: true
   ip: true
   ipsec: true
+  # collect /ipv6 neighbor metrics
+  ipv6_neighbor:
+    # disable details - count only entries in each status
+    details: false
   lte: true
   monitor: true
   neighbor:
