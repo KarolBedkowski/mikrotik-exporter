@@ -8,27 +8,15 @@ package convert
 //
 
 import (
+	"errors"
 	"fmt"
 	"math"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
 	"mikrotik-exporter/routeros"
 )
-
-var (
-	durationRegex *regexp.Regexp
-	durationParts [6]time.Duration
-)
-
-func init() {
-	durationRegex = regexp.MustCompile(`(?:(\d*)w)?(?:(\d*)d)?(?:(\d*)h)?(?:(\d*)m)?(?:(\d*)s)?(?:(\d*)ms)?`)
-	durationParts = [6]time.Duration{
-		time.Hour * 168, time.Hour * 24, time.Hour, time.Minute, time.Second, time.Millisecond,
-	}
-}
 
 // ----------------------------------------------------------------------------.
 type (
@@ -100,26 +88,92 @@ func SplitStringToFloats(metric, separator string) (float64, float64, error) {
 
 // ----------------------------------------------------------------------------
 
+func indexFuncDigit(c rune) bool {
+	return c >= '0' && c <= '9'
+}
+
+func indexFuncChar(c rune) bool {
+	return c >= 'A'
+}
+
+var ErrUnknownUnit = errors.New("unknown unit")
+
+func adjustDuration(duration time.Duration, unit string) (time.Duration, error) {
+	switch unit {
+	case "w":
+		duration *= time.Hour * 168 //nolint:mnd
+	case "d":
+		duration *= time.Hour * 24 //nolint:mnd
+	case "h":
+		duration *= time.Hour
+	case "m":
+		duration *= time.Minute
+	case "s":
+		duration *= time.Second
+	case "ms":
+		duration *= time.Millisecond
+	case "us":
+		duration *= time.Microsecond
+	default:
+		return 0, fmt.Errorf("parse duration unit %q error: %w", unit, ErrUnknownUnit)
+	}
+
+	return duration, nil
+}
+
+func getDurationParts(inp string) (time.Duration, string, error) {
+	// find begging of unit
+	unitIdx := strings.IndexFunc(inp, indexFuncChar)
+	if unitIdx == -1 {
+		return 0, "", fmt.Errorf("parse duration error: %w", ErrUnknownUnit)
+	}
+
+	// separate value and rest of input
+	valuePart, rest := inp[:unitIdx], inp[unitIdx:]
+
+	var unit string
+
+	// find end of unit
+	nextValueIdx := strings.IndexFunc(rest, indexFuncDigit)
+	if nextValueIdx > -1 {
+		unit, rest = rest[:nextValueIdx], rest[nextValueIdx:]
+	} else {
+		// no next value found
+		rest, unit = "", rest
+	}
+
+	if unit == "" {
+		return 0, "", fmt.Errorf("parse duration error: %w", ErrUnknownUnit)
+	}
+
+	if valuePart == "" {
+		return 0, rest, nil
+	}
+
+	v, err := strconv.Atoi(valuePart)
+	if err != nil {
+		return 0, "", fmt.Errorf("parse duration %q error: %w", valuePart, err)
+	}
+
+	duration, err := adjustDuration(time.Duration(v), unit)
+
+	return duration, rest, err
+}
+
 // metricFromDuration convert formatted `duration` to duration in seconds as float64.
 func MetricFromDuration(duration string) (float64, error) {
 	var totalDur time.Duration
 
-	reMatch := durationRegex.FindAllStringSubmatch(duration, -1)
+	dur := duration
 
-	// should get one and only one match back on the regex
-	if len(reMatch) != 1 {
-		return 0, fmt.Errorf("parse %s error: %w", duration, ErrInvalidDuration)
-	}
-
-	for idx, match := range reMatch[0][1:] {
-		if match != "" {
-			v, err := strconv.Atoi(match)
-			if err != nil {
-				return float64(0), fmt.Errorf("parse duration %s error: %w", duration, err)
-			}
-
-			totalDur += time.Duration(v) * durationParts[idx]
+	for dur != "" {
+		d, rest, err := getDurationParts(dur)
+		if err != nil {
+			return 0, fmt.Errorf("parse %s error: %w", duration, ErrInvalidDuration)
 		}
+
+		totalDur += d
+		dur = rest
 	}
 
 	return totalDur.Seconds(), nil
