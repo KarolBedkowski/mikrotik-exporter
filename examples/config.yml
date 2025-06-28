@@ -85,6 +85,8 @@ features:
     # disable details - count only neighbours discovered by interface
     details: false
   netwatch: true
+  # enable metrics from ntp client
+  ntpc:
   optics: true
   poe: true
   pools: true
@@ -119,6 +121,7 @@ profiles:
     health: true
     monitor: true
     netwatch: true
+    ntpc: true
     poe: true
     pools: true
     queue: true
