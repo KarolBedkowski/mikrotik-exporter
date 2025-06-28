@@ -1,7 +1,5 @@
 package collectors
 
-// TODO: check ipv6
-
 import (
 	"fmt"
 	"strconv"
