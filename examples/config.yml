@@ -90,6 +90,9 @@ features:
   optics: true
   poe: true
   pools: true
+  ppp:
+    # disable metrics for all active connections
+    details: false
   queue: true
   routes: true
   scripts: false
