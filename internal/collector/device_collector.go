@@ -25,6 +25,13 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+var scrapeCollectorErrorsDesc = prometheus.NewDesc(
+	prometheus.BuildFQName(config.Namespace, "scrape", "device_errors_total"),
+	"mikrotik_exporter: number of failed collection per device",
+	[]string{"dev_name", "dev_address"},
+	nil,
+)
+
 type (
 	deviceCollectorRC struct {
 		collector   collectors.RouterOSCollector
@@ -38,6 +45,7 @@ type (
 		device     config.Device
 		collectors []deviceCollectorRC
 		isSrv      bool
+		errors     int64
 	}
 )
 
@@ -148,14 +156,16 @@ func (dc *deviceCollector) dial() (net.Conn, error) {
 
 // collect data for device and return number of failed collectors and
 // error if any.
-func (dc *deviceCollector) collect(ch chan<- prometheus.Metric) (int, error) {
+func (dc *deviceCollector) collect(ch chan<- prometheus.Metric) error {
 	client, err := dc.connect()
 	if err != nil {
 		// no connection so all collectors failed
-		return len(dc.collectors), fmt.Errorf("connect error: %w", err)
+		return fmt.Errorf("connect error: %w", err)
 	}
 
 	defer dc.disconnect()
+
+	address, name := dc.device.Address, dc.device.Name
 
 	var result *multierror.Error
 	// get once version
@@ -171,16 +181,21 @@ func (dc *deviceCollector) collect(ch chan<- prometheus.Metric) (int, error) {
 
 		logger.Debug("start collect")
 
-		if err = drc.collector.Collect(&ctx); err != nil {
+		if err := drc.collector.Collect(&ctx); err != nil {
 			result = multierror.Append(result, fmt.Errorf("collect %s error: %w", drc.name, err))
+
+			dc.errors++
 		}
 	}
 
 	if err := result.ErrorOrNil(); err != nil {
-		return len(result.Errors), fmt.Errorf("collect error: %w", err)
+		return fmt.Errorf("collect error: %w", err)
 	}
 
-	return 0, nil
+	ch <- prometheus.MustNewConstMetric(scrapeCollectorErrorsDesc, prometheus.CounterValue,
+		float64(dc.errors), name, address)
+
+	return nil
 }
 
 func (dc *deviceCollector) getIdentity() error {

@@ -22,22 +22,16 @@ import (
 // --------------------------------------------
 
 var (
-	scrapeDurationDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(config.Namespace, "scrape", "collector_duration_seconds"),
+	scrapeDeviceDurationDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(config.Namespace, "scrape", "device_duration_seconds"),
 		"mikrotik_exporter: duration of a device collector scrape",
-		[]string{"device", "name"},
+		[]string{"dev_name", "dev_address"},
 		nil,
 	)
-	scrapeSuccessDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(config.Namespace, "scrape", "collector_success"),
+	scrapeDeviceSuccessDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(config.Namespace, "scrape", "device_success"),
 		"mikrotik_exporter: whether a device collector succeeded",
-		[]string{"device", "name"},
-		nil,
-	)
-	scrapeErrorsDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(config.Namespace, "scrape", "errors"),
-		"mikrotik_exporter: number of failed collection per device",
-		[]string{"device", "name"},
+		[]string{"dev_name", "dev_address"},
 		nil,
 	)
 )
@@ -80,9 +74,9 @@ func NewCollector(cfg *config.Config) prometheus.Collector {
 
 // Describe implements the prometheus.Collector interface.
 func (c *mikrotikCollector) Describe(ch chan<- *prometheus.Desc) {
-	ch <- scrapeDurationDesc
-	ch <- scrapeSuccessDesc
-	ch <- scrapeErrorsDesc
+	ch <- scrapeDeviceDurationDesc
+	ch <- scrapeDeviceSuccessDesc
+	ch <- scrapeCollectorErrorsDesc
 
 	for _, co := range c.collectors {
 		co.Describe(ch)
@@ -123,26 +117,25 @@ func (c *mikrotikCollector) Collect(ch chan<- prometheus.Metric) {
 }
 
 func (c *mikrotikCollector) collectFromDevice(d *deviceCollector, ch chan<- prometheus.Metric) {
-	name := d.device.Name
+	address, name := d.device.Address, d.device.Name
+
 	logger := c.logger.With("device", name)
 	logger.Debug("start collect for device", "device", &d.device)
 
 	begin := time.Now()
-	numFailed, err := d.collect(ch)
+	err := d.collect(ch)
 	duration := time.Since(begin)
-	success := 0.0
 
 	if err != nil {
 		logger.Error(fmt.Sprintf("collector failed after %fs", duration.Seconds()), "err", err)
+		ch <- prometheus.MustNewConstMetric(scrapeDeviceSuccessDesc, prometheus.GaugeValue, 0.0, name, address)
 	} else {
 		logger.Debug(fmt.Sprintf("collector succeeded after %fs", duration.Seconds()))
-
-		success = 1
+		ch <- prometheus.MustNewConstMetric(scrapeDeviceSuccessDesc, prometheus.GaugeValue, 1.0, name, address)
 	}
 
-	ch <- prometheus.MustNewConstMetric(scrapeDurationDesc, prometheus.GaugeValue, duration.Seconds(), name, name)
-	ch <- prometheus.MustNewConstMetric(scrapeSuccessDesc, prometheus.GaugeValue, success, name, name)
-	ch <- prometheus.MustNewConstMetric(scrapeErrorsDesc, prometheus.GaugeValue, float64(numFailed), name, name)
+	ch <- prometheus.MustNewConstMetric(scrapeDeviceDurationDesc, prometheus.GaugeValue, duration.Seconds(),
+		name, address)
 }
 
 func (c *mikrotikCollector) devicesFromSrv(devCol *deviceCollector) ([]*deviceCollector, error) {
