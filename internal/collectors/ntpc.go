@@ -7,6 +7,7 @@ import (
 	"mikrotik-exporter/internal/convert"
 	"mikrotik-exporter/internal/metrics"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -15,30 +16,28 @@ func init() {
 }
 
 type ntpcCollector struct {
-	metrics metrics.PropertyMetric
+	enabled metrics.PropertyMetric
+	status  metrics.PropertyMetric
+	offset  metrics.PropertyMetric
 }
 
 func newNTPcCollector() RouterOSCollector {
 	const prefix = "ntp_client"
 
 	return &ntpcCollector{
-		metrics: metrics.PropertyMetricList{
-			metrics.NewPropertyGaugeMetric(prefix, "enabled").
-				WithConverter(convert.MetricFromBool).
-				Build(),
-			metrics.NewPropertyGaugeMetric(prefix, "status").
-				WithName("synchronized").
-				WithConverter(metricFromNtpStatus).
-				Build(),
-			metrics.NewPropertyGaugeMetric(prefix, "system-offset").
-				WithConverter(msToSecConverter).
-				Build(),
-		},
+		metrics.NewPropertyGaugeMetric(prefix, "enabled").WithConverter(convert.MetricFromBool).Build(),
+		metrics.NewPropertyGaugeMetric(prefix, "status").
+			WithName("synchronized").
+			WithConverter(metricFromNtpStatus).
+			Build(),
+		metrics.NewPropertyGaugeMetric(prefix, "system-offset").WithConverter(msToSecConverter).Build(),
 	}
 }
 
 func (c *ntpcCollector) Describe(ch chan<- *prometheus.Desc) {
-	c.metrics.Describe(ch)
+	c.enabled.Describe(ch)
+	c.status.Describe(ch)
+	c.offset.Describe(ch)
 }
 
 func (c *ntpcCollector) Collect(ctx *metrics.CollectorContext) error {
@@ -60,30 +59,34 @@ func (c *ntpcCollector) collectRO6(ctx *metrics.CollectorContext) error {
 		return nil
 	}
 
-	sent := reply.Re[0]
+	sentence := reply.Re[0]
 
-	if as := sent.Map["active-server"]; as != "" {
-		sent.Map["status"] = "synchronized"
-	} else {
-		sent.Map["status"] = ""
+	var errs *multierror.Error
+
+	if err := c.enabled.Collect(sentence, ctx); err != nil {
+		errs = multierror.Append(errs, fmt.Errorf("collect error: %w", err))
 	}
 
-	if la := sent.Map["last-adjustment"]; la != "" {
-		dur, err := convert.MetricFromDuration(la)
-		if err != nil {
-			return fmt.Errorf("parse last-adjustment %q error: %w", la, err)
+	status := 0.0
+	if as := sentence.Map["active-server"]; as != "" {
+		status = 1.0
+	}
+
+	psStatus, _ := c.status.(metrics.PropertySimpleSet)
+	errs = multierror.Append(errs, psStatus.Set(status, ctx))
+
+	if la := sentence.Map["last-adjustment"]; la != "" {
+		if dur, err := convert.MetricFromDuration(la); err != nil {
+			errs = multierror.Append(errs, fmt.Errorf("parse last-adjustment %q error: %w", la, err))
+		} else {
+			psOffset, _ := c.offset.(metrics.PropertySimpleSet)
+
+			// RO7 return data as ms, so convert seconds to ms
+			errs = multierror.Append(errs, psOffset.Set(dur, ctx))
 		}
-
-		// RO7 return data as ms, so convert seconds to ms
-		sent.Map["system-offset"] = strconv.FormatFloat(dur*1000, 'f', 6, 32)
 	}
 
-	// collect metrics using context
-	if err := c.metrics.Collect(sent, ctx); err != nil {
-		return fmt.Errorf("collect error: %w", err)
-	}
-
-	return nil
+	return errs.ErrorOrNil()
 }
 
 func (c *ntpcCollector) collectRO7(ctx *metrics.CollectorContext) error {
@@ -97,7 +100,8 @@ func (c *ntpcCollector) collectRO7(ctx *metrics.CollectorContext) error {
 		return nil
 	}
 
-	if err := c.metrics.Collect(reply.Re[0], ctx); err != nil {
+	pl := metrics.PropertyMetricList{c.enabled, c.status, c.offset}
+	if err := pl.Collect(reply.Re[0], ctx); err != nil {
 		return fmt.Errorf("collect error: %w", err)
 	}
 
