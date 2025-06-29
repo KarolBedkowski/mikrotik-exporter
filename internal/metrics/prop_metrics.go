@@ -69,6 +69,13 @@ func (p *simplePropertyMetric) Collect(reply *proto.Sentence, ctx *CollectorCont
 	return nil
 }
 
+// Set implement PropertySimpleSet - set directly value for metric
+func (p *simplePropertyMetric) Set(value float64, ctx *CollectorContext) error {
+	ctx.Ch <- prometheus.MustNewConstMetric(p.desc, p.valueType, value, ctx.Labels...)
+
+	return nil
+}
+
 // --------------------------------------------
 
 // rxTxPropertyMetric collect counter metrics from given property and put it into two metrics _tx i _rx.

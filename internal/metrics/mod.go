@@ -49,6 +49,10 @@ type PropertyMetric interface {
 	Collect(re *proto.Sentence, ctx *CollectorContext) error
 }
 
+type PropertySimpleSet interface {
+	Set(value float64, ctx *CollectorContext) error
+}
+
 // --------------------------------------------
 
 // metrics.PropertyMetricList is list of PropertyMetric that can be collected at once.
