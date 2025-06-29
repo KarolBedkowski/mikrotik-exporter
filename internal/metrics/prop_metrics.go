@@ -69,7 +69,7 @@ func (p *simplePropertyMetric) Collect(reply *proto.Sentence, ctx *CollectorCont
 	return nil
 }
 
-// Set implement PropertySimpleSet - set directly value for metric
+// Set implement PropertySimpleSet - set directly value for metric.
 func (p *simplePropertyMetric) Set(value float64, ctx *CollectorContext) error {
 	ctx.Ch <- prometheus.MustNewConstMetric(p.desc, p.valueType, value, ctx.Labels...)
 

@@ -88,39 +88,40 @@ func SplitStringToFloats(metric, separator string) (float64, float64, error) {
 
 // ----------------------------------------------------------------------------
 
-func indexFuncDigit(c rune) bool {
-	return c >= '0' && c <= '9'
-}
-
-func indexFuncChar(c rune) bool {
-	return c >= 'A'
-}
+func indexFuncDigit(c rune) bool { return c >= '0' && c <= '9' }
+func indexFuncChar(c rune) bool  { return c >= 'A' }
 
 var ErrUnknownUnit = errors.New("unknown unit")
 
-func adjustDuration(duration time.Duration, unit string) (time.Duration, error) {
+// adjustDuration create Duration by multiple duration by unit.
+func adjustDuration(duration int, unit string) (time.Duration, error) {
+	dur := time.Duration(duration)
+
 	switch unit {
 	case "w":
-		duration *= time.Hour * 168 //nolint:mnd
+		dur *= time.Hour * 168 //nolint:mnd
 	case "d":
-		duration *= time.Hour * 24 //nolint:mnd
+		dur *= time.Hour * 24 //nolint:mnd
 	case "h":
-		duration *= time.Hour
+		dur *= time.Hour
 	case "m":
-		duration *= time.Minute
+		dur *= time.Minute
 	case "s":
-		duration *= time.Second
+		dur *= time.Second
 	case "ms":
-		duration *= time.Millisecond
+		dur *= time.Millisecond
 	case "us":
-		duration *= time.Microsecond
+		dur *= time.Microsecond
 	default:
-		return 0, fmt.Errorf("parse duration unit %q error: %w", unit, ErrUnknownUnit)
+		return 0, fmt.Errorf("parse dur unit %q error: %w", unit, ErrUnknownUnit)
 	}
 
-	return duration, nil
+	return dur, nil
 }
 
+// getDurationParts read first parh of duration, parse it into Duration, return rest of input and
+// optionally error.
+// Example input: 1w3d3h42m53s13ms71us - return (Duration(1 week), "3d3h42m53s13ms71us", nil).
 func getDurationParts(inp string) (time.Duration, string, error) {
 	// find begging of unit
 	unitIdx := strings.IndexFunc(inp, indexFuncChar)
@@ -155,7 +156,7 @@ func getDurationParts(inp string) (time.Duration, string, error) {
 		return 0, "", fmt.Errorf("parse duration %q error: %w", valuePart, err)
 	}
 
-	duration, err := adjustDuration(time.Duration(v), unit)
+	duration, err := adjustDuration(v, unit)
 
 	return duration, rest, err
 }
@@ -178,6 +179,8 @@ func MetricFromDuration(duration string) (float64, error) {
 
 	return totalDur.Seconds(), nil
 }
+
+// ----------------------------------------------------------------------------
 
 // metricFromString convert string to float64.
 func MetricFromString(value string) (float64, error) {
