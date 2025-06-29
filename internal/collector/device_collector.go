@@ -181,7 +181,7 @@ func (dc *deviceCollector) collect(ch chan<- prometheus.Metric) error {
 		logger := dc.logger.With("collector", drc.name)
 		ctx := metrics.NewCollectorContext(ch, &dc.device, client, drc.name, logger, drc.featureConf)
 
-		logger.Debug("start collect")
+		logger.Debug("start collect", "feature_conf", drc.featureConf)
 
 		if err := drc.collector.Collect(&ctx); err != nil {
 			result = multierror.Append(result, fmt.Errorf("collect %s error: %w", drc.name, err))
