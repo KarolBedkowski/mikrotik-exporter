@@ -53,6 +53,14 @@ func (i InvalidFieldValueError) Error() string {
 	return "invalid value of `" + i.field + "`: `" + i.value + "`"
 }
 
+var ErrInvalidValueType = errors.New("invalid value type")
+
+type InvalidConfigurationError string
+
+func (e InvalidConfigurationError) Error() string {
+	return "invalid configuration: " + string(e)
+}
+
 // --------------------------------------
 
 // FeatureConf keep configuration for given feature as a dict.
@@ -75,6 +83,30 @@ func (f FeatureConf) BoolValue(name string, defaultValue bool) bool {
 	}
 
 	return defaultValue
+}
+
+func (f FeatureConf) Strs(name string) ([]string, error) {
+	v, ok := f[name]
+	if !ok {
+		return nil, nil
+	}
+
+	inlist, ok := v.([]any)
+	if !ok {
+		return nil, ErrInvalidValueType
+	}
+
+	res := make([]string, len(inlist))
+
+	for i, inp := range inlist {
+		if v, ok := inp.(string); ok {
+			res[i] = v
+		} else {
+			return nil, ErrInvalidValueType
+		}
+	}
+
+	return res, nil
 }
 
 func (f *FeatureConf) UnmarshalYAML(value *yaml.Node) error {
@@ -248,20 +280,19 @@ type DNSServer struct {
 
 // Device represents a target device.
 type Device struct {
-	Srv                 *SrvRecord          `yaml:"srv,omitempty"`
-	FWCollectorSettings map[string][]string `yaml:"fw_collector_settings"`
-	Profile             string              `yaml:"profile,omitempty"`
-	User                string              `yaml:"user"`
-	Password            string              `yaml:"password"`
-	Port                string              `yaml:"port"`
-	Name                string              `yaml:"name"`
-	Address             string              `yaml:"address,omitempty"`
-	Scripts             []string            `yaml:"scripts"`
-	Timeout             int                 `yaml:"timeout,omitempty"`
-	IPv6Disabled        bool                `yaml:"ipv6_disabled"`
-	TLS                 bool                `yaml:"tls,omitempty"`
-	Insecure            bool                `yaml:"insecure,omitempty"`
-	Disabled            bool                `yaml:"disabled,omitempty"`
+	Srv          *SrvRecord `yaml:"srv,omitempty"`
+	Profile      string     `yaml:"profile,omitempty"`
+	User         string     `yaml:"user"`
+	Password     string     `yaml:"password"`
+	Port         string     `yaml:"port"`
+	Name         string     `yaml:"name"`
+	Address      string     `yaml:"address,omitempty"`
+	Scripts      []string   `yaml:"scripts"`
+	Timeout      int        `yaml:"timeout,omitempty"`
+	IPv6Disabled bool       `yaml:"ipv6_disabled"`
+	TLS          bool       `yaml:"tls,omitempty"`
+	Insecure     bool       `yaml:"insecure,omitempty"`
+	Disabled     bool       `yaml:"disabled,omitempty"`
 
 	FirmwareVersion FirmwareVersion `yaml:"-"`
 }
@@ -280,7 +311,6 @@ func (d *Device) LogValue() slog.Value {
 		slog.Bool("insecure", d.Insecure),
 		slog.Bool("ipv6_disabled", d.IPv6Disabled),
 		slog.String("profile", d.Profile),
-		slog.Any("fw_collector_settings", d.FWCollectorSettings),
 		slog.Any("scripts", d.Scripts),
 	)
 }
@@ -288,7 +318,6 @@ func (d *Device) LogValue() slog.Value {
 func (d *Device) validate(profiles map[string]Features) error {
 	return multierror.Append(nil,
 		d.validateConnConf(),
-		d.validateFwSettings(),
 		d.validateProfile(profiles)).
 		ErrorOrNil()
 }
@@ -314,20 +343,6 @@ func (d *Device) validateConnConf() error {
 
 	if d.Password == "" {
 		errs = multierror.Append(errs, MissingFieldError("password"))
-	}
-
-	return errs.ErrorOrNil()
-}
-
-func (d *Device) validateFwSettings() error {
-	var errs *multierror.Error
-
-	validChains := []string{"filter", "mangle", "raw", "nat"}
-
-	for f := range d.FWCollectorSettings {
-		if !slices.Contains(validChains, f) {
-			errs = multierror.Append(errs, InvalidFieldValueError{"firewall name", f})
-		}
 	}
 
 	return errs.ErrorOrNil()

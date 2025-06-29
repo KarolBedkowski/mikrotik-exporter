@@ -11,15 +11,6 @@ devices:
     # by default device is enabled
     disabled: false
 
-    # configuration for firewall collector
-    fw_collector_settings:
-      # collect metric from `filter`
-      filter:
-        # and from chain `input`
-        - input
-      nat:
-        - srcnat
-
     # script to run by scripts collector
     scripts:
       - script1
@@ -69,7 +60,7 @@ features:
   dns_adlist:
     enabled: false
   dude: false
-  firewall: true
+  firewall: false
   firmware: true
   health: true
   interface: true
@@ -120,7 +111,14 @@ profiles:
     conntrack: true
     dhcp: true
     dhcpl: true
-    firewall: true
+    # collect metrics from firewall and chain
+    firewall:
+      sources:
+        # list of firewall name,chain
+        # valid firewalls: filter, nat, mangle, raw
+        - filter,chain_to_log
+        - filter,other_chain_to_log2
+        - nat,chain_to_log2
     health: true
     monitor: true
     netwatch: true
