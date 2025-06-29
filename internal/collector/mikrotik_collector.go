@@ -157,14 +157,7 @@ func (c *mikrotikCollector) devicesFromSrv(devCol *deviceCollector) ([]*deviceCo
 			Srv:      dev.Srv,
 		}
 
-		ndc := newDeviceCollector(d, devCol.collectors)
-		if err := ndc.getIdentity(); err != nil {
-			c.logger.Error("error fetching identity", "device", devCol.device.Name, "error", err)
-
-			continue
-		}
-
-		realDevices = append(realDevices, ndc)
+		realDevices = append(realDevices, newDeviceCollector(d, devCol.collectors))
 	}
 
 	return realDevices, nil

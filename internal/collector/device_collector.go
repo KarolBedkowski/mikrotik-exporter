@@ -167,6 +167,13 @@ func (dc *deviceCollector) collect(ch chan<- prometheus.Metric) error {
 
 	defer dc.disconnect()
 
+	if dc.device.Srv != nil {
+		// get identity for service-defined devices
+		if err := dc.updateIdentity(client); err != nil {
+			return fmt.Errorf("get identity error: %w", err)
+		}
+	}
+
 	address, name := dc.device.Address, dc.device.Name
 
 	var result *multierror.Error
@@ -200,21 +207,19 @@ func (dc *deviceCollector) collect(ch chan<- prometheus.Metric) error {
 	return nil
 }
 
-func (dc *deviceCollector) getIdentity() error {
-	cl, err := dc.connect()
-	if err != nil {
-		return fmt.Errorf("connect error: %w", err)
-	}
-
-	defer dc.disconnect()
-
-	reply, err := cl.Run("/system/identity/print")
+func (dc *deviceCollector) updateIdentity(client *routeros.Client) error {
+	reply, err := client.Run("/system/identity/print")
 	if err != nil {
 		return fmt.Errorf("get identity error: %w", err)
 	}
 
-	if len(reply.Re) > 0 {
-		dc.device.Name = reply.Re[0].Map["name"]
+	if len(reply.Re) == 0 {
+		return ErrInvalidResponse
+	}
+
+	dc.device.Name = reply.Re[0].Map["name"]
+	if dc.device.Name == "" {
+		return ErrInvalidResponse
 	}
 
 	return nil

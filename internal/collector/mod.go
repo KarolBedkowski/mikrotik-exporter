@@ -18,7 +18,10 @@ import (
 
 // --------------------------------------------
 
-var ErrNoServersDefined = errors.New("no servers defined")
+var (
+	ErrNoServersDefined = errors.New("no servers defined")
+	ErrInvalidResponse  = errors.New("invalid response")
+)
 
 func resolveServices(srvDNS *config.DNSServer, record string) ([]string, error) {
 	var dnsServer string
