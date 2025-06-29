@@ -24,7 +24,7 @@ func newDHCPCollector() RouterOSCollector {
 	return &dhcpCollector{
 		leasesActiveCount: metrics.NewPropertyRetMetric(prefix, "leases_active", "server").
 			WithHelp("number of active leases per DHCP server").
-			WithConverter(convert.TruncAfterAt(convert.MetricFromString)).
+			WithConverter(convert.MetricFromString).
 			Build(),
 	}
 }
