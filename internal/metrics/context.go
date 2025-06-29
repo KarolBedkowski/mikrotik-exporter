@@ -17,10 +17,16 @@ import (
 
 // ----------------------------------------------------------------------------
 
+type ROClient interface {
+	Run(sentence ...string) (*routeros.Reply, error)
+}
+
+// ----------------------------------------------------------------------------
+
 type CollectorContext struct {
 	Ch        chan<- prometheus.Metric
 	Device    *config.Device
-	Client    *routeros.Client
+	Client    ROClient
 	collector string
 
 	Logger     *slog.Logger
@@ -29,7 +35,7 @@ type CollectorContext struct {
 	Labels []string
 }
 
-func NewCollectorContext(ch chan<- prometheus.Metric, device *config.Device, client *routeros.Client,
+func NewCollectorContext(ch chan<- prometheus.Metric, device *config.Device, client ROClient,
 	collector string, logger *slog.Logger, featureCfg config.FeatureConf,
 ) CollectorContext {
 	return CollectorContext{
