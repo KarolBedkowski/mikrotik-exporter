@@ -159,7 +159,9 @@ func (dc *deviceCollector) dial() (net.Conn, error) {
 func (dc *deviceCollector) collect(ch chan<- prometheus.Metric) error {
 	client, err := dc.connect()
 	if err != nil {
-		// no connection so all collectors failed
+		// clear FirmwareVersion and reload on next successful connection.
+		dc.device.FirmwareVersion.Major = 0
+
 		return fmt.Errorf("connect error: %w", err)
 	}
 
