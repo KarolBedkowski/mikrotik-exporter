@@ -11,10 +11,6 @@ devices:
     # by default device is enabled
     disabled: false
 
-    # script to run by scripts collector
-    scripts:
-      - script1
-
   - name: dev2
     address: 192.168.0.2
     # enable ssl
@@ -86,7 +82,12 @@ features:
     details: false
   queue: true
   routes: true
-  scripts: false
+  scripts:
+    enabled: false
+    # script to run by scripts collector
+    scripts:
+      - script1
+      - script2
   service: false
   w60g: true
   wireguard:

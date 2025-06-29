@@ -96,11 +96,14 @@ func (f FeatureConf) Strs(name string) ([]string, error) {
 		return nil, ErrInvalidValueType
 	}
 
-	res := make([]string, len(inlist))
+	res := make([]string, 0, len(inlist))
 
-	for i, inp := range inlist {
+	for _, inp := range inlist {
 		if v, ok := inp.(string); ok {
-			res[i] = v
+			v = strings.TrimSpace(v)
+			if v != "" {
+				res = append(res, v)
+			}
 		} else {
 			return nil, ErrInvalidValueType
 		}
@@ -287,7 +290,6 @@ type Device struct {
 	Port         string     `yaml:"port"`
 	Name         string     `yaml:"name"`
 	Address      string     `yaml:"address,omitempty"`
-	Scripts      []string   `yaml:"scripts"`
 	Timeout      int        `yaml:"timeout,omitempty"`
 	IPv6Disabled bool       `yaml:"ipv6_disabled"`
 	TLS          bool       `yaml:"tls,omitempty"`
@@ -311,7 +313,6 @@ func (d *Device) LogValue() slog.Value {
 		slog.Bool("insecure", d.Insecure),
 		slog.Bool("ipv6_disabled", d.IPv6Disabled),
 		slog.String("profile", d.Profile),
-		slog.Any("scripts", d.Scripts),
 	)
 }
 

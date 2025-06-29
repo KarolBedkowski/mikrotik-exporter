@@ -3,6 +3,7 @@ package collectors
 import (
 	"fmt"
 
+	"mikrotik-exporter/internal/config"
 	"mikrotik-exporter/internal/convert"
 	"mikrotik-exporter/internal/metrics"
 
@@ -31,8 +32,17 @@ func (c *scriptCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *scriptCollector) Collect(ctx *metrics.CollectorContext) error {
+	scripts, err := ctx.FeatureCfg.Strs("scripts")
+	if err != nil {
+		return fmt.Errorf("invalid configuration: %w", err)
+	}
+
+	if len(scripts) == 0 {
+		return config.InvalidConfigurationError("missing configuration")
+	}
+
 	var errs *multierror.Error
-	for _, script := range ctx.Device.Scripts {
+	for _, script := range scripts {
 		errs = multierror.Append(errs, c.collectScript(ctx, script))
 	}
 
