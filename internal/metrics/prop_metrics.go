@@ -374,7 +374,7 @@ func (p *PropertyMetricBuilder) Build() PropertyMetric {
 	case metricCounter:
 		desc := descriptionForPropertyNameHelpText(p.prefix, p.metricName, p.labels, p.metricHelp)
 
-		return &simplePropertyMetric{desc, p.valueConverter, p.property, prometheus.GaugeValue}
+		return &simplePropertyMetric{desc, p.valueConverter, p.property, prometheus.CounterValue}
 
 	case metricGauge:
 		desc := descriptionForPropertyNameHelpText(p.prefix, p.metricName, p.labels, p.metricHelp)
