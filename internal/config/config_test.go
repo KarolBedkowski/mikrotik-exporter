@@ -8,6 +8,8 @@ import (
 	"sort"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestShouldParse(t *testing.T) {
@@ -90,17 +92,17 @@ func assertFeature(name string, f Features, t *testing.T) {
 	}
 }
 
-func assertNotFeature(name string, f Features, t *testing.T) {
-	name = strings.ToLower(name)
-	v, ok := f[name]
-	if !ok {
-		t.Fatalf("expected feature %s to be disabled - not in map", name)
-	}
+// func assertNotFeature(name string, f Features, t *testing.T) {
+// 	name = strings.ToLower(name)
+// 	v, ok := f[name]
+// 	if !ok {
+// 		t.Fatalf("expected feature %s to be disabled - not in map", name)
+// 	}
 
-	if v.Enabled() {
-		t.Fatalf("expected feature %s to be disabled", name)
-	}
-}
+// 	if v.Enabled() {
+// 		t.Fatalf("expected feature %s to be disabled", name)
+// 	}
+// }
 
 func TestValidatorsDevice(t *testing.T) {
 	t.Run("errors", func(t *testing.T) {
@@ -252,39 +254,66 @@ func TestDeviceFeatures(t *testing.T) {
 		{
 			// default profile
 			"test1",
-			[]string{"conntrack", "dhcp", "dhcpl", "dhcpv6", "ipsec", "lte", "netwatch", "optics", "pools", "queue", "resource", "routes", "wlanif", "wlansta"},
+			[]string{"conntrack", "dhcp", "dhcpl", "dhcpv6", "ipsec", "lte", "netwatch", "optics", "pools", "queue", "resource", "routes"},
 		},
 	}
 
 	b := loadTestFile(t)
 
 	c, err := Load(bytes.NewReader(b), nil)
-	if err != nil {
-		t.Fatalf("could not parse: %v", err)
-	}
+	assert.NoError(t, err, "could not parse file")
 
 	for _, dt := range tests {
 		feats := c.DeviceFeatures(dt.device)
 		names := feats.FeatureNames()
 		sort.Strings(names)
-		if slices.Compare(names, dt.features) != 0 {
-			t.Errorf("invalid features for device %s: %v", dt.device, names)
-		}
-
+		assert.Equal(t, dt.features, names, "invalid features for device %s", dt.device)
 	}
+}
+
+func TestDeviceFeaturesConf(t *testing.T) {
+	b := loadTestFile(t)
+
+	c, err := Load(bytes.NewReader(b), nil)
+	assert.NoError(t, err, "could not parse file")
 
 	// test custom config
 	feats := c.DeviceFeatures("test1") // default profile
 	lte := feats["lte"]
-	if v := lte["settings1"]; v != 123 {
-		t.Errorf("invalid setting1 for lte for test1 dev: %v", v)
-	}
-	if v := lte["settings2"]; v != "abc" {
-		t.Errorf("invalid setting2 for lte for test1 dev: %v", v)
-	}
-	if v := lte["enabled"]; v != true {
-		t.Errorf("invalid enabled for lte for test1 dev: %v", v)
-	}
+	assert.Equal(t, 123, lte["settings1"], "invalid setting1 for lte for test1 dev")
+	assert.Equal(t, "abc", lte["settings2"], "invalid setting2 for lte for test1 dev")
+	assert.True(t, lte["enabled"].(bool), "invalid enabled for lte for test1 dev")
+	assert.True(t, lte.BoolValue("enabled", false), "invalid enabled for lte for test1 dev")
+	assert.True(t, lte.Enabled(), "invalid enabled for lte for test1 dev")
+	assert.True(t, lte.BoolValue("enabled", false), "invalid enabled for lte for test1 dev")
+
+	feat := feats["firmware"]
+	assert.Nil(t, feat, "found firmware for test1: %+v", feat)
+
+	// empty dict
+	feat = feats["queue"]
+	assert.Equal(t, 0, len(feat), "queue features should be empty for test1: %+v", feat)
+	assert.True(t, feat.Enabled(), "invalid enabled for queue for test1: %+v", feat)
+
+	// via enable property
+	feat = feats["routes"]
+	assert.True(t, feat.BoolValue("enabled", false), "invalid enabled for routes for test1: %+v", feat)
+	assert.True(t, feat.Enabled(), "invalid enabled for routes for test1 dev: %+v", feat)
+
+	// via enable property
+	feat = feats["wlanif"]
+	assert.False(t, feat.BoolValue("enabled", false), "invalid enabled for wlanif for test1: %+v", feat)
+	assert.False(t, feat.Enabled(), "invalid enabled for wlanif for test1 dev: %+v", feat)
+
+	feats = c.DeviceFeatures("testProfileBasic")
+	feat = feats["scripts"]
+	assert.False(t, feat.BoolValue("enabled", false), "invalid enabled for scripts  for testProfileBasic: %+v", feat)
+	assert.False(t, feat.Enabled(), "invalid enabled for routes for wlanif dev: %+v", feat)
+
+	scripts, err := feat.Strs("scripts")
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(scripts))
+	assert.Equal(t, []string{"script1", "script2"}, scripts)
 }
 
 func TestFirmwareVersionCompare(t *testing.T) {

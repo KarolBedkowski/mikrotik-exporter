@@ -46,11 +46,12 @@ features:
   netwatch: true
   optics: true
   pools: true
-  queue: true
-  routes: true
-  wlanif: true
-  wlansta: true
-
+  queue:
+  routes:
+    enabled: true
+  wlanif:
+    enabled: false
+  wlansta: false
 
 profiles:
   all:
@@ -88,3 +89,9 @@ profiles:
     wlanif:
     wlansta:
       enabled: false
+    scripts:
+      enabled: false
+      # script to run by scripts collector
+      scripts:
+        - script1
+        - script2
