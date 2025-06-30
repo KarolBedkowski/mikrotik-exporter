@@ -116,15 +116,7 @@ func (f *FeatureConf) UnmarshalYAML(value *yaml.Node) error {
 	var valmap map[string]any
 	// Try to decode map; if success - use it; add `enabled` if not present.
 	if err := value.Decode(&valmap); err == nil {
-		if len(valmap) == 0 {
-			*f = FeatureConf{"enabled": true}
-		} else {
-			if _, ok := valmap["enabled"]; !ok {
-				valmap["enabled"] = true
-			}
-
-			*f = FeatureConf(valmap)
-		}
+		*f = FeatureConf(valmap)
 
 		return nil
 	}
@@ -181,6 +173,17 @@ func (f Features) validate(collectors []string) error {
 	}
 
 	return result.ErrorOrNil()
+}
+
+// fix update FeatureCfg for each Features- add enabled: true if missing.
+func (f Features) fix() {
+	for k, v := range f {
+		if v == nil {
+			f[k] = FeatureConf{"enabled": true}
+		} else if _, ok := v["enabled"]; !ok {
+			v["enabled"] = true
+		}
+	}
 }
 
 // --------------------------------------
@@ -267,6 +270,14 @@ func (c *Config) validate(collectors []string) error {
 	}
 
 	return nil
+}
+
+func (c *Config) fix() {
+	c.Features.fix()
+
+	for _, f := range c.Profiles {
+		f.fix()
+	}
 }
 
 // --------------------------------------
@@ -425,6 +436,8 @@ func Load(r io.Reader, collectors []string) (*Config, error) {
 	if err := cfg.validate(collectors); err != nil {
 		return nil, err
 	}
+
+	cfg.fix()
 
 	return cfg, nil
 }

@@ -10,26 +10,22 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestShouldParse(t *testing.T) {
 	b := loadTestFile(t)
 
 	c, err := Load(bytes.NewReader(b), nil)
-	if err != nil {
-		t.Fatalf("could not parse: %v", err)
-	}
+	require.NoError(t, err, "load error")
 
-	if len(c.Devices) != 6 {
-		t.Fatalf("expected 6 devices, got %v", len(c.Devices))
-	}
+	require.Equalf(t, 6, len(c.Devices), "expected 6 devices, got %+v", c.Devices)
 
 	assertDevice("test1", "192.168.1.1", "foo", "bar", &c.Devices[0], t)
 	assertDevice("test2", "192.168.2.1", "test", "123", &c.Devices[1], t)
 
 	featuresEnabled := []string{
-		"Conntrack", "DHCP", "DHCPv6", "Pools", "Routes", "Optics", "WlanSTA",
-		"WlanIF", "Ipsec", "Lte", "Netwatch", "Queue",
+		"Conntrack", "DHCP", "DHCPv6", "Pools", "Routes", "Optics", "Ipsec", "Lte", "Netwatch", "Queue",
 	}
 
 	for _, feat := range featuresEnabled {
@@ -42,53 +38,32 @@ func TestShouldParse(t *testing.T) {
 	assertFeature("Monitor", f, t)
 
 	dev := c.FindDevice("testDns")
-	if dev.Srv.Record != "record2" {
-		t.Fatalf("expected `record2` service, got %#v", dev.Srv.Record)
-	}
-	if dev.Srv.DNS.Address != "dnsaddress" {
-		t.Fatalf("expected `dnsaddress` dns address, got %#v", dev.Srv.DNS)
-	}
-	if dev.Srv.DNS.Port != 1053 {
-		t.Fatalf("expected `1053` dns port, got %#v", dev.Srv.DNS)
-	}
+	assert.Equal(t, "record2", dev.Srv.Record, "invalid service")
+	assert.Equal(t, "dnsaddress", dev.Srv.DNS.Address, "invalid dns address")
+	assert.Equal(t, 1053, dev.Srv.DNS.Port, "invalid dns port")
 }
 
 func loadTestFile(t *testing.T) []byte {
 	b, err := os.ReadFile("config.test.yml")
-	if err != nil {
-		t.Fatalf("could not load config: %v", err)
-	}
+	require.NoErrorf(t, err, "could not load config: %v", err)
 
 	return b
 }
 
 func assertDevice(name, address, user, password string, c *Device, t *testing.T) {
-	if c.Name != name {
-		t.Fatalf("expected name %s, got %s", name, c.Name)
-	}
-
-	if c.Address != address {
-		t.Fatalf("expected address %s, got %s", address, c.Address)
-	}
-
-	if c.User != user {
-		t.Fatalf("expected user %s, got %s", user, c.User)
-	}
-
-	if c.Password != password {
-		t.Fatalf("expected password %s, got %s", password, c.Password)
-	}
+	assert.Equal(t, name, c.Name)
+	assert.Equal(t, address, c.Address)
+	assert.Equal(t, user, c.User)
+	assert.Equal(t, password, c.Password)
 }
 
 func assertFeature(name string, f Features, t *testing.T) {
 	name = strings.ToLower(name)
 	v, ok := f[name]
-	if !ok {
-		t.Fatalf("expected feature %s to be enabled - not in map ", name)
-	}
 
-	if !v.Enabled() {
-		t.Fatalf("expected feature %s to be enabled", name)
+	assert.True(t, ok, "expected feature %s to be enabled - not in map ", name)
+	if ok {
+		assert.True(t, v.Enabled(), "expected feature %s to be enabled", name)
 	}
 }
 
@@ -114,21 +89,13 @@ devices:
     `)
 
 		_, err := Load(bytes.NewReader(config), nil)
-		if err == nil {
-			t.Fatalf("expected error")
-		}
+		require.Error(t, err, "expected load error")
 
-		t.Logf("errors: %s", err)
+		t.Logf("expected errors: %s", err)
 
-		if !errors.Is(err, MissingFieldError("user")) {
-			t.Fatalf("no error: missing field user")
-		}
-		if !errors.Is(err, MissingFieldError("password")) {
-			t.Fatalf("no error: missing field password")
-		}
-		if !errors.Is(err, UnknownProfileError("test")) {
-			t.Fatalf("no error: unknown profile test")
-		}
+		assert.ErrorIs(t, err, MissingFieldError("user"))
+		assert.ErrorIs(t, err, MissingFieldError("password"))
+		assert.ErrorIs(t, err, UnknownProfileError("test"))
 	})
 
 	t.Run("error: missing fields", func(t *testing.T) {
@@ -140,18 +107,12 @@ devices:
     `)
 
 		_, err := Load(bytes.NewReader(config), nil)
-		if err == nil {
-			t.Fatalf("expected error")
-		}
+		require.Error(t, err, "expected load error")
 
 		t.Logf("errors: %s", err)
 
-		if !errors.Is(err, MissingFieldError("name")) {
-			t.Fatalf("no error: missing field name")
-		}
-		if !errors.Is(err, MissingFieldError("address")) {
-			t.Fatalf("no error: missing field address")
-		}
+		assert.ErrorIs(t, err, MissingFieldError("name"))
+		assert.ErrorIs(t, err, MissingFieldError("address"))
 	})
 }
 
@@ -267,7 +228,7 @@ func TestDeviceFeatures(t *testing.T) {
 		feats := c.DeviceFeatures(dt.device)
 		names := feats.FeatureNames()
 		sort.Strings(names)
-		assert.Equal(t, dt.features, names, "invalid features for device %s", dt.device)
+		assert.Equalf(t, dt.features, names, "invalid features for device %s", dt.device)
 	}
 }
 
@@ -288,27 +249,33 @@ func TestDeviceFeaturesConf(t *testing.T) {
 	assert.True(t, lte.BoolValue("enabled", false), "invalid enabled for lte for test1 dev")
 
 	feat := feats["firmware"]
-	assert.Nil(t, feat, "found firmware for test1: %+v", feat)
+	assert.Nilf(t, feat, "found firmware for test1: %+v", feat)
 
 	// empty dict
 	feat = feats["queue"]
-	assert.Equal(t, 0, len(feat), "queue features should be empty for test1: %+v", feat)
-	assert.True(t, feat.Enabled(), "invalid enabled for queue for test1: %+v", feat)
+	assert.Equalf(t, 1, len(feat), "queue features should have only on item for test1: %+v", feat)
+	assert.Truef(t, feat.BoolValue("enabled", false), "queue features should be enabled for test1: %+v", feat)
+	assert.Truef(t, feat.Enabled(), "invalid enabled for queue for test1: %+v", feat)
 
 	// via enable property
 	feat = feats["routes"]
-	assert.True(t, feat.BoolValue("enabled", false), "invalid enabled for routes for test1: %+v", feat)
-	assert.True(t, feat.Enabled(), "invalid enabled for routes for test1 dev: %+v", feat)
+	assert.Truef(t, feat.BoolValue("enabled", false), "invalid enabled for routes for test1: %+v", feat)
+	assert.Truef(t, feat.Enabled(), "invalid enabled for routes for test1 dev: %+v", feat)
 
-	// via enable property
+	// disable via enable property
 	feat = feats["wlanif"]
-	assert.False(t, feat.BoolValue("enabled", false), "invalid enabled for wlanif for test1: %+v", feat)
-	assert.False(t, feat.Enabled(), "invalid enabled for wlanif for test1 dev: %+v", feat)
+	assert.Falsef(t, feat.BoolValue("enabled", false), "invalid enabled for wlanif for test1: %+v", feat)
+	assert.Falsef(t, feat.Enabled(), "invalid enabled for wlanif for test1 dev: %+v", feat)
+
+	// disable via false
+	feat = feats["wlansta"]
+	assert.Falsef(t, feat.BoolValue("enabled", false), "invalid enabled for wlansta for test1: %+v", feat)
+	assert.Falsef(t, feat.Enabled(), "invalid enabled for wlansta for test1 dev: %+v", feat)
 
 	feats = c.DeviceFeatures("testProfileBasic")
 	feat = feats["scripts"]
-	assert.False(t, feat.BoolValue("enabled", false), "invalid enabled for scripts  for testProfileBasic: %+v", feat)
-	assert.False(t, feat.Enabled(), "invalid enabled for routes for wlanif dev: %+v", feat)
+	assert.Falsef(t, feat.BoolValue("enabled", false), "invalid enabled for scripts  for testProfileBasic: %+v", feat)
+	assert.Falsef(t, feat.Enabled(), "invalid enabled for routes for wlanif dev: %+v", feat)
 
 	scripts, err := feat.Strs("scripts")
 	assert.NoError(t, err)
@@ -341,8 +308,6 @@ func TestFirmwareVersionCompare(t *testing.T) {
 	ver := FirmwareVersion{5, 10, 15}
 
 	for _, tc := range tests {
-		if r := ver.Compare(tc[0], tc[1], tc[2]); r != tc[3] {
-			t.Fatalf("compare failed for %v; expected %d got %d", tc, tc[3], r)
-		}
+		assert.Equalf(t, tc[3], ver.Compare(tc[0], tc[1], tc[2]), "compare failed for %v", tc)
 	}
 }
