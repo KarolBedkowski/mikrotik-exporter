@@ -57,7 +57,7 @@ func (r RetMetricBuilder) WithConverter(vc ValueConverter) RetMetricBuilder {
 	return r
 }
 
-func (r RetMetricBuilder) Build() RetMetric {
+func (r RetMetricBuilder) Build() PropertyMetric {
 	metricName := r.metricName
 	if metricName == "" {
 		metricName = r.property
@@ -95,12 +95,6 @@ func (r RetMetricBuilder) Build() RetMetric {
 }
 
 // --------------------------------------
-
-// RetMetric collect metrics from `ret` value returned in reply.
-type RetMetric interface {
-	Describe(ch chan<- *prometheus.Desc)
-	Collect(reply *routeros.Reply, ctx *CollectorContext) error
-}
 
 type retGaugeCollector struct {
 	desc           *prometheus.Desc
