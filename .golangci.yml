@@ -10,6 +10,8 @@ linters:
     - gochecknoinits
     - ireturn
     - tagliatelle
+    - wsl
+    - noinlineerr
   settings:
     misspell:
       locale: US
@@ -39,6 +41,13 @@ linters:
         - .WithStack(
         - multierror.Append(
         - .ErrorOrNil()
+    wsl_v5:
+      allow-first-in-block: true
+      allow-whole-block: false
+      branch-max-lines: 2
+      disable:
+        - send
+        - expr
   exclusions:
     generated: lax
     presets:
