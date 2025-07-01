@@ -63,7 +63,7 @@ func (c *ntpcCollector) collectRO6(ctx *metrics.CollectorContext) error {
 
 	var errs *multierror.Error
 
-	if err := c.enabled.Collect(sentence, ctx); err != nil {
+	if err := c.enabled.Collect(sentence.Map, ctx); err != nil {
 		errs = multierror.Append(errs, fmt.Errorf("collect error: %w", err))
 	}
 
@@ -101,7 +101,7 @@ func (c *ntpcCollector) collectRO7(ctx *metrics.CollectorContext) error {
 	}
 
 	pl := metrics.PropertyMetricList{c.enabled, c.status, c.offset}
-	if err := pl.Collect(reply.Re[0], ctx); err != nil {
+	if err := pl.Collect(reply.Re[0].Map, ctx); err != nil {
 		return fmt.Errorf("collect error: %w", err)
 	}
 

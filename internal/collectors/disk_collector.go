@@ -54,12 +54,12 @@ func (c *diskCollector) Collect(ctx *metrics.CollectorContext) error {
 
 	for _, re := range reply.Re {
 		lctx := ctx.WithLabelsFromMap(re.Map, "slot", "fs-uuid", "mount-point")
-		if err := c.metrics.Collect(re, &lctx); err != nil {
+		if err := c.metrics.Collect(re.Map, &lctx); err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("collect error: %w", err))
 		}
 
 		lctx = ctx.WithLabelsFromMap(re.Map, "slot", "type", "fs-uuid", "comment", "parent", "fs", "model", "serial")
-		if err := c.entries.Collect(re, &lctx); err != nil {
+		if err := c.entries.Collect(re.Map, &lctx); err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("collect error: %w", err))
 		}
 	}

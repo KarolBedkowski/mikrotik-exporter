@@ -83,7 +83,7 @@ func (c *ipsecCollector) collectPolicy(ctx *metrics.CollectorContext) error {
 
 	for _, re := range reply.Re {
 		lctx := ctx.WithLabelsFromMap(re.Map, "src-address", "dst-address", "comment")
-		if err := c.metrics.Collect(re, &lctx); err != nil {
+		if err := c.metrics.Collect(re.Map, &lctx); err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("collect policy error %w", err))
 		}
 	}
@@ -103,7 +103,7 @@ func (c *ipsecCollector) collectActivePeers(ctx *metrics.CollectorContext) error
 
 	for _, re := range reply.Re {
 		lctx := ctx.WithLabelsFromMap(re.Map, "src-address", "dst-address", "comment", "side")
-		if err := c.activePeers.Collect(re, &lctx); err != nil {
+		if err := c.activePeers.Collect(re.Map, &lctx); err != nil {
 			errs = multierror.Append(errs,
 				fmt.Errorf("collect active peers error %w", err))
 		}

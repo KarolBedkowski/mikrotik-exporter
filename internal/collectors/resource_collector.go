@@ -76,7 +76,7 @@ func (c *resourceCollector) collectForStat(reply *proto.Sentence, ctx *metrics.C
 	ctx.Ch <- prometheus.MustNewConstMetric(c.versionDesc, prometheus.GaugeValue, 1,
 		ctx.Device.Name, ctx.Device.Address, boardname, version)
 
-	if err := c.metrics.Collect(reply, ctx); err != nil {
+	if err := c.metrics.Collect(reply.Map, ctx); err != nil {
 		return fmt.Errorf("collect error: %w", err)
 	}
 

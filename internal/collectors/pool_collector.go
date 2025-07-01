@@ -60,7 +60,7 @@ func (c *poolCollector) collectForIPv4(ctx *metrics.CollectorContext) error {
 
 	for _, re := range reply.Re {
 		lctx := ctx.WithLabels("4", re.Map["name"])
-		if err := c.metrics.Collect(re, &lctx); err != nil {
+		if err := c.metrics.Collect(re.Map, &lctx); err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("collect error: %w", err))
 		}
 	}
@@ -83,7 +83,7 @@ func (c *poolCollector) collectForIPv6(ctx *metrics.CollectorContext) error {
 		re.Map["used"] = strconv.Itoa(used)
 
 		lctx := ctx.WithLabels("6", pool)
-		if err := c.metrics[0].Collect(&re, &lctx); err != nil {
+		if err := c.metrics[0].Collect(re.Map, &lctx); err != nil {
 			return fmt.Errorf("collect ipv6 pool %s error: %w", pool, err)
 		}
 	}

@@ -63,7 +63,7 @@ func (c *interfaceCollector) Collect(ctx *metrics.CollectorContext) error {
 
 		lctx := ctx.WithLabelsFromMap(re.Map, "name", "type", "comment", "slave")
 
-		if err := c.metrics.Collect(re, &lctx); err != nil {
+		if err := c.metrics.Collect(re.Map, &lctx); err != nil {
 			errs = multierror.Append(errs, err)
 		}
 	}

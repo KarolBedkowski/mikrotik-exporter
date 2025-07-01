@@ -80,7 +80,7 @@ func (c *wlanIFCollector) collectForInterface(iface string, ctx *metrics.Collect
 
 	lctx := ctx.WithLabels(iface)
 
-	if err := c.metrics.Collect(re, &lctx); err != nil {
+	if err := c.metrics.Collect(re.Map, &lctx); err != nil {
 		return fmt.Errorf("collect %s error: %w", iface, err)
 	}
 

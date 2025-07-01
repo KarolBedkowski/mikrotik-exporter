@@ -48,12 +48,12 @@ func (c *conntrackCollector) Collect(ctx *metrics.CollectorContext) error {
 	if len(reply.Re) > 0 {
 		re := reply.Re[0]
 
-		if err := c.totalEntries.Collect(re, ctx); err != nil {
+		if err := c.totalEntries.Collect(re.Map, ctx); err != nil {
 			errs = multierror.Append(errs,
 				fmt.Errorf("collect total entries error: %w", err))
 		}
 
-		if err := c.maxEntries.Collect(re, ctx); err != nil {
+		if err := c.maxEntries.Collect(re.Map, ctx); err != nil {
 			errs = multierror.Append(errs,
 				fmt.Errorf("collect max entries error: %w", err))
 		}

@@ -98,7 +98,7 @@ func (c *wireguardCollector) collectWGPeers(ctx *metrics.CollectorContext) error
 
 		lctx := ctx.WithLabels(pubKey, re.Map["comment"], re.Map["disabled"])
 
-		if err := c.peers.Collect(re, &lctx); err != nil {
+		if err := c.peers.Collect(re.Map, &lctx); err != nil {
 			errs = multierror.Append(errs,
 				fmt.Errorf("collect wireguard %v error: %w", re, err))
 		}
@@ -122,7 +122,7 @@ func (c *wireguardCollector) collectWG(ctx *metrics.CollectorContext) error {
 	for _, re := range reply.Re {
 		lctx := ctx.WithLabelsFromMap(re.Map, "public-key", "name", "comment")
 
-		if err := c.wg.Collect(re, &lctx); err != nil {
+		if err := c.wg.Collect(re.Map, &lctx); err != nil {
 			errs = multierror.Append(errs,
 				fmt.Errorf("collect wireguard %v error: %w", re, err))
 		}

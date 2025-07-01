@@ -41,7 +41,7 @@ func (c *netwatchCollector) Collect(ctx *metrics.CollectorContext) error {
 
 	for _, re := range reply.Re {
 		lctx := ctx.WithLabelsFromMap(re.Map, "host", "comment", "status")
-		if err := c.metric.Collect(re, &lctx); err != nil {
+		if err := c.metric.Collect(re.Map, &lctx); err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("collect error %w", err))
 		}
 	}

@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"mikrotik-exporter/internal/config"
-	"mikrotik-exporter/routeros/proto"
 
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
@@ -33,10 +32,10 @@ func TestSimplePropertyGauge(t *testing.T) {
 
 	device := config.Device{Name: "devname", Address: "devaddress"}
 	ctx := NewCollectorContext(chout, &device, nil, "coltest", slog.Default(), nil)
-	sent := proto.Sentence{Map: map[string]string{"property1": "123.23", "aa": "valaa", "bb": ""}}
-	lctx := ctx.WithLabelsFromMap(sent.Map, "aa", "bb")
+	sent := map[string]string{"property1": "123.23", "aa": "valaa", "bb": ""}
+	lctx := ctx.WithLabelsFromMap(sent, "aa", "bb")
 
-	err := sp.Collect(&sent, &lctx)
+	err := sp.Collect(sent, &lctx)
 	assert.NoError(t, err)
 
 	metric, labels, err := collectMetric(chout)
@@ -70,9 +69,9 @@ func TestSimplePropertyCounter(t *testing.T) {
 
 	device := config.Device{Name: "devname2", Address: "devaddress2"}
 	ctx := NewCollectorContext(chout, &device, nil, "coltest", slog.Default(), nil)
-	sent := proto.Sentence{Map: map[string]string{"property1": "123.567", "aa": "valaa", "bb": ""}}
+	sent := map[string]string{"property1": "123.567", "aa": "valaa", "bb": ""}
 
-	err := sp.Collect(&sent, &ctx)
+	err := sp.Collect(sent, &ctx)
 	assert.NoError(t, err)
 
 	metric, labels, err := collectMetric(chout)
@@ -115,9 +114,7 @@ func TestSimplePropertyConsts(t *testing.T) {
 	}
 
 	for _, tc := range testCase {
-		sent := proto.Sentence{Map: tc.input}
-
-		err := sp.Collect(&sent, &ctx)
+		err := sp.Collect(tc.input, &ctx)
 		assert.NoError(t, err)
 
 		if tc.value == 0.0 {

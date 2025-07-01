@@ -91,7 +91,7 @@ func (c *arpCollector) collectEntries(ctx *metrics.CollectorContext) error {
 			"comment", "dhcp", "dynamic")
 
 		// collect metrics using context
-		if err := c.metrics.Collect(re, &lctx); err != nil {
+		if err := c.metrics.Collect(re.Map, &lctx); err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("collect error: %w", err))
 		}
 	}
@@ -127,7 +127,7 @@ func (c *arpCollector) collectInvalid(ctx *metrics.CollectorContext) error {
 		return fmt.Errorf("fetch arp invalid cnt  error: %w", err)
 	}
 
-	if err := c.invalid.Collect(reply.Done, ctx); err != nil {
+	if err := c.invalid.Collect(reply.Done.Map, ctx); err != nil {
 		return fmt.Errorf("collect arp invalid cnt error: %w", err)
 	}
 

@@ -6,7 +6,6 @@ import (
 
 	"mikrotik-exporter/internal/config"
 	"mikrotik-exporter/internal/convert"
-	"mikrotik-exporter/routeros/proto"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
@@ -46,7 +45,7 @@ func Description(prefix, name, helpText string, labelNames ...string) *prometheu
 // PropertyMetric define metric collector that read values from configured property.
 type PropertyMetric interface {
 	Describe(ch chan<- *prometheus.Desc)
-	Collect(re *proto.Sentence, ctx *CollectorContext) error
+	Collect(reply map[string]string, ctx *CollectorContext) error
 }
 
 type PropertySimpleSet interface {
@@ -64,11 +63,11 @@ func (p PropertyMetricList) Describe(ch chan<- *prometheus.Desc) {
 	}
 }
 
-func (p PropertyMetricList) Collect(re *proto.Sentence, ctx *CollectorContext) error {
+func (p PropertyMetricList) Collect(reply map[string]string, ctx *CollectorContext) error {
 	var errs *multierror.Error
 
 	for _, m := range p {
-		if err := m.Collect(re, ctx); err != nil {
+		if err := m.Collect(reply, ctx); err != nil {
 			errs = multierror.Append(errs, err)
 		}
 	}

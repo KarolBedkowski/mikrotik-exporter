@@ -72,7 +72,7 @@ func (c *w60gInterfaceCollector) collectw60gMetricsForInterfaces(ifaces []string
 		if name, ok := se.Map["name"]; ok {
 			lctx := ctx.WithLabels(name)
 
-			if err := c.metrics.Collect(se, &lctx); err != nil {
+			if err := c.metrics.Collect(se.Map, &lctx); err != nil {
 				errs = multierror.Append(errs, fmt.Errorf("collect %v error: %w", name, err))
 			}
 		}

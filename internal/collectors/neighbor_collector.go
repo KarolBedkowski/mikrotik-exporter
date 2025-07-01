@@ -78,7 +78,7 @@ func (c *neighborCollector) Collect(ctx *metrics.CollectorContext) error {
 			"system-description",
 		)
 
-		if err := c.metrics.Collect(re, &lctx); err != nil {
+		if err := c.metrics.Collect(re.Map, &lctx); err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("collect error: %w", err))
 		}
 	}

@@ -62,7 +62,7 @@ func (c *dhcpv6Collector) collectForDHCPServer(ctx *metrics.CollectorContext, dh
 
 	lctx := ctx.WithLabels(dhcpServer)
 
-	if err := c.bindingCount.Collect(reply.Done, &lctx); err != nil {
+	if err := c.bindingCount.Collect(reply.Done.Map, &lctx); err != nil {
 		return fmt.Errorf("collect error: %w", err)
 	}
 

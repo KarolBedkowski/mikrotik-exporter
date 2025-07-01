@@ -87,7 +87,7 @@ func (c *firewallCollector) collectStats(firewall, chain string, ctx *metrics.Co
 		if comment := re.Map["comment"]; comment != "" {
 			lctx := ctx.WithLabels(firewall, chain, comment)
 
-			if err := c.metrics.Collect(re, &lctx); err != nil {
+			if err := c.metrics.Collect(re.Map, &lctx); err != nil {
 				errs = multierror.Append(errs,
 					fmt.Errorf("collect fw %s/%s error: %w", firewall, chain, err))
 			}

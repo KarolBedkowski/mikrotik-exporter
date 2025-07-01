@@ -57,7 +57,7 @@ func (c *healthCollector) Collect(ctx *metrics.CollectorContext) error {
 			}
 		}
 
-		if err := c.metrics.Collect(re, ctx); err != nil {
+		if err := c.metrics.Collect(re.Map, ctx); err != nil {
 			errs = multierror.Append(errs, err)
 		}
 	}

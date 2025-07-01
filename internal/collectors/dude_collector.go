@@ -43,7 +43,7 @@ func (c *dudeCollector) Collect(ctx *metrics.CollectorContext) error {
 	var errs *multierror.Error
 
 	for _, re := range reply.Re {
-		if err := c.metrics.Collect(re, ctx); err != nil {
+		if err := c.metrics.Collect(re.Map, ctx); err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("collect error: %w", err))
 		}
 	}

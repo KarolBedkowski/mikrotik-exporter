@@ -81,7 +81,7 @@ func (c *lteCollector) collectForInterface(iface string, ctx *metrics.CollectorC
 
 	lctx := ctx.WithLabels(iface, re.Map["current-cellid"], primaryband)
 
-	if err := c.metrics.Collect(re, &lctx); err != nil {
+	if err := c.metrics.Collect(re.Map, &lctx); err != nil {
 		return fmt.Errorf("collect lte for %s error: %w", iface, err)
 	}
 

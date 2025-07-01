@@ -49,7 +49,7 @@ func (c *certsCollector) Collect(ctx *metrics.CollectorContext) error {
 	for _, re := range reply.Re {
 		lctx := ctx.WithLabelsFromMap(re.Map, "name", "common-name", "issuer", "serial-number")
 
-		if err := c.metrics.Collect(re, &lctx); err != nil {
+		if err := c.metrics.Collect(re.Map, &lctx); err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("collect error: %w", err))
 		}
 	}

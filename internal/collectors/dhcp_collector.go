@@ -58,7 +58,7 @@ func (c *dhcpCollector) collectForDHCPServer(ctx *metrics.CollectorContext, dhcp
 
 	lctx := ctx.WithLabels(dhcpServer)
 
-	if err := c.leasesActiveCount.Collect(reply.Done, &lctx); err != nil {
+	if err := c.leasesActiveCount.Collect(reply.Done.Map, &lctx); err != nil {
 		return fmt.Errorf("collect active leases for %s error: %w", dhcpServer, err)
 	}
 

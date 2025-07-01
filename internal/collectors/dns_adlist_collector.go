@@ -51,7 +51,7 @@ func (c *dnsAdlistCollector) Collect(ctx *metrics.CollectorContext) error {
 
 	for _, re := range reply.Re {
 		lctx := ctx.WithLabelsFromMap(re.Map, "url")
-		if err := c.metrics.Collect(re, &lctx); err != nil {
+		if err := c.metrics.Collect(re.Map, &lctx); err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("collect error: %w", err))
 		}
 	}

@@ -64,7 +64,7 @@ func (c *monitorCollector) collectForMonitor(eths []string, ctx *metrics.Collect
 		name := e.Map["name"]
 		lctx := ctx.WithLabels(name)
 
-		if err := c.metrics.Collect(e, &lctx); err != nil {
+		if err := c.metrics.Collect(e.Map, &lctx); err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("collect %v error: %w", name, err))
 		}
 	}

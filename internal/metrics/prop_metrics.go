@@ -14,7 +14,6 @@ import (
 	"strings"
 
 	"mikrotik-exporter/internal/convert"
-	"mikrotik-exporter/routeros/proto"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
@@ -35,15 +34,15 @@ func (p *simplePropertyMetric) Describe(ch chan<- *prometheus.Desc) {
 	ch <- p.desc
 }
 
-func (p *simplePropertyMetric) Collect(reply *proto.Sentence, ctx *CollectorContext) error {
-	if len(reply.Map) == 0 {
+func (p *simplePropertyMetric) Collect(reply map[string]string, ctx *CollectorContext) error {
+	if len(reply) == 0 {
 		ctx.Logger.Warn("empty replay from device",
 			"property", p.property, "labels", ctx.Labels, "reply", reply)
 
 		return nil
 	}
 
-	propertyVal, ok := reply.Map[p.property]
+	propertyVal, ok := reply[p.property]
 	if !ok {
 		ctx.Logger.Debug(fmt.Sprintf("property %s value not found", p.property),
 			"property", p.property, "labels", ctx.Labels, "reply", reply)
@@ -91,14 +90,14 @@ func (p rxTxPropertyMetric) Describe(ch chan<- *prometheus.Desc) {
 	ch <- p.txDesc
 }
 
-func (p rxTxPropertyMetric) Collect(reply *proto.Sentence, ctx *CollectorContext) error {
-	if len(reply.Map) == 0 {
+func (p rxTxPropertyMetric) Collect(reply map[string]string, ctx *CollectorContext) error {
+	if len(reply) == 0 {
 		ctx.Logger.Warn("empty replay from device", "property", p.property, "labels", ctx.Labels, "reply", reply)
 
 		return nil
 	}
 
-	propertyVal, ok := reply.Map[p.property]
+	propertyVal, ok := reply[p.property]
 	if !ok {
 		ctx.Logger.Debug(fmt.Sprintf("property %s value not found", p.property),
 			"property", p.property, "labels", ctx.Labels)
@@ -155,14 +154,14 @@ func (s statusPropertyMetric) Describe(ch chan<- *prometheus.Desc) {
 	}
 }
 
-func (s statusPropertyMetric) Collect(reply *proto.Sentence, ctx *CollectorContext) error {
-	if len(reply.Map) == 0 {
+func (s statusPropertyMetric) Collect(reply map[string]string, ctx *CollectorContext) error {
+	if len(reply) == 0 {
 		ctx.Logger.Warn("empty replay from device", "property", s.property, "labels", ctx.Labels, "reply", reply)
 
 		return nil
 	}
 
-	propertyVal, ok := reply.Map[s.property]
+	propertyVal, ok := reply[s.property]
 	if !ok {
 		ctx.Logger.Debug(fmt.Sprintf("property %s value not found", s.property),
 			"property", s.property, "labels", ctx.Labels)
@@ -206,17 +205,17 @@ func (p *constPropertyMetric) Describe(ch chan<- *prometheus.Desc) {
 	ch <- p.desc
 }
 
-func (p *constPropertyMetric) Collect(reply *proto.Sentence, ctx *CollectorContext) error {
-	if len(reply.Map) == 0 {
+func (p *constPropertyMetric) Collect(reply map[string]string, ctx *CollectorContext) error {
+	if len(reply) == 0 {
 		ctx.Logger.Warn("empty replay from device", "property", p.property, "labels", ctx.Labels, "reply", reply)
 
 		return nil
 	}
 
-	_, ok := reply.Map[p.property]
+	_, ok := reply[p.property]
 	if !ok {
 		ctx.Logger.Debug(fmt.Sprintf("property %s value not found", p.property),
-			"property", p.property, "labels", ctx.Labels, "reply_map", reply.Map)
+			"property", p.property, "labels", ctx.Labels, "reply_map", reply)
 
 		return nil
 	}

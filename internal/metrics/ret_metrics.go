@@ -13,7 +13,6 @@ import (
 	"strings"
 
 	"mikrotik-exporter/internal/convert"
-	"mikrotik-exporter/routeros"
 
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -113,8 +112,8 @@ func (r *retGaugeCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- r.desc
 }
 
-func (r *retGaugeCollector) Collect(reply *routeros.Reply, ctx *CollectorContext) error {
-	propertyVal := reply.Done.Map["ret"]
+func (r *retGaugeCollector) Collect(reply map[string]string, ctx *CollectorContext) error {
+	propertyVal := reply["ret"]
 	if propertyVal == "" {
 		return nil
 	}

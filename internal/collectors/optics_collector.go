@@ -96,7 +96,7 @@ func (c *opticsCollector) collectOpticalMetricsForInterfaces(ifaces []string, ct
 		if name, ok := se.Map["name"]; ok {
 			lctx := ctx.WithLabels(name)
 
-			if err := c.metrics.Collect(se, &lctx); err != nil {
+			if err := c.metrics.Collect(se.Map, &lctx); err != nil {
 				errs = multierror.Append(errs, fmt.Errorf("collect %s error: %w", name, err))
 			}
 		}

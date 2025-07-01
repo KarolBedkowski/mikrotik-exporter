@@ -72,11 +72,11 @@ func (c *queueCollector) collectQueue(ctx *metrics.CollectorContext) error {
 
 	re := reply.Re[0]
 
-	if err := c.monitorQueuedBytes.Collect(re, ctx); err != nil {
+	if err := c.monitorQueuedBytes.Collect(re.Map, ctx); err != nil {
 		return fmt.Errorf("collect queue monitor error: %w", err)
 	}
 
-	if err := c.monitorQueuedPackets.Collect(re, ctx); err != nil {
+	if err := c.monitorQueuedPackets.Collect(re.Map, ctx); err != nil {
 		return fmt.Errorf("collect queue monitor error: %w", err)
 	}
 
@@ -96,7 +96,7 @@ func (c *queueCollector) collectSimpleQueue(ctx *metrics.CollectorContext) error
 	for _, reply := range reply.Re {
 		lctx := ctx.WithLabelsFromMap(reply.Map, "name", "queue", "comment")
 
-		if err := c.metrics.Collect(reply, &lctx); err != nil {
+		if err := c.metrics.Collect(reply.Map, &lctx); err != nil {
 			name := reply.Map["name"]
 			queue := reply.Map["queue"]
 			errs = multierror.Append(errs, fmt.Errorf("collect %v/%v error: %w", name, queue, err))

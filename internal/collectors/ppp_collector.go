@@ -59,7 +59,7 @@ func (c *pppCollector) collectDetails(ctx *metrics.CollectorContext) error {
 		lctx := ctx.WithLabelsFromMap(re.Map, "name", "service", "caller-id", "address")
 
 		// collect metrics using context
-		if err := c.metrics.Collect(re, &lctx); err != nil {
+		if err := c.metrics.Collect(re.Map, &lctx); err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("collect error: %w", err))
 		}
 	}

@@ -54,7 +54,7 @@ func (c *ipCollector) Collect(ctx *metrics.CollectorContext) error {
 
 	for _, re := range reply.Re {
 		// collect metrics using context
-		if err := c.metrics.Collect(re, ctx); err != nil {
+		if err := c.metrics.Collect(re.Map, ctx); err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("collect error: %w", err))
 		}
 	}

@@ -80,7 +80,7 @@ func (c *dhcpLeaseCollector) collectMetric(ctx *metrics.CollectorContext, re *pr
 		re.Map["comment"], re.Map["address"], re.Map["mac-address"],
 	)
 
-	if err := c.leases.Collect(re, &lctx); err != nil {
+	if err := c.leases.Collect(re.Map, &lctx); err != nil {
 		return fmt.Errorf("collect error: %w", err)
 	}
 

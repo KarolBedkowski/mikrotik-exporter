@@ -40,7 +40,7 @@ func (c *cloudCollector) Collect(ctx *metrics.CollectorContext) error {
 	re := reply.Re[0]
 	lctx := ctx.WithLabels(re.Map["status"])
 
-	if err := c.ifaceStatus.Collect(re, &lctx); err != nil {
+	if err := c.ifaceStatus.Collect(re.Map, &lctx); err != nil {
 		return fmt.Errorf("collect error: %w", err)
 	}
 
