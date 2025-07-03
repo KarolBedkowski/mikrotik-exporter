@@ -1,7 +1,5 @@
 package collectors
 
-// TODO: skipping disabled; check
-
 import (
 	"fmt"
 	"strconv"
@@ -90,7 +88,6 @@ func (c *wlanIFCollector) collectForInterface(iface string, ctx *metrics.Collect
 func (c *wlanIFCollector) collectMetricForFreq(iface string, re *proto.Sentence, ctx *metrics.CollectorContext) error {
 	channel := re.Map["channel"]
 
-	// TODO: skip without channel?
 	ctx.Ch <- prometheus.MustNewConstMetric(c.channelDesc, prometheus.GaugeValue,
 		1, ctx.Device.Name, ctx.Device.Address, iface, channel)
 
