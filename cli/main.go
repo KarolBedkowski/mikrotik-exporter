@@ -242,6 +242,11 @@ func createMetricsHandler(cfg *config.Config) (http.Handler, error) {
 		return nil, fmt.Errorf("register gocollector error: %w", err)
 	}
 
+	if err := registry.Register(
+		pcollectors.NewProcessCollector(pcollectors.ProcessCollectorOpts{})); err != nil {
+		return nil, fmt.Errorf("register process collector error: %w", err)
+	}
+
 	if err := registry.Register(collector); err != nil {
 		return nil, fmt.Errorf("register collector error: %w", err)
 	}
