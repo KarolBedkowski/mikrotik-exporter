@@ -3,6 +3,8 @@ package proto
 import (
 	"fmt"
 	"log/slog"
+	"slices"
+	"strings"
 )
 
 // Sentence is a line read from a RouterOS device.
@@ -27,7 +29,12 @@ func NewSentence() *Sentence {
 }
 
 func (sen *Sentence) String() string {
-	return fmt.Sprintf("%s @%s %#q", sen.Word, sen.Tag, sen.AsList())
+	pairs := sen.AsList()
+	slices.SortFunc(pairs, func(a, b Pair) int {
+		return strings.Compare(a.Key, b.Key)
+	})
+
+	return fmt.Sprintf("%s @%s %#q", sen.Word, sen.Tag, pairs)
 }
 
 func (sen *Sentence) AsList() []Pair {
