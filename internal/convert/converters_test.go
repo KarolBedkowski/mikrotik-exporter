@@ -1,6 +1,7 @@
 package convert
 
 import (
+	"fmt"
 	"math"
 	"testing"
 	"time"
@@ -9,6 +10,8 @@ import (
 )
 
 func TestSplitStringToFloats(t *testing.T) {
+	t.Parallel()
+
 	testCases := []struct {
 		input    string
 		expected struct {
@@ -23,10 +26,7 @@ func TestSplitStringToFloats(t *testing.T) {
 			struct {
 				f1 float64
 				f2 float64
-			}{
-				1.2,
-				2.1,
-			},
+			}{1.2, 2.1},
 			false,
 			false,
 		},
@@ -45,10 +45,7 @@ func TestSplitStringToFloats(t *testing.T) {
 			struct {
 				f1 float64
 				f2 float64
-			}{
-				1.2,
-				2.1,
-			},
+			}{1.2, 2.1},
 			false,
 			false,
 		},
@@ -60,27 +57,30 @@ func TestSplitStringToFloats(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		f1, f2, err := SplitStringToFloatsOnComma(testCase.input)
+		t.Run(fmt.Sprintf("test_%+v", testCase), func(t *testing.T) {
+			f1, f2, err := SplitStringToFloatsOnComma(testCase.input)
 
-		switch testCase.hasError {
-		case true:
-			assert.Error(t, err)
-		case false:
-			assert.NoError(t, err)
-		}
+			switch testCase.hasError {
+			case true:
+				assert.Error(t, err)
+			case false:
+				assert.NoError(t, err)
+			}
 
-		switch testCase.isNaN {
-		case true:
-			assert.True(t, math.IsNaN(f1))
-			assert.True(t, math.IsNaN(f2))
-		case false:
-			assert.Equal(t, testCase.expected.f1, f1)
-			assert.Equal(t, testCase.expected.f2, f2)
-		}
+			switch testCase.isNaN {
+			case true:
+				assert.True(t, math.IsNaN(f1))
+				assert.True(t, math.IsNaN(f2))
+			case false:
+				assert.Equal(t, testCase.expected.f1, f1)
+				assert.Equal(t, testCase.expected.f2, f2)
+			}
+		})
 	}
 }
 
 func TestParseDuration(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		input    string
 		output   float64
@@ -97,20 +97,23 @@ func TestParseDuration(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		f, err := MetricFromDuration(testCase.input)
+		t.Run(fmt.Sprintf("test_%+v", testCase), func(t *testing.T) {
+			f, err := MetricFromDuration(testCase.input)
 
-		switch testCase.hasError {
-		case true:
-			assert.Error(t, err, "tc: %v", testCase)
-		case false:
-			assert.NoError(t, err, "tc: %v", testCase)
-		}
+			switch testCase.hasError {
+			case true:
+				assert.Error(t, err, "tc: %v", testCase)
+			case false:
+				assert.NoError(t, err, "tc: %v", testCase)
+			}
 
-		assert.Equal(t, testCase.output, f, "tc: %v", testCase)
+			assert.Equal(t, testCase.output, f, "tc: %v", testCase)
+		})
 	}
 }
 
 func TestGetDurationParts(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		input    string
 		output   time.Duration
@@ -127,16 +130,18 @@ func TestGetDurationParts(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		dur, rest, err := getDurationParts(testCase.input)
+		t.Run(fmt.Sprintf("test_%+v", testCase), func(t *testing.T) {
+			dur, rest, err := getDurationParts(testCase.input)
 
-		switch testCase.hasError {
-		case true:
-			assert.Error(t, err)
-		case false:
-			assert.NoError(t, err)
-		}
+			switch testCase.hasError {
+			case true:
+				assert.Error(t, err)
+			case false:
+				assert.NoError(t, err)
+			}
 
-		assert.Equal(t, testCase.output, dur)
-		assert.Equal(t, testCase.rest, rest)
+			assert.Equal(t, testCase.output, dur)
+			assert.Equal(t, testCase.rest, rest)
+		})
 	}
 }

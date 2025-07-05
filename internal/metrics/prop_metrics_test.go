@@ -10,6 +10,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSimplePropertyGauge(t *testing.T) {
@@ -38,8 +39,7 @@ func TestSimplePropertyGauge(t *testing.T) {
 	err := sp.Collect(sent, &lctx)
 	assert.NoError(t, err)
 
-	metric, labels, err := collectMetric(chout)
-	assert.NoError(t, err)
+	metric, labels := collectMetric(t, chout)
 
 	assert.Equal(t, 123.23, metric.Gauge.GetValue())
 	assert.Equal(t, 4, len(labels))
@@ -74,8 +74,7 @@ func TestSimplePropertyCounter(t *testing.T) {
 	err := sp.Collect(sent, &ctx)
 	assert.NoError(t, err)
 
-	metric, labels, err := collectMetric(chout)
-	assert.NoError(t, err)
+	metric, labels := collectMetric(t, chout)
 
 	assert.Equal(t, 123.567, metric.Counter.GetValue(), "%+v", metric)
 	assert.Equal(t, 2, len(labels))
@@ -84,6 +83,7 @@ func TestSimplePropertyCounter(t *testing.T) {
 }
 
 func TestSimplePropertyConsts(t *testing.T) {
+	t.Parallel()
 	b := NewPropertyConstMetric("test", "property1").WithName("metric1")
 	sp := b.Build()
 
@@ -114,32 +114,34 @@ func TestSimplePropertyConsts(t *testing.T) {
 	}
 
 	for _, tc := range testCase {
-		err := sp.Collect(tc.input, &ctx)
-		assert.NoError(t, err)
+		t.Run(fmt.Sprintf("test_%+v", testCase), func(t *testing.T) {
+			err := sp.Collect(tc.input, &ctx)
+			assert.NoError(t, err)
 
-		if tc.value == 0.0 {
-			assert.Equal(t, 0, len(chout))
-			continue
-		}
+			if tc.value == 0.0 {
+				assert.Equal(t, 0, len(chout))
 
-		metric, labels, err := collectMetric(chout)
-		assert.NoError(t, err)
+				return
+			}
 
-		assert.Equal(t, tc.value, metric.Gauge.GetValue(), "%+v -> %+v", tc, metric)
-		assert.Equal(t, len(labels), 2)
-		assert.Equal(t, "devname2", labels["dev_name"])
-		assert.Equal(t, "devaddress2", labels["dev_address"])
+			metric, labels := collectMetric(t, chout)
+
+			assert.Equal(t, tc.value, metric.Gauge.GetValue(), "%+v -> %+v", tc, metric)
+			assert.Equal(t, len(labels), 2)
+			assert.Equal(t, "devname2", labels["dev_name"])
+			assert.Equal(t, "devaddress2", labels["dev_address"])
+		})
 	}
 }
 
-func collectMetric(ch chan prometheus.Metric) (*dto.Metric, map[string]string, error) {
+func collectMetric(t *testing.T, ch chan prometheus.Metric) (*dto.Metric, map[string]string) {
+	t.Helper()
+
 	metric := <-ch
 	dtoMetric := dto.Metric{}
 
 	err := metric.Write(&dtoMetric)
-	if err != nil {
-		return nil, nil, fmt.Errorf("write metric error: %w", err)
-	}
+	require.NoError(t, err, "write metric error")
 
 	labels := make(map[string]string, len(dtoMetric.Label))
 
@@ -147,5 +149,5 @@ func collectMetric(ch chan prometheus.Metric) (*dto.Metric, map[string]string, e
 		labels[*l.Name] = *l.Value
 	}
 
-	return &dtoMetric, labels, nil
+	return &dtoMetric, labels
 }

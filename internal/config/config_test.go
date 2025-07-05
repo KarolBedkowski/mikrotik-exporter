@@ -3,6 +3,7 @@ package config
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"os"
 	"slices"
 	"sort"
@@ -204,14 +205,8 @@ func TestDeviceFeatures(t *testing.T) {
 		device   string
 		features []string
 	}{
-		{
-			"testProfileMinimal",
-			[]string{"firmware", "health", "monitor", "resource"},
-		},
-		{
-			"testProfileBasic",
-			[]string{"dhcp", "dhcpl", "firmware", "health", "monitor", "resource", "routes", "wlanif"},
-		},
+		{"testProfileMinimal", []string{"firmware", "health", "monitor", "resource"}},
+		{"testProfileBasic", []string{"dhcp", "dhcpl", "firmware", "health", "monitor", "resource", "routes", "wlanif"}},
 		{
 			// default profile
 			"test1",
@@ -308,6 +303,8 @@ func TestFirmwareVersionCompare(t *testing.T) {
 	ver := FirmwareVersion{5, 10, 15}
 
 	for _, tc := range tests {
-		assert.Equalf(t, tc[3], ver.Compare(tc[0], tc[1], tc[2]), "compare failed for %v", tc)
+		t.Run(fmt.Sprintf("test_%+v", tc), func(t *testing.T) {
+			assert.Equal(t, tc[3], ver.Compare(tc[0], tc[1], tc[2]))
+		})
 	}
 }
