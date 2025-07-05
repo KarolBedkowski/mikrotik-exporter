@@ -1,12 +1,13 @@
 package tests
 
 import (
-	"errors"
 	"io"
 	"testing"
 
 	routeros "mikrotik-exporter/routeros"
 	"mikrotik-exporter/routeros/proto"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestLogin(t *testing.T) {
@@ -22,9 +23,7 @@ func TestLogin(t *testing.T) {
 	}()
 
 	err := c.Login("userTest", "passTest")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 func TestLoginIncorrect(t *testing.T) {
@@ -41,9 +40,8 @@ func TestLoginIncorrect(t *testing.T) {
 	}()
 
 	err := c.Login("userTest", "passTest")
-	if err == nil {
-		t.Fatalf("Login succeeded; want error")
-	}
+	require.Error(t, err, "Login succeeded; want error")
+
 	if err.Error() != "from RouterOS device: incorrect login" {
 		t.Fatal(err)
 	}
@@ -60,9 +58,7 @@ func TestLoginNoChallenge(t *testing.T) {
 	}()
 
 	err := c.Login("userTest", "passTest")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 func TestLoginInvalidChallenge(t *testing.T) {
@@ -76,12 +72,8 @@ func TestLoginInvalidChallenge(t *testing.T) {
 	}()
 
 	err := c.Login("userTest", "passTest")
-	if err == nil {
-		t.Fatalf("Login succeeded; want error")
-	}
-	if err.Error() != "RouterOS: /login: invalid ret (challenge) hex string received: encoding/hex: invalid byte: U+0049 'I'" {
-		t.Fatal(err)
-	}
+	require.Error(t, err, "Login succeeded; want error")
+	require.ErrorContains(t, err, "RouterOS: /login: invalid ret (challenge) hex string received: encoding/hex: invalid byte: U+0049 'I'")
 }
 
 func TestLoginEOF(t *testing.T) {
@@ -90,12 +82,8 @@ func TestLoginEOF(t *testing.T) {
 	s.Close()
 
 	err := c.Login("userTest", "passTest")
-	if err == nil {
-		t.Fatalf("Login succeeded; want error")
-	}
-	if err.Error() != "endsentence error: io: read/write on closed pipe" {
-		t.Fatal(err)
-	}
+	require.Error(t, err, "Run succeeded; want error")
+	require.ErrorContains(t, err, "endsentence error: io: read/write on closed pipe")
 }
 
 func TestCloseTwice(t *testing.T) {
@@ -117,13 +105,8 @@ func TestRun(t *testing.T) {
 	}()
 
 	sen, err := c.Run("/ip/address")
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := "!re @ [{`address` `1.2.3.4/32`}]\n!done @ []"
-	if sen.String() != want {
-		t.Fatalf("/ip/address (%s); want (%s)", sen, want)
-	}
+	require.NoError(t, err)
+	require.Equal(t, "!re @ [{`address` `1.2.3.4/32`}]\n!done @ []", sen.String(), "/ip/address")
 }
 
 func TestRunEmptySentence(t *testing.T) {
@@ -139,13 +122,8 @@ func TestRunEmptySentence(t *testing.T) {
 	}()
 
 	sen, err := c.Run("/ip/address")
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := "!re @ [{`address` `1.2.3.4/32`}]\n!done @ []"
-	if sen.String() != want {
-		t.Fatalf("/ip/address (%s); want (%s)", sen, want)
-	}
+	require.NoError(t, err)
+	require.Equal(t, "!re @ [{`address` `1.2.3.4/32`}]\n!done @ []", sen.String(), "/ip/address")
 }
 
 func TestRunEOF(t *testing.T) {
@@ -158,12 +136,8 @@ func TestRunEOF(t *testing.T) {
 	}()
 
 	_, err := c.Run("/ip/address")
-	if err == nil {
-		t.Fatalf("Run succeeded; want error")
-	}
-	if !errors.Is(err, io.EOF) {
-		t.Fatal(err)
-	}
+	require.Error(t, err, "Run succeeded; want error")
+	require.ErrorIs(t, err, io.EOF)
 }
 
 func TestRunInvalidSentence(t *testing.T) {
@@ -177,12 +151,8 @@ func TestRunInvalidSentence(t *testing.T) {
 	}()
 
 	_, err := c.Run("/ip/address")
-	if err == nil {
-		t.Fatalf("Run succeeded; want error")
-	}
-	if err.Error() != "unknown RouterOS reply word: !xxx" {
-		t.Fatal(err)
-	}
+	require.Error(t, err, "Run succeeded; want error")
+	require.ErrorContains(t, err, "unknown RouterOS reply word: !xxx")
 }
 
 func TestRunTrap(t *testing.T) {
@@ -197,12 +167,8 @@ func TestRunTrap(t *testing.T) {
 	}()
 
 	_, err := c.Run("/ip/address")
-	if err == nil {
-		t.Fatalf("Run succeeded; want error")
-	}
-	if err.Error() != "from RouterOS device: Some device error message" {
-		t.Fatal(err)
-	}
+	require.Error(t, err, "Run succeeded; want error")
+	require.ErrorContains(t, err, "from RouterOS device: Some device error message")
 }
 
 func TestRunTrapWithoutMessage(t *testing.T) {
@@ -217,12 +183,8 @@ func TestRunTrapWithoutMessage(t *testing.T) {
 	}()
 
 	_, err := c.Run("/ip/address")
-	if err == nil {
-		t.Fatalf("Run succeeded; want error")
-	}
-	if err.Error() != "from RouterOS device: unknown error: !trap @ [{`some` `unknown key`}]" {
-		t.Fatal(err)
-	}
+	require.Error(t, err, "Run succeeded; want error")
+	require.ErrorContains(t, err, "from RouterOS device: unknown error: !trap @ [{`some` `unknown key`}]")
 }
 
 func TestRunFatal(t *testing.T) {
@@ -236,12 +198,8 @@ func TestRunFatal(t *testing.T) {
 	}()
 
 	_, err := c.Run("/ip/address")
-	if err == nil {
-		t.Fatalf("Run succeeded; want error")
-	}
-	if err.Error() != "from RouterOS device: Some device error message" {
-		t.Fatal(err)
-	}
+	require.Error(t, err, "Run succeeded; want error")
+	require.ErrorContains(t, err, "from RouterOS device: Some device error message")
 }
 
 func TestRunAfterClose(t *testing.T) {
@@ -250,12 +208,8 @@ func TestRunAfterClose(t *testing.T) {
 	s.Close()
 
 	_, err := c.Run("/ip/address")
-	if err == nil {
-		t.Fatalf("Run succeeded; want error")
-	}
-	if err.Error() != "endsentence error: io: read/write on closed pipe" {
-		t.Fatal(err)
-	}
+	require.Error(t, err, "Run succeeded; want error")
+	require.ErrorContains(t, err, "endsentence error: io: read/write on closed pipe")
 }
 
 type conn struct {
@@ -270,13 +224,13 @@ func (c *conn) Close() error {
 }
 
 func newPair(t *testing.T) (*routeros.Client, *fakeServer) {
+	t.Helper()
+
 	ar, aw := io.Pipe()
 	br, bw := io.Pipe()
 
 	c, err := routeros.NewClient(&conn{ar, bw})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	s := &fakeServer{
 		proto.NewReader(br),
@@ -295,23 +249,19 @@ type fakeServer struct {
 
 func (f *fakeServer) readSentence(t *testing.T, want string) {
 	sen, err := f.r.ReadSentence()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if sen.String() != want {
-		t.Fatalf("Sentence (%s); want (%s)", sen.String(), want)
-	}
+	require.NoError(t, err)
+	require.Equal(t, want, sen.String())
 	t.Logf("< %s\n", sen)
 }
 
 func (f *fakeServer) writeSentence(t *testing.T, sentence ...string) {
 	t.Logf("> %#q\n", sentence)
 	f.w.BeginSentence()
+
 	for _, word := range sentence {
 		f.w.WriteWord(word)
 	}
+
 	err := f.w.EndSentence()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
