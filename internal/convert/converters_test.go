@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSplitStringToFloats(t *testing.T) {
@@ -142,6 +143,62 @@ func TestGetDurationParts(t *testing.T) {
 
 			assert.Equal(t, testCase.output, dur)
 			assert.Equal(t, testCase.rest, rest)
+		})
+	}
+}
+
+func TestParseTs(t *testing.T) {
+	t.Parallel()
+	testCases := []struct {
+		input       string
+		output      float64
+		errorResult bool
+	}{
+		{"", 0.0, false},
+		{"2025-06-02 11:32:45", 1748863965.0, false},
+		{"Feb/03/2023 9:12:23", 1675415543.0, false},
+		{"Feb/03/2023 9:12", 0.0, true},
+		{"2023-14-01 11:29:12", 0.0, true},
+		{"2023-1-01 25:29:12", 0.0, true},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(fmt.Sprintf("test_%+v", testCase), func(t *testing.T) {
+			ts, err := ParseTS(testCase.input)
+
+			if testCase.errorResult {
+				require.Error(t, err)
+			} else {
+				require.Equal(t, testCase.output, ts)
+			}
+		})
+	}
+}
+
+func TestParseTsInLocation(t *testing.T) {
+	t.Parallel()
+	testCases := []struct {
+		input       string
+		output      float64
+		errorResult bool
+	}{
+		{"", 0.0, false},
+		{"2025-06-02 11:32:45", 1748856765.0, false},
+		{"Feb/03/2023 9:12:23", 1675415543.0, false},
+		{"Feb/03/2023 9:12", 0.0, true},
+		{"2023-14-01 11:29:12", 0.0, true},
+		{"2023-1-01 25:29:12", 0.0, true},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(fmt.Sprintf("test_%+v", testCase), func(t *testing.T) {
+			ts, err := ParseTSInLocation(testCase.input, "Europe/Warsaw")
+
+			if testCase.errorResult {
+				require.Error(t, err)
+			} else {
+				require.Equal(t, testCase.output, ts)
+			}
 		})
 	}
 }

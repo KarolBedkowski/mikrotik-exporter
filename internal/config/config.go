@@ -308,6 +308,7 @@ type Device struct {
 	Disabled     bool       `yaml:"disabled,omitempty"`
 
 	FirmwareVersion FirmwareVersion `yaml:"-"`
+	Timezone        string          `yaml:"-"`
 }
 
 func (d *Device) LogValue() slog.Value {
@@ -324,6 +325,7 @@ func (d *Device) LogValue() slog.Value {
 		slog.Bool("insecure", d.Insecure),
 		slog.Bool("ipv6_disabled", d.IPv6Disabled),
 		slog.String("profile", d.Profile),
+		slog.String("timezone", d.Timezone),
 	)
 }
 

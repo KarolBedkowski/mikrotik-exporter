@@ -39,6 +39,7 @@ func (c *certsCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *certsCollector) Collect(ctx *metrics.CollectorContext) error {
+	// NOTE: invalid-after is in local time.
 	reply, err := ctx.Client.Run("/certificate/print", "=.proplist=name,common-name,issuer,serial-number,invalid-after")
 	if err != nil {
 		return fmt.Errorf("fetch certificate info error: %w", err)

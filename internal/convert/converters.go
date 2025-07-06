@@ -28,12 +28,37 @@ type (
 
 // ----------------------------------------------------------------------------
 
+// ParseTS parse date from `value` (in UTC) into unix timestamp.
 func ParseTS(value string) (float64, error) {
 	if value == "" {
 		return 0.0, nil
 	}
 
 	t, err := time.Parse("2006-01-02 15:04:05", value)
+	if err == nil {
+		return float64(t.Unix()), nil
+	}
+
+	t, err = time.Parse("Jan/02/2006 15:04:05", value)
+	if err != nil {
+		return 0.0, fmt.Errorf("parse time %s error: %w", value, err)
+	}
+
+	return float64(t.Unix()), nil
+}
+
+// ParseTS parse date from `value` (in UTC) into unix timestamp.
+func ParseTSInLocation(value, timezone string) (float64, error) {
+	if value == "" {
+		return 0.0, nil
+	}
+
+	loc, err := time.LoadLocation(timezone)
+	if err != nil {
+		return 0.0, fmt.Errorf("parse timezone %s error: %w", timezone, err)
+	}
+
+	t, err := time.ParseInLocation("2006-01-02 15:04:05", value, loc)
 	if err == nil {
 		return float64(t.Unix()), nil
 	}

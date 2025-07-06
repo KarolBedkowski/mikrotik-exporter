@@ -238,6 +238,13 @@ func (dc *deviceCollector) getVersion(client *routeros.Client) error {
 		return fmt.Errorf("parse version %q error: %w", version, err)
 	}
 
+	reply, err = client.Run("/system/clock/print")
+	if err != nil {
+		return fmt.Errorf("get clock error: %w", err)
+	}
+
+	dc.device.Timezone = reply.Re[0].Map["time-zone-name"]
+
 	return nil
 }
 
