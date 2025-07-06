@@ -256,3 +256,24 @@ func TruncAfterAt(next ValueConverter) ValueConverter {
 		return next(value)
 	}
 }
+
+// ----------------------------------------------------------------------------
+
+// UnixTimeFromDuration parse `duration` and return date now - `duration` as unix timestamp.
+func UnixTimeFromDuration(duration string) (float64, error) {
+	var totalDur time.Duration
+
+	dur := duration
+
+	for dur != "" {
+		d, rest, err := getDurationParts(dur)
+		if err != nil {
+			return 0, fmt.Errorf("parse %s error: %w", duration, ErrInvalidDuration)
+		}
+
+		totalDur += d
+		dur = rest
+	}
+
+	return float64(time.Now().Add(-totalDur).Unix()), nil
+}

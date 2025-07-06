@@ -37,10 +37,14 @@ func newResourceCollector() RouterOSCollector {
 				WithName("uptime_seconds").
 				WithConverter(convert.MetricFromDuration).
 				Build(),
+			metrics.NewPropertyCounterMetric(prefix, "uptime").
+				WithName("start_time_seconds").
+				WithConverter(convert.UnixTimeFromDuration).
+				Build(),
 			metrics.NewPropertyGaugeMetric(prefix, "cpu-count").Build(),
 		},
 
-		versionDesc: metrics.Description("system", "routeros", "Board and system version",
+		versionDesc: metrics.Description(prefix, "routeros", "Board and system version",
 			metrics.LabelDevName, metrics.LabelDevAddress, "board_name", "version"),
 	}
 }
