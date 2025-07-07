@@ -112,10 +112,6 @@
             "steps": [
               {
                 "color": "green"
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           }
@@ -123,13 +119,13 @@
         "overrides": [
           {
             "matcher": {
-              "id": "byName",
-              "options": "Value"
+              "id": "byRegexp",
+              "options": "/^uptime/"
             },
             "properties": [
               {
                 "id": "unit",
-                "value": "dateTimeAsLocal"
+                "value": "dtdhms"
               }
             ]
           }
@@ -152,6 +148,7 @@
           ],
           "show": false
         },
+        "frameIndex": 1,
         "showHeader": true
       },
       "pluginVersion": "12.0.2",
@@ -169,21 +166,69 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS-REAL}"
           }
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS-REAL}"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "time() - mikrotik_system_start_time_seconds{dev_name=~\"$devname\"}",
+          "format": "table",
+          "hide": false,
+          "instant": true,
+          "legendFormat": "uptime {{dev_name}}",
+          "range": false,
+          "refId": "B"
         }
       ],
       "title": "RouterOS",
       "transformations": [
         {
-          "id": "filterFieldsByName",
+          "id": "joinByField",
           "options": {
-            "include": {
-              "names": [
-                "address",
-                "board_name",
-                "instance",
-                "name",
-                "version"
-              ]
+            "byField": "dev_name",
+            "mode": "inner"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time 1": true,
+              "Time 2": true,
+              "Value #A": true,
+              "Value #B": false,
+              "__name__": true,
+              "dev_address 1": false,
+              "dev_address 2": true,
+              "instance 1": true,
+              "instance 2": true,
+              "job 1": true,
+              "job 2": true
+            },
+            "includeByName": {},
+            "indexByName": {
+              "Time 1": 2,
+              "Time 2": 9,
+              "Value #A": 8,
+              "Value #B": 13,
+              "__name__": 3,
+              "board_name": 4,
+              "dev_address 1": 1,
+              "dev_address 2": 10,
+              "dev_name": 0,
+              "instance 1": 5,
+              "instance 2": 11,
+              "job 1": 6,
+              "job 2": 12,
+              "version": 7
+            },
+            "renameByName": {
+              "Time 2": "",
+              "Value #B": "uptime",
+              "dev_address 2": ""
             }
           }
         }
@@ -5895,6 +5940,6 @@
   "timezone": "Europe/Warsaw",
   "title": "Routeros",
   "uid": "f0eaee6e-c144-46ed-b52b-9b9dcc1f532c",
-  "version": 86,
+  "version": 95,
   "weekStart": ""
 }
