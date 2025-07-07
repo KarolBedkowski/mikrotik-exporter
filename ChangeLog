@@ -1,3 +1,76 @@
+v3.0.0 2025-07-07
+
+Breaking:
+
+* refactor: rename name/address labels to dev_name/dev_address
+* fix: remove "dynamic" labels - like status, running; add separate metrics
+
+
+Features:
+
+* arp: generate metrics for each entry can be disabled
+* capsman: add new metrics to capsman collector
+* capsman: option for enable/disable station metrics
+* dhcpl: option for gather details about leases; add overall statistics
+* neighbour: metrics per each discovered device can be enabled.
+* wireguard: allow user to enable detailed info about peers
+* wireguard: collect running status
+* add basic /disk collector
+* add basic dude collector
+* add certs collector (monitor certificates expiration date)
+* add collector for /ip/dns/adlist
+* add collector for /ip/service active connections
+* add collector for /ipt/neighbor entries
+* add collector for /ipv6 neighbor metrics
+* add ip (fasttrack, fast-path) collector
+* add ntp/sntp client metrics collector
+* add ppp collector
+* add prometheus process collector
+* add tx-queue-drop for interfaces; ignore lo interface
+* detect firmware version for device
+* do not try collect for incompatible RO version (adlist, wg)
+* new config file format: move configuration to collectors (scripts, firewall, wireguard)
+* update grafana dashboard
+
+Fix:
+
+* adlist: collect only active lists
+* arp: to not collect failed entries
+* capsman: collect only not-disabled interface; drop _disabled metric
+* dhcp6: collect only active servers
+* dhcp: collect only active servers
+* dhcpl: collect all statuses; add dhcp_address, dhcp_macaddress
+* dhcpl: rename metric status->leases_by_status
+* do not panic on unknown collectors; show error and ignore
+* fix log-format cli argument; default option depend on tty etc
+* fix parsing duration with ms,us
+* get version from resource for compatibility with ChR
+* interfaces: skip disabled interfaces
+* monitor: skip disabled interfaces
+* optics: skip disabled interfaces
+* process services-defined devices parallel; not wait for identity.
+* queue: skip disabled simple queues; drop _disabled metric
+* wireguard: skip disabled interfaces; fix missing wg metrics; fix names
+
+
+Tests:
+
+* use testify for routeros test
+* fix tests
+
+
+Refactor:
+
+* simplify code
+* move to internal/; reorganize packages
+* redesign pool collector; load directly used/total ipv4 pool props
+
+
+Chore: 
+
+* update Makefile, .air.toml, .gitignore
+* update deps
+
 
 v2.0.2 2025-03-07
 =================
