@@ -228,6 +228,15 @@ func MetricConstantValue(value string) (float64, error) {
 	return 1.0, nil
 }
 
+// metricFromEnabled return 1.0 if value is "enabled""; 0.0 otherwise.
+func MetricFromEnabled(value string) (float64, error) {
+	if value == "enabled" {
+		return 1.0, nil
+	}
+
+	return 0.0, nil
+}
+
 // ----------------------------------------------------------------------------
 
 // ExtractPropertyFromReplay get all values from reply for property `name`.
