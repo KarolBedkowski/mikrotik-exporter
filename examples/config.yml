@@ -81,6 +81,7 @@ features:
     # disable metrics for all active connections
     details: false
   queue: true
+  radius: false
   routes: true
   scripts:
     enabled: false

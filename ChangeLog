@@ -26,6 +26,7 @@ Features:
 * add ntp/sntp client metrics collector
 * add ppp collector
 * add prometheus process collector
+* add radius/incoming metrics
 * add tx-queue-drop for interfaces; ignore lo interface
 * detect firmware version for device
 * do not try collect for incompatible RO version (adlist, wg)
