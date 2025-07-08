@@ -773,7 +773,7 @@
       "type": "timeseries"
     },
     {
-      "collapsed": false,
+      "collapsed": true,
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -781,520 +781,521 @@
         "y": 14
       },
       "id": 42,
-      "panels": [],
+      "panels": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS-REAL}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": true,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "Bps"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byRegexp",
+                  "options": "/^tx/"
+                },
+                "properties": [
+                  {
+                    "id": "custom.transform",
+                    "value": "negative-Y"
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 15
+          },
+          "id": 40,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": false
+            },
+            "tooltip": {
+              "hideZeros": false,
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "pluginVersion": "12.0.2",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS-REAL}"
+              },
+              "editorMode": "code",
+              "expr": "sum(rate(mikrotik_interface_rx_byte_total{interface!=\"lo\", dev_name=~\"$devname\"}[$__rate_interval]))",
+              "hide": false,
+              "instant": false,
+              "legendFormat": "tx",
+              "range": true,
+              "refId": "C"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS-REAL}"
+              },
+              "editorMode": "code",
+              "expr": "sum(rate(mikrotik_interface_tx_byte_total{interface!=\"lo\", dev_name=~\"$devname\"}[$__rate_interval]))",
+              "hide": false,
+              "instant": false,
+              "legendFormat": "rx",
+              "range": true,
+              "refId": "D"
+            }
+          ],
+          "title": "Bytes All Interfaces",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS-REAL}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": true,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "pps"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byRegexp",
+                  "options": "/^tx/"
+                },
+                "properties": [
+                  {
+                    "id": "custom.transform",
+                    "value": "negative-Y"
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 15
+          },
+          "id": 41,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": false
+            },
+            "tooltip": {
+              "hideZeros": false,
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "pluginVersion": "12.0.2",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS-REAL}"
+              },
+              "editorMode": "code",
+              "expr": "sum(rate(mikrotik_interface_rx_packet_total{interface!=\"lo\", dev_name=~\"$devname\"}[$__rate_interval]))",
+              "hide": false,
+              "instant": false,
+              "legendFormat": "tx",
+              "range": true,
+              "refId": "C"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS-REAL}"
+              },
+              "editorMode": "code",
+              "expr": "sum(rate(mikrotik_interface_tx_packet_total{interface!=\"lo\", dev_name=~\"$devname\"}[$__rate_interval]))",
+              "hide": false,
+              "instant": false,
+              "legendFormat": "rx",
+              "range": true,
+              "refId": "D"
+            }
+          ],
+          "title": "Packets All Interfaces",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS-REAL}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": true,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "decimals": 0,
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "pps"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byRegexp",
+                  "options": "/^tx/"
+                },
+                "properties": [
+                  {
+                    "id": "custom.transform",
+                    "value": "negative-Y"
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 36
+          },
+          "id": 43,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "hideZeros": false,
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "pluginVersion": "12.0.2",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS-REAL}"
+              },
+              "editorMode": "code",
+              "expr": "sum(rate(mikrotik_interface_rx_drop_total{interface!=\"lo\", dev_name=~\"$devname\"}[$__rate_interval]))   ",
+              "hide": false,
+              "instant": false,
+              "legendFormat": "rx",
+              "range": true,
+              "refId": "C"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS-REAL}"
+              },
+              "editorMode": "code",
+              "expr": "sum(rate(mikrotik_interface_tx_drop_total{interface!=\"lo\", dev_name=~\"$devname\"}[$__rate_interval]))",
+              "hide": false,
+              "instant": false,
+              "legendFormat": "tx",
+              "range": true,
+              "refId": "D"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS-REAL}"
+              },
+              "editorMode": "code",
+              "expr": "sum(rate(mikrotik_interface_tx_queue_drop_total{interface!=\"lo\", dev_name=~\"$devname\"}[$__rate_interval]))",
+              "hide": false,
+              "instant": false,
+              "legendFormat": "tx queue drop",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Drop All Interfaces",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS-REAL}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": true,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "never",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "decimals": 0,
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  }
+                ]
+              },
+              "unit": "pps"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byRegexp",
+                  "options": "/^tx/"
+                },
+                "properties": [
+                  {
+                    "id": "custom.transform",
+                    "value": "negative-Y"
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 36
+          },
+          "id": 44,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": false
+            },
+            "tooltip": {
+              "hideZeros": false,
+              "mode": "multi",
+              "sort": "desc"
+            }
+          },
+          "pluginVersion": "12.0.2",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS-REAL}"
+              },
+              "editorMode": "code",
+              "expr": "sum(rate(mikrotik_interface_rx_error_total{interface!=\"lo\", dev_name=~\"$devname\"}[$__rate_interval]))",
+              "hide": false,
+              "instant": false,
+              "legendFormat": "rx",
+              "range": true,
+              "refId": "C"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS-REAL}"
+              },
+              "editorMode": "code",
+              "expr": "sum(rate(mikrotik_interface_tx_error_total{interface!=\"lo\", dev_name=~\"$devname\"}[$__rate_interval]))",
+              "hide": false,
+              "instant": false,
+              "legendFormat": "tx",
+              "range": true,
+              "refId": "D"
+            }
+          ],
+          "title": "Error All Interfaces",
+          "type": "timeseries"
+        }
+      ],
       "title": "Interfaces",
       "type": "row"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS-REAL}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": true,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 2,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "Bps"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": "/^tx/"
-            },
-            "properties": [
-              {
-                "id": "custom.transform",
-                "value": "negative-Y"
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 15
-      },
-      "id": 40,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": false
-        },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "pluginVersion": "12.0.2",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS-REAL}"
-          },
-          "editorMode": "code",
-          "expr": "sum(rate(mikrotik_interface_rx_byte_total{interface!=\"lo\", dev_name=~\"$devname\"}[$__rate_interval]))",
-          "hide": false,
-          "instant": false,
-          "legendFormat": "tx",
-          "range": true,
-          "refId": "C"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS-REAL}"
-          },
-          "editorMode": "code",
-          "expr": "sum(rate(mikrotik_interface_tx_byte_total{interface!=\"lo\", dev_name=~\"$devname\"}[$__rate_interval]))",
-          "hide": false,
-          "instant": false,
-          "legendFormat": "rx",
-          "range": true,
-          "refId": "D"
-        }
-      ],
-      "title": "Bytes All Interfaces",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS-REAL}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": true,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 2,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "pps"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": "/^tx/"
-            },
-            "properties": [
-              {
-                "id": "custom.transform",
-                "value": "negative-Y"
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 15
-      },
-      "id": 41,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": false
-        },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "pluginVersion": "12.0.2",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS-REAL}"
-          },
-          "editorMode": "code",
-          "expr": "sum(rate(mikrotik_interface_rx_packet_total{interface!=\"lo\", dev_name=~\"$devname\"}[$__rate_interval]))",
-          "hide": false,
-          "instant": false,
-          "legendFormat": "tx",
-          "range": true,
-          "refId": "C"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS-REAL}"
-          },
-          "editorMode": "code",
-          "expr": "sum(rate(mikrotik_interface_tx_packet_total{interface!=\"lo\", dev_name=~\"$devname\"}[$__rate_interval]))",
-          "hide": false,
-          "instant": false,
-          "legendFormat": "rx",
-          "range": true,
-          "refId": "D"
-        }
-      ],
-      "title": "Packets All Interfaces",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS-REAL}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": true,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 2,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "decimals": 0,
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "pps"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": "/^tx/"
-            },
-            "properties": [
-              {
-                "id": "custom.transform",
-                "value": "negative-Y"
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 23
-      },
-      "id": 43,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "pluginVersion": "12.0.2",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS-REAL}"
-          },
-          "editorMode": "code",
-          "expr": "sum(rate(mikrotik_interface_rx_drop_total{interface!=\"lo\", dev_name=~\"$devname\"}[$__rate_interval]))   ",
-          "hide": false,
-          "instant": false,
-          "legendFormat": "rx",
-          "range": true,
-          "refId": "C"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS-REAL}"
-          },
-          "editorMode": "code",
-          "expr": "sum(rate(mikrotik_interface_tx_drop_total{interface!=\"lo\", dev_name=~\"$devname\"}[$__rate_interval]))",
-          "hide": false,
-          "instant": false,
-          "legendFormat": "tx",
-          "range": true,
-          "refId": "D"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS-REAL}"
-          },
-          "editorMode": "code",
-          "expr": "sum(rate(mikrotik_interface_tx_queue_drop_total{interface!=\"lo\", dev_name=~\"$devname\"}[$__rate_interval]))",
-          "hide": false,
-          "instant": false,
-          "legendFormat": "tx queue drop",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Drop All Interfaces",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS-REAL}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": true,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 2,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "decimals": 0,
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              }
-            ]
-          },
-          "unit": "pps"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": "/^tx/"
-            },
-            "properties": [
-              {
-                "id": "custom.transform",
-                "value": "negative-Y"
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 23
-      },
-      "id": 44,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": false
-        },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "pluginVersion": "12.0.2",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS-REAL}"
-          },
-          "editorMode": "code",
-          "expr": "sum(rate(mikrotik_interface_rx_error_total{interface!=\"lo\", dev_name=~\"$devname\"}[$__rate_interval]))",
-          "hide": false,
-          "instant": false,
-          "legendFormat": "rx",
-          "range": true,
-          "refId": "C"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS-REAL}"
-          },
-          "editorMode": "code",
-          "expr": "sum(rate(mikrotik_interface_tx_error_total{interface!=\"lo\", dev_name=~\"$devname\"}[$__rate_interval]))",
-          "hide": false,
-          "instant": false,
-          "legendFormat": "tx",
-          "range": true,
-          "refId": "D"
-        }
-      ],
-      "title": "Error All Interfaces",
-      "type": "timeseries"
     },
     {
       "collapsed": true,
@@ -1302,7 +1303,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 31
+        "y": 15
       },
       "id": 25,
       "panels": [
@@ -1372,7 +1373,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 65
+            "y": 16
           },
           "id": 23,
           "options": {
@@ -1471,7 +1472,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 65
+            "y": 16
           },
           "id": 24,
           "options": {
@@ -1544,7 +1545,7 @@
             "h": 5,
             "w": 12,
             "x": 0,
-            "y": 73
+            "y": 24
           },
           "id": 27,
           "options": {
@@ -1622,641 +1623,860 @@
       "type": "row"
     },
     {
-      "collapsed": true,
+      "collapsed": false,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 32
+        "y": 16
       },
       "id": 12,
-      "panels": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS-REAL}"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green"
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              },
-              "unit": "percentunit"
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 6,
-            "w": 2,
-            "x": 0,
-            "y": 33
-          },
-          "id": 5,
-          "options": {
-            "minVizHeight": 75,
-            "minVizWidth": 75,
-            "orientation": "auto",
-            "reduceOptions": {
-              "calcs": [
-                "last"
-              ],
-              "fields": "/^updated$/",
-              "values": false
-            },
-            "showThresholdLabels": false,
-            "showThresholdMarkers": true,
-            "sizing": "auto"
-          },
-          "pluginVersion": "12.0.2",
-          "targets": [
-            {
-              "editorMode": "code",
-              "exemplar": false,
-              "expr": "count(mikrotik_cloud_status{dev_name=~\"$devname\", status=\"updated\"}) / count(mikrotik_cloud_status{dev_name=~\"$devname\"})",
-              "instant": true,
-              "legendFormat": "updated",
-              "range": false,
-              "refId": "A",
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${DS_PROMETHEUS-REAL}"
-              }
-            }
-          ],
-          "title": "cloud updated",
-          "type": "gauge"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS-REAL}"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "palette-classic"
-              },
-              "custom": {
-                "hideFrom": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": false
-                }
-              },
-              "mappings": []
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 6,
-            "w": 2,
-            "x": 2,
-            "y": 33
-          },
-          "id": 46,
-          "options": {
-            "displayLabels": [
-              "name",
-              "value"
-            ],
-            "legend": {
-              "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": false
-            },
-            "pieType": "pie",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "tooltip": {
-              "hideZeros": false,
-              "mode": "single",
-              "sort": "none"
-            }
-          },
-          "pluginVersion": "12.0.2",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${DS_PROMETHEUS-REAL}"
-              },
-              "editorMode": "code",
-              "exemplar": false,
-              "expr": "sum by(service) (mikrotik_service_active_connections_count{dev_name=~\"$devname\"})",
-              "instant": true,
-              "legendFormat": "{{service}}",
-              "range": false,
-              "refId": "A"
-            }
-          ],
-          "title": "Services active connections",
-          "type": "piechart"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS-REAL}"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green"
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              }
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 6,
-            "w": 2,
-            "x": 10,
-            "y": 33
-          },
-          "id": 57,
-          "maxDataPoints": 1,
-          "options": {
-            "minVizHeight": 75,
-            "minVizWidth": 75,
-            "orientation": "auto",
-            "reduceOptions": {
-              "calcs": [
-                "last"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "showThresholdLabels": false,
-            "showThresholdMarkers": true,
-            "sizing": "auto"
-          },
-          "pluginVersion": "12.0.2",
-          "targets": [
-            {
-              "editorMode": "code",
-              "exemplar": false,
-              "expr": "sum(mikrotik_neighbor_discovered{dev_name=~\"$devname\"})",
-              "format": "time_series",
-              "instant": true,
-              "legendFormat": "__auto",
-              "range": false,
-              "refId": "A",
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${DS_PROMETHEUS-REAL}"
-              }
-            }
-          ],
-          "title": "Neighbours",
-          "type": "gauge"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS-REAL}"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "palette-classic"
-              },
-              "custom": {
-                "axisBorderShow": false,
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
-                "axisLabel": "",
-                "axisPlacement": "auto",
-                "barAlignment": 0,
-                "barWidthFactor": 0.6,
-                "drawStyle": "line",
-                "fillOpacity": 0,
-                "gradientMode": "none",
-                "hideFrom": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": false
-                },
-                "insertNulls": false,
-                "lineInterpolation": "linear",
-                "lineWidth": 1,
-                "pointSize": 5,
-                "scaleDistribution": {
-                  "type": "linear"
-                },
-                "showPoints": "auto",
-                "spanNulls": false,
-                "stacking": {
-                  "group": "A",
-                  "mode": "none"
-                },
-                "thresholdsStyle": {
-                  "mode": "off"
-                }
-              },
-              "mappings": [],
-              "min": 0,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green"
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              },
-              "unit": "short"
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 6,
-            "w": 12,
-            "x": 12,
-            "y": 33
-          },
-          "id": 2,
-          "options": {
-            "legend": {
-              "calcs": [],
-              "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": false
-            },
-            "tooltip": {
-              "hideZeros": false,
-              "mode": "single",
-              "sort": "none"
-            }
-          },
-          "pluginVersion": "12.0.2",
-          "targets": [
-            {
-              "editorMode": "code",
-              "expr": "sum by(dev_name) (mikrotik_neighbor_discovered{dev_name=~\"$devname\"})",
-              "legendFormat": "{{dev_name}}",
-              "range": true,
-              "refId": "A",
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${DS_PROMETHEUS-REAL}"
-              }
-            }
-          ],
-          "title": "neighbor_entry",
-          "type": "timeseries"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS-REAL}"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "palette-classic"
-              },
-              "custom": {
-                "axisBorderShow": false,
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
-                "axisLabel": "",
-                "axisPlacement": "auto",
-                "barAlignment": 0,
-                "barWidthFactor": 0.6,
-                "drawStyle": "line",
-                "fillOpacity": 0,
-                "gradientMode": "none",
-                "hideFrom": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": false
-                },
-                "insertNulls": false,
-                "lineInterpolation": "linear",
-                "lineWidth": 1,
-                "pointSize": 5,
-                "scaleDistribution": {
-                  "type": "linear"
-                },
-                "showPoints": "auto",
-                "spanNulls": false,
-                "stacking": {
-                  "group": "A",
-                  "mode": "normal"
-                },
-                "thresholdsStyle": {
-                  "mode": "off"
-                }
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green"
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              }
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 8,
-            "w": 12,
-            "x": 0,
-            "y": 39
-          },
-          "id": 1,
-          "options": {
-            "legend": {
-              "calcs": [],
-              "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": false
-            },
-            "tooltip": {
-              "hideZeros": false,
-              "mode": "single",
-              "sort": "none"
-            }
-          },
-          "pluginVersion": "12.0.2",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${DS_PROMETHEUS-REAL}"
-              },
-              "editorMode": "code",
-              "expr": "mikrotik_arp_status{dev_name=~\"$devname\",status!=\"failed\"}",
-              "legendFormat": "{{dev_name}} {{status}}",
-              "range": true,
-              "refId": "A"
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${DS_PROMETHEUS-REAL}"
-              },
-              "editorMode": "code",
-              "expr": "mikrotik_arp_invalid{dev_name=~\"$devname\"}",
-              "hide": false,
-              "instant": false,
-              "legendFormat": "{{dev_name}} invalid",
-              "range": true,
-              "refId": "B"
-            }
-          ],
-          "title": "arp_entry",
-          "type": "timeseries"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS-REAL}"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "palette-classic"
-              },
-              "custom": {
-                "axisBorderShow": false,
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
-                "axisLabel": "",
-                "axisPlacement": "auto",
-                "barAlignment": 0,
-                "barWidthFactor": 0.6,
-                "drawStyle": "line",
-                "fillOpacity": 0,
-                "gradientMode": "none",
-                "hideFrom": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": false
-                },
-                "insertNulls": false,
-                "lineInterpolation": "linear",
-                "lineWidth": 1,
-                "pointSize": 5,
-                "scaleDistribution": {
-                  "type": "linear"
-                },
-                "showPoints": "auto",
-                "spanNulls": false,
-                "stacking": {
-                  "group": "A",
-                  "mode": "none"
-                },
-                "thresholdsStyle": {
-                  "mode": "off"
-                }
-              },
-              "mappings": [],
-              "min": 0,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green"
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              },
-              "unit": "short"
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 8,
-            "w": 12,
-            "x": 12,
-            "y": 39
-          },
-          "id": 9,
-          "options": {
-            "legend": {
-              "calcs": [],
-              "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": false
-            },
-            "tooltip": {
-              "hideZeros": false,
-              "mode": "single",
-              "sort": "none"
-            }
-          },
-          "pluginVersion": "12.0.2",
-          "targets": [
-            {
-              "editorMode": "code",
-              "expr": "mikrotik_conntrack_total_entries{dev_name=~\"$devname\"}",
-              "legendFormat": "{{dev_name}}",
-              "range": true,
-              "refId": "A",
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${DS_PROMETHEUS-REAL}"
-              }
-            }
-          ],
-          "title": "conntrack_total_entries",
-          "type": "timeseries"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS-REAL}"
-          },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "palette-classic"
-              },
-              "custom": {
-                "axisBorderShow": false,
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
-                "axisLabel": "",
-                "axisPlacement": "auto",
-                "barAlignment": 0,
-                "barWidthFactor": 0.6,
-                "drawStyle": "line",
-                "fillOpacity": 0,
-                "gradientMode": "none",
-                "hideFrom": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": false
-                },
-                "insertNulls": false,
-                "lineInterpolation": "linear",
-                "lineWidth": 1,
-                "pointSize": 5,
-                "scaleDistribution": {
-                  "type": "linear"
-                },
-                "showPoints": "auto",
-                "spanNulls": false,
-                "stacking": {
-                  "group": "A",
-                  "mode": "normal"
-                },
-                "thresholdsStyle": {
-                  "mode": "off"
-                }
-              },
-              "mappings": [],
-              "min": 0,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green"
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              },
-              "unit": "binBps"
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 8,
-            "w": 12,
-            "x": 0,
-            "y": 47
-          },
-          "id": 48,
-          "options": {
-            "legend": {
-              "calcs": [],
-              "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
-            },
-            "tooltip": {
-              "hideZeros": false,
-              "mode": "single",
-              "sort": "none"
-            }
-          },
-          "pluginVersion": "12.0.2",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${DS_PROMETHEUS-REAL}"
-              },
-              "editorMode": "code",
-              "expr": "rate(mikrotik_ip_ipv4_fast_path_bytes_total{dev_name=~\"$devname\"}[5m])",
-              "legendFormat": "FP bytes {{dev_name}}",
-              "range": true,
-              "refId": "A"
-            },
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${DS_PROMETHEUS-REAL}"
-              },
-              "editorMode": "code",
-              "expr": "rate(mikrotik_ip_ipv4_fasttrack_bytes_total{dev_name=~\"$devname\"}[5m])",
-              "hide": false,
-              "legendFormat": "FT bytes {{dev_name}}",
-              "range": true,
-              "refId": "B"
-            }
-          ],
-          "title": "FP/FT Bytes",
-          "type": "timeseries"
-        }
-      ],
+      "panels": [],
       "title": "IP",
       "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS-REAL}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 2,
+        "x": 0,
+        "y": 17
+      },
+      "id": 70,
+      "options": {
+        "minVizHeight": 75,
+        "minVizWidth": 75,
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "sizing": "auto"
+      },
+      "pluginVersion": "12.0.2",
+      "targets": [
+        {
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "count(mikrotik_cloud_ddns_enabled{dev_name=~\"$devname\"} == 1) / count(mikrotik_cloud_ddns_enabled{dev_name=~\"$devname\"})",
+          "instant": true,
+          "legendFormat": "__auto",
+          "range": false,
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS-REAL}"
+          }
+        }
+      ],
+      "title": "DDNS Enabled",
+      "type": "gauge"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS-REAL}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 2,
+        "x": 2,
+        "y": 17
+      },
+      "id": 5,
+      "options": {
+        "minVizHeight": 75,
+        "minVizWidth": 75,
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "/^updated$/",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "sizing": "auto"
+      },
+      "pluginVersion": "12.0.2",
+      "targets": [
+        {
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "count(mikrotik_cloud_status{dev_name=~\"$devname\", status=\"updated\"}) / count(mikrotik_cloud_status{dev_name=~\"$devname\"})",
+          "instant": true,
+          "legendFormat": "updated",
+          "range": false,
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS-REAL}"
+          }
+        }
+      ],
+      "title": "cloud updated",
+      "type": "gauge"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS-REAL}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 2,
+        "x": 4,
+        "y": 17
+      },
+      "id": 69,
+      "options": {
+        "minVizHeight": 75,
+        "minVizWidth": 75,
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "sizing": "auto"
+      },
+      "pluginVersion": "12.0.2",
+      "targets": [
+        {
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "count(mikrotik_cloud_bth_vpn_enabled{dev_name=~\"$devname\"} == 1) / count(mikrotik_cloud_bth_vpn_enabled{dev_name=~\"$devname\"})",
+          "instant": true,
+          "legendFormat": "__auto",
+          "range": false,
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS-REAL}"
+          }
+        }
+      ],
+      "title": "BTH VPN Enabled",
+      "type": "gauge"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS-REAL}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 2,
+        "x": 6,
+        "y": 17
+      },
+      "id": 71,
+      "options": {
+        "minVizHeight": 75,
+        "minVizWidth": 75,
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "sizing": "auto"
+      },
+      "pluginVersion": "12.0.2",
+      "targets": [
+        {
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "(count(mikrotik_cloud_bth_vpn_relay_ipv4_reachable{dev_name=~\"$devname\"} == 1) / count(mikrotik_cloud_bth_vpn_relay_ipv4_reachable{dev_name=~\"$devname\"})) or vector(0)",
+          "instant": true,
+          "legendFormat": "IPv4",
+          "range": false,
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS-REAL}"
+          }
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS-REAL}"
+          },
+          "editorMode": "code",
+          "expr": "(count(mikrotik_cloud_bth_vpn_relay_ipv6_reachable{dev_name=~\"$devname\"} == 1) / count(mikrotik_cloud_bth_vpn_relay_ipv6_reachable{dev_name=~\"$devname\"})) or vector(0)",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "IPv6",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "BTH VPN Relay reachable",
+      "type": "gauge"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS-REAL}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 2,
+        "x": 8,
+        "y": 17
+      },
+      "id": 46,
+      "options": {
+        "displayLabels": [
+          "name",
+          "value"
+        ],
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "pieType": "pie",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.0.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS-REAL}"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "sum by(service) (mikrotik_service_active_connections_count{dev_name=~\"$devname\"})",
+          "instant": true,
+          "legendFormat": "{{service}}",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Services active connections",
+      "type": "piechart"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS-REAL}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 2,
+        "x": 10,
+        "y": 17
+      },
+      "id": 57,
+      "maxDataPoints": 1,
+      "options": {
+        "minVizHeight": 75,
+        "minVizWidth": 75,
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "sizing": "auto"
+      },
+      "pluginVersion": "12.0.2",
+      "targets": [
+        {
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "sum(mikrotik_neighbor_discovered{dev_name=~\"$devname\"})",
+          "format": "time_series",
+          "instant": true,
+          "legendFormat": "__auto",
+          "range": false,
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS-REAL}"
+          }
+        }
+      ],
+      "title": "Neighbours",
+      "type": "gauge"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS-REAL}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 12,
+        "y": 17
+      },
+      "id": 2,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.0.2",
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "sum by(dev_name) (mikrotik_neighbor_discovered{dev_name=~\"$devname\"})",
+          "legendFormat": "{{dev_name}}",
+          "range": true,
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS-REAL}"
+          }
+        }
+      ],
+      "title": "neighbor_entry",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS-REAL}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 23
+      },
+      "id": 1,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.0.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS-REAL}"
+          },
+          "editorMode": "code",
+          "expr": "mikrotik_arp_status{dev_name=~\"$devname\",status!=\"failed\"}",
+          "legendFormat": "{{dev_name}} {{status}}",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS-REAL}"
+          },
+          "editorMode": "code",
+          "expr": "mikrotik_arp_invalid{dev_name=~\"$devname\"}",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "{{dev_name}} invalid",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "arp_entry",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS-REAL}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 23
+      },
+      "id": 9,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.0.2",
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "mikrotik_conntrack_total_entries{dev_name=~\"$devname\"}",
+          "legendFormat": "{{dev_name}}",
+          "range": true,
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS-REAL}"
+          }
+        }
+      ],
+      "title": "conntrack_total_entries",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS-REAL}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "binBps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 31
+      },
+      "id": 48,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.0.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS-REAL}"
+          },
+          "editorMode": "code",
+          "expr": "rate(mikrotik_ip_ipv4_fast_path_bytes_total{dev_name=~\"$devname\"}[5m])",
+          "legendFormat": "FP bytes {{dev_name}}",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS-REAL}"
+          },
+          "editorMode": "code",
+          "expr": "rate(mikrotik_ip_ipv4_fasttrack_bytes_total{dev_name=~\"$devname\"}[5m])",
+          "hide": false,
+          "legendFormat": "FT bytes {{dev_name}}",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "FP/FT Bytes",
+      "type": "timeseries"
     },
     {
       "collapsed": true,
@@ -2264,7 +2484,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 33
+        "y": 39
       },
       "id": 66,
       "panels": [
@@ -2293,7 +2513,7 @@
             "h": 6,
             "w": 2,
             "x": 0,
-            "y": 157
+            "y": 242
           },
           "id": 7,
           "options": {
@@ -2368,7 +2588,7 @@
             "h": 6,
             "w": 2,
             "x": 2,
-            "y": 157
+            "y": 242
           },
           "id": 49,
           "options": {
@@ -2468,7 +2688,7 @@
             "h": 14,
             "w": 12,
             "x": 12,
-            "y": 157
+            "y": 242
           },
           "id": 55,
           "options": {
@@ -2566,7 +2786,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 417
+            "y": 502
           },
           "id": 56,
           "options": {
@@ -2609,7 +2829,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 34
+        "y": 40
       },
       "id": 65,
       "panels": [
@@ -2648,7 +2868,7 @@
             "h": 6,
             "w": 2,
             "x": 0,
-            "y": 157
+            "y": 242
           },
           "id": 4,
           "options": {
@@ -2746,7 +2966,7 @@
             "h": 6,
             "w": 12,
             "x": 11,
-            "y": 157
+            "y": 242
           },
           "id": 3,
           "options": {
@@ -2789,7 +3009,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 35
+        "y": 41
       },
       "id": 15,
       "panels": [],
@@ -2873,7 +3093,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 36
+        "y": 42
       },
       "id": 67,
       "options": {
@@ -2985,7 +3205,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 36
+        "y": 42
       },
       "id": 68,
       "options": {
@@ -3026,7 +3246,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 44
+        "y": 50
       },
       "id": 17,
       "panels": [
@@ -3094,7 +3314,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 336
+            "y": 421
           },
           "id": 28,
           "options": {
@@ -3172,7 +3392,7 @@
             "h": 8,
             "w": 3,
             "x": 12,
-            "y": 336
+            "y": 421
           },
           "id": 6,
           "options": {
@@ -3312,7 +3532,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 344
+            "y": 429
           },
           "id": 29,
           "options": {
@@ -3434,7 +3654,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 344
+            "y": 429
           },
           "id": 47,
           "maxDataPoints": 1,
@@ -3597,7 +3817,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 352
+            "y": 437
           },
           "id": 26,
           "options": {
@@ -3732,7 +3952,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 352
+            "y": 437
           },
           "id": 54,
           "maxDataPoints": 1,
@@ -3860,7 +4080,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 45
+        "y": 51
       },
       "id": 32,
       "panels": [
@@ -3913,7 +4133,7 @@
             "h": 5,
             "w": 12,
             "x": 0,
-            "y": 569
+            "y": 654
           },
           "id": 30,
           "options": {
@@ -3995,7 +4215,7 @@
             "h": 5,
             "w": 3,
             "x": 12,
-            "y": 569
+            "y": 654
           },
           "id": 58,
           "maxDataPoints": 1,
@@ -4120,7 +4340,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 574
+            "y": 659
           },
           "id": 45,
           "options": {
@@ -4268,7 +4488,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 574
+            "y": 659
           },
           "id": 31,
           "options": {
@@ -4326,7 +4546,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 46
+        "y": 52
       },
       "id": 16,
       "panels": [
@@ -4407,7 +4627,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 162
+            "y": 247
           },
           "id": 10,
           "options": {
@@ -4529,7 +4749,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 162
+            "y": 247
           },
           "id": 11,
           "options": {
@@ -4584,7 +4804,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 47
+        "y": 53
       },
       "id": 61,
       "panels": [],
@@ -4657,7 +4877,7 @@
         "h": 6,
         "w": 12,
         "x": 0,
-        "y": 48
+        "y": 54
       },
       "id": 59,
       "options": {
@@ -4732,7 +4952,7 @@
         "h": 6,
         "w": 3,
         "x": 12,
-        "y": 48
+        "y": 54
       },
       "id": 60,
       "options": {
@@ -4813,7 +5033,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 54
+        "y": 60
       },
       "id": 64,
       "panels": [
@@ -4882,7 +5102,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 619
+            "y": 704
           },
           "id": 62,
           "options": {
@@ -4953,7 +5173,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 619
+            "y": 704
           },
           "id": 63,
           "options": {
@@ -4996,7 +5216,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 55
+        "y": 61
       },
       "id": 33,
       "panels": [
@@ -5077,7 +5297,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 663
+            "y": 748
           },
           "id": 34,
           "options": {
@@ -5203,7 +5423,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 663
+            "y": 748
           },
           "id": 37,
           "options": {
@@ -5328,7 +5548,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 671
+            "y": 756
           },
           "id": 38,
           "options": {
@@ -5466,7 +5686,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 671
+            "y": 756
           },
           "id": 36,
           "options": {
@@ -5552,7 +5772,7 @@
             "h": 3,
             "w": 4,
             "x": 0,
-            "y": 679
+            "y": 764
           },
           "id": 35,
           "options": {
@@ -5626,7 +5846,7 @@
             "h": 3,
             "w": 4,
             "x": 4,
-            "y": 679
+            "y": 764
           },
           "id": 39,
           "options": {
@@ -5677,7 +5897,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 59
+        "y": 65
       },
       "id": 50,
       "panels": [],
@@ -5748,7 +5968,7 @@
         "h": 6,
         "w": 12,
         "x": 0,
-        "y": 60
+        "y": 66
       },
       "id": 53,
       "options": {
@@ -5846,7 +6066,7 @@
         "h": 6,
         "w": 12,
         "x": 12,
-        "y": 60
+        "y": 66
       },
       "id": 52,
       "options": {
@@ -5940,6 +6160,6 @@
   "timezone": "Europe/Warsaw",
   "title": "Routeros",
   "uid": "f0eaee6e-c144-46ed-b52b-9b9dcc1f532c",
-  "version": 95,
+  "version": 97,
   "weekStart": ""
 }
