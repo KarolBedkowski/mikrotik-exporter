@@ -28,6 +28,7 @@ type simplePropertyMetric struct {
 	valueConverter ValueConverter
 	property       string
 	valueType      prometheus.ValueType
+	defaultValue   string
 }
 
 func (p *simplePropertyMetric) Describe(ch chan<- *prometheus.Desc) {
@@ -44,10 +45,14 @@ func (p *simplePropertyMetric) Collect(reply map[string]string, ctx *CollectorCo
 
 	propertyVal, ok := reply[p.property]
 	if !ok {
-		ctx.Logger.Debug(fmt.Sprintf("property %s value not found", p.property),
-			"property", p.property, "labels", ctx.Labels, "reply", reply)
+		if p.defaultValue == "" {
+			ctx.Logger.Debug(fmt.Sprintf("property %s value not found", p.property),
+				"property", p.property, "labels", ctx.Labels, "reply", reply)
 
-		return nil
+			return nil
+		}
+
+		propertyVal = p.defaultValue
 	}
 
 	if propertyVal == "" {
@@ -83,6 +88,7 @@ type rxTxPropertyMetric struct {
 	txDesc         *prometheus.Desc
 	valueConverter TXRXValueConverter
 	property       string
+	defaultValue   string
 }
 
 func (p rxTxPropertyMetric) Describe(ch chan<- *prometheus.Desc) {
@@ -99,10 +105,14 @@ func (p rxTxPropertyMetric) Collect(reply map[string]string, ctx *CollectorConte
 
 	propertyVal, ok := reply[p.property]
 	if !ok {
-		ctx.Logger.Debug(fmt.Sprintf("property %s value not found", p.property),
-			"property", p.property, "labels", ctx.Labels)
+		if p.defaultValue == "" {
+			ctx.Logger.Debug(fmt.Sprintf("property %s value not found", p.property),
+				"property", p.property, "labels", ctx.Labels)
 
-		return nil
+			return nil
+		}
+
+		propertyVal = p.defaultValue
 	}
 
 	if propertyVal == "" {
@@ -131,11 +141,13 @@ type statusPropertyMetricDV struct {
 
 // statusPropertyMetric collect gauge metrics from status.
 type statusPropertyMetric struct {
-	descs    []statusPropertyMetricDV
-	property string
+	descs        []statusPropertyMetricDV
+	property     string
+	defaultValue string
 }
 
 func newStatusPropertyMetric(prefix, metricName, property, metricHelp string, labels, values []string,
+	defaultValue string,
 ) *statusPropertyMetric {
 	desc := make([]statusPropertyMetricDV, 0, len(values))
 	for _, v := range values {
@@ -145,7 +157,7 @@ func newStatusPropertyMetric(prefix, metricName, property, metricHelp string, la
 		})
 	}
 
-	return &statusPropertyMetric{desc, property}
+	return &statusPropertyMetric{desc, property, defaultValue}
 }
 
 func (s statusPropertyMetric) Describe(ch chan<- *prometheus.Desc) {
@@ -163,10 +175,13 @@ func (s statusPropertyMetric) Collect(reply map[string]string, ctx *CollectorCon
 
 	propertyVal, ok := reply[s.property]
 	if !ok {
-		ctx.Logger.Debug(fmt.Sprintf("property %s value not found", s.property),
-			"property", s.property, "labels", ctx.Labels)
+		if s.defaultValue == "" {
+			ctx.Logger.Debug(fmt.Sprintf("property %s value not found", s.property),
+				"property", s.property, "labels", ctx.Labels)
 
-		return nil
+			return nil
+		}
+		propertyVal = s.defaultValue
 	}
 
 	if propertyVal == "" {
@@ -218,6 +233,7 @@ func (p *constPropertyMetric) Collect(reply map[string]string, ctx *CollectorCon
 			"property", p.property, "labels", ctx.Labels, "reply_map", reply)
 
 		return nil
+
 	}
 
 	ctx.Ch <- prometheus.MustNewConstMetric(p.desc, prometheus.GaugeValue, 1.0, ctx.Labels...)
@@ -251,6 +267,8 @@ type PropertyMetricBuilder struct {
 	labels             []string
 	metricType         metricType
 	values             []string
+
+	defaultValue string
 }
 
 // NewPropertyCounterMetric create new PropertyMetricBuilder for counter type metric with `prefix` and value from
@@ -360,6 +378,17 @@ func (p *PropertyMetricBuilder) WithRxTxConverter(vc TXRXValueConverter) *Proper
 	return p
 }
 
+// WithDefault set default value that is used when given property is not found.
+func (p *PropertyMetricBuilder) WithDefault(defaultValue string) *PropertyMetricBuilder {
+	if p.metricType == metricConst {
+		panic("default value is not supported for const metrics")
+	}
+
+	p.defaultValue = defaultValue
+
+	return p
+}
+
 // / Build create PropertyMetric from configuration.
 func (p *PropertyMetricBuilder) Build() PropertyMetric {
 	p.prepare()
@@ -373,21 +402,21 @@ func (p *PropertyMetricBuilder) Build() PropertyMetric {
 	case metricCounter:
 		desc := descriptionForPropertyNameHelpText(p.prefix, p.metricName, p.labels, p.metricHelp)
 
-		return &simplePropertyMetric{desc, p.valueConverter, p.property, prometheus.CounterValue}
+		return &simplePropertyMetric{desc, p.valueConverter, p.property, prometheus.CounterValue, p.defaultValue}
 
 	case metricGauge:
 		desc := descriptionForPropertyNameHelpText(p.prefix, p.metricName, p.labels, p.metricHelp)
 
-		return &simplePropertyMetric{desc, p.valueConverter, p.property, prometheus.GaugeValue}
+		return &simplePropertyMetric{desc, p.valueConverter, p.property, prometheus.GaugeValue, p.defaultValue}
 
 	case metricRxTx:
 		rxDesc := descriptionForPropertyNameHelpText(p.prefix, "rx_"+p.metricName, p.labels, p.metricHelp+" (RX)")
 		txDesc := descriptionForPropertyNameHelpText(p.prefix, "tx_"+p.metricName, p.labels, p.metricHelp+" (TX)")
 
-		return &rxTxPropertyMetric{rxDesc, txDesc, p.rxTxValueConverter, p.property}
+		return &rxTxPropertyMetric{rxDesc, txDesc, p.rxTxValueConverter, p.property, p.defaultValue}
 
 	case metricStatus:
-		return newStatusPropertyMetric(p.prefix, p.metricName, p.property, p.metricHelp, p.labels, p.values)
+		return newStatusPropertyMetric(p.prefix, p.metricName, p.property, p.metricHelp, p.labels, p.values, p.defaultValue)
 
 	case metricConst:
 		desc := descriptionForPropertyNameHelpText(p.prefix, p.metricName, p.labels, p.metricHelp)
@@ -397,7 +426,7 @@ func (p *PropertyMetricBuilder) Build() PropertyMetric {
 	case metricRet:
 		desc := descriptionForPropertyNameHelpText(p.prefix, p.metricName, p.labels, p.metricHelp)
 
-		return &simplePropertyMetric{desc, p.valueConverter, p.property, prometheus.GaugeValue}
+		return &simplePropertyMetric{desc, p.valueConverter, p.property, prometheus.GaugeValue, p.defaultValue}
 	}
 
 	panic("unknown metric type")
@@ -412,6 +441,7 @@ func (p *PropertyMetricBuilder) LogValue() slog.Value {
 		slog.Any("type", p.metricType),
 		slog.String("property", p.property),
 		slog.Any("values", p.values),
+		slog.String("defaultValue", p.defaultValue),
 	)
 }
 
