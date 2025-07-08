@@ -43,6 +43,7 @@ func newCloudCollector() RouterOSCollector {
 			metrics.NewPropertyGaugeMetric(prefix, "vpn-status").
 				WithName("bth_vpn_running").
 				WithConverter(bthStatusToMetric).
+				WithDefault("unknown").
 				Build(),
 			metrics.NewPropertyGaugeMetric(prefix, "vpn-relay-ipv4-status").
 				WithName("bth_vpn_relay_ipv4_reachable").
@@ -92,12 +93,6 @@ func (c *cloudCollector) Collect(ctx *metrics.CollectorContext) error {
 	}
 
 	// Collect back-to-home metrics
-
-	// if back-to-home-vpn is disabled then there is not other metric; add vpn-status with empty value to generate
-	// 0.0 metric.
-	if _, ok := re.Map["vpn-status"]; !ok {
-		re.Map["vpn-status"] = ""
-	}
 
 	if err := c.bthMetrics.Collect(re.Map, ctx); err != nil {
 		return fmt.Errorf("collect error: %w", err)
