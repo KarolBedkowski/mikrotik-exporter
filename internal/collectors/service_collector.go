@@ -33,6 +33,10 @@ func (c *serviceConnCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *serviceConnCollector) Collect(ctx *metrics.CollectorContext) error {
+	if ctx.Device.FirmwareVersion.Compare(7, 19, 0) < 0 { //nolint:mnd
+		return NotSupportedError("service collector is available since RO 7.19")
+	}
+
 	reply, err := ctx.Client.Run("/ip/service/print", "?connection", "=.proplist=name")
 	if err != nil {
 		return fmt.Errorf("fetch service stats error: %w", err)
