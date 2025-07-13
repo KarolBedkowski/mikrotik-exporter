@@ -6,7 +6,6 @@ package metrics
 import (
 	"fmt"
 	"log/slog"
-	"slices"
 
 	"mikrotik-exporter/internal/config"
 
@@ -49,7 +48,8 @@ func NewCollectorContext(ch chan<- prometheus.Metric, device *config.Device, cli
 	}
 }
 
-func (c CollectorContext) WithLabels(labels ...string) CollectorContext {
+// WithLabels create new CollectorContext with labels.
+func (c *CollectorContext) WithLabels(labels ...string) CollectorContext {
 	return CollectorContext{
 		Ch:         c.Ch,
 		Device:     c.Device,
@@ -61,7 +61,8 @@ func (c CollectorContext) WithLabels(labels ...string) CollectorContext {
 	}
 }
 
-func (c CollectorContext) WithLabelsFromMap(values map[string]string, labelName ...string) CollectorContext {
+// WithLabelsFromMap create new CollectorContext with labels from map.
+func (c *CollectorContext) WithLabelsFromMap(values map[string]string, labelName ...string) CollectorContext {
 	labels := []string{c.Device.Name, c.Device.Address}
 	for _, n := range labelName {
 		labels = append(labels, values[n])
@@ -78,24 +79,15 @@ func (c CollectorContext) WithLabelsFromMap(values map[string]string, labelName 
 	}
 }
 
-func (c CollectorContext) AppendLabelsFromMap(values map[string]string, labelName ...string) CollectorContext {
-	labels := slices.Clone(c.Labels)
+// AppendLabelsFromMap add new labels to existing CollectorContext.
+func (c *CollectorContext) AppendLabelsFromMap(values map[string]string, labelName ...string) {
 	for _, n := range labelName {
-		labels = append(labels, values[n])
-	}
-
-	return CollectorContext{
-		Ch:         c.Ch,
-		Device:     c.Device,
-		Client:     c.Client,
-		collector:  c.collector,
-		Labels:     labels,
-		Logger:     c.Logger,
-		FeatureCfg: c.FeatureCfg,
+		c.Labels = append(c.Labels, values[n])
 	}
 }
 
-func (c CollectorContext) Run(sentence ...string) (*routeros.Reply, error) {
+// Run call ROClient Run.
+func (c *CollectorContext) Run(sentence ...string) (*routeros.Reply, error) {
 	reply, err := c.Client.Run(sentence...)
 	if err != nil {
 		return nil, fmt.Errorf("client run error: %w", err)

@@ -131,7 +131,8 @@ func (c *capsmanCollector) collectInterfaces(ctx *metrics.CollectorContext) erro
 			errs = multierror.Append(errs, fmt.Errorf("collect interfaces error: %w", err))
 		}
 
-		lctx = lctx.AppendLabelsFromMap(re.Map, "current-state")
+		lctx.AppendLabelsFromMap(re.Map, "current-state")
+
 		if err := c.interfacesStatus.Collect(re.Map, &lctx); err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("collect interfaces error: %w", err))
 		}
