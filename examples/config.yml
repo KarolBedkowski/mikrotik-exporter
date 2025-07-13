@@ -11,19 +11,6 @@ devices:
     # by default device is enabled
     disabled: false
 
-    # configuration for firewall collector
-    fw_collector_settings:
-      # collect metric from `filter`
-      filter:
-        # and from chain `input`
-        - input
-      nat:
-        - srcnat
-
-    # script to run by scripts collector
-    scripts:
-      - script1
-
   - name: dev2
     address: 192.168.0.2
     # enable ssl
@@ -47,63 +34,108 @@ devices:
 
 # default features (profile)
 features:
-  arp: false
-  dns: false
-  dns_adlist: false
+  # enable capsman
+  arp:
+    # disable metrics for each arp entry; keep only stats (default)
+    details: false
+  # enable capsman
+  capsman:
+    # disable metric for each registered station (default)
+    stations: false
   certs: true
   cloud: true
   conntrack: true
   dhcp: true
-  dhcpl: true
+  dhcpl:
+    # disable details - count only number of lease in each state (default)
+    details: false
   dhcpv6: true
-  firewall: true
+  disk: true
+  dns: false
+  # disable dns_adlist in 'new' format
+  dns_adlist:
+    enabled: false
+  dude: false
+  firewall: false
   firmware: true
   health: true
+  interface: true
   ip: true
-  routes: true
+  ipsec: true
+  # collect /ipv6 neighbor metrics
+  ipv6_neighbor:
+    # disable details - count only entries in each status
+    details: false
+  lte: true
+  monitor: true
+  neighbor:
+    # disable details - count only neighbours discovered by interface
+    details: false
+  netwatch: true
+  # enable metrics from ntp client
+  ntpc:
+  optics: true
   poe: true
   pools: true
-  optics: true
-  w60g: true
-  wlansta: true
-  capsman: true
-  wlanif: true
-  monitor: true
-  neighbor: false
-  ipsec: true
-  lte: true
-  netwatch: true
+  ppp:
+    # disable metrics for all active connections
+    details: false
   queue: true
-  interface: true
+  radius: false
+  routes: true
+  scripts:
+    enabled: false
+    # script to run by scripts collector
+    scripts:
+      - script1
+      - script2
   service: false
-  scripts: false
+  w60g: true
+  wireguard:
+    # disable details; count only connected/waitine peers
+    details: false
+  wlanif: true
+  # new format (v2) - dictionary of values
+  wlansta:
+    enabled: true
   # always captured
   resource: true
 
 # custom profiles
 profiles:
   router:
+    arp:
+      # enable metrics for each arp entry
+      details: true
+    capsman: true
     certs: true
+    cloud: true
+    conntrack: true
     dhcp: true
     dhcpl: true
-    routes: true
-    pools: true
-    capsman: true
-    conntrack: true
+    # collect metrics from firewall and chain
+    firewall:
+      sources:
+        # list of firewall name,chain
+        # valid firewalls: filter, nat, mangle, raw
+        - filter,chain_to_log
+        - filter,other_chain_to_log2
+        - nat,chain_to_log2
     health: true
-    firewall: true
     monitor: true
-    wlanif: true
     netwatch: true
-    resource: true
-    queue: true
+    ntpc: true
     poe: true
-    cloud: true
-  basic:
+    pools: true
+    queue: true
     resource: true
-    netwatch: true
+    routes: true
     wlanif: true
-    monitor: true
+  basic:
+    cloud: true
     conntrack: true
     health: true
-    cloud: true
+    monitor: true
+    netwatch: true
+    resource: true
+    wlanif: true

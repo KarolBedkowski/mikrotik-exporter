@@ -3,6 +3,7 @@ package routeros
 import (
 	"bytes"
 	"fmt"
+	"log/slog"
 
 	"mikrotik-exporter/routeros/proto"
 )
@@ -22,6 +23,13 @@ func (r *Reply) String() string {
 	fmt.Fprintf(b, "%s", r.Done)
 
 	return b.String()
+}
+
+func (r *Reply) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.Any("done", r.Done),
+		slog.Any("re", r.Re),
+	)
 }
 
 // readReply reads one reply synchronously. It returns the reply.

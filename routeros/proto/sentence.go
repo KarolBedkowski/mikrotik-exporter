@@ -1,6 +1,11 @@
 package proto
 
-import "fmt"
+import (
+	"fmt"
+	"log/slog"
+	"slices"
+	"strings"
+)
 
 // Sentence is a line read from a RouterOS device.
 type Sentence struct {
@@ -24,7 +29,12 @@ func NewSentence() *Sentence {
 }
 
 func (sen *Sentence) String() string {
-	return fmt.Sprintf("%s @%s %#q", sen.Word, sen.Tag, sen.AsList())
+	pairs := sen.AsList()
+	slices.SortFunc(pairs, func(a, b Pair) int {
+		return strings.Compare(a.Key, b.Key)
+	})
+
+	return fmt.Sprintf("%s @%s %#q", sen.Word, sen.Tag, pairs)
 }
 
 func (sen *Sentence) AsList() []Pair {
@@ -35,4 +45,12 @@ func (sen *Sentence) AsList() []Pair {
 	}
 
 	return res
+}
+
+func (sen *Sentence) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.Any("map", sen.Map),
+		slog.String("word", sen.Word),
+		slog.String("tag", sen.Tag),
+	)
 }
