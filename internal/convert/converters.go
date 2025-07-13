@@ -186,7 +186,7 @@ func getDurationParts(inp string) (time.Duration, string, error) {
 	return duration, rest, err
 }
 
-// metricFromDuration convert formatted `duration` to duration in seconds as float64.
+// MetricFromDuration convert formatted `duration` to duration in seconds as float64.
 func MetricFromDuration(duration string) (float64, error) {
 	var totalDur time.Duration
 
@@ -207,12 +207,12 @@ func MetricFromDuration(duration string) (float64, error) {
 
 // ----------------------------------------------------------------------------
 
-// metricFromString convert string to float64.
+// MetricFromString convert string to float64.
 func MetricFromString(value string) (float64, error) {
 	return strconv.ParseFloat(value, 64) //nolint:wrapcheck
 }
 
-// metricFromBool return 1.0 if value is "true" or "yes"; 0.0 otherwise.
+// MetricFromBool return 1.0 if value is "true" or "yes"; 0.0 otherwise.
 func MetricFromBool(value string) (float64, error) {
 	if value == "true" || value == "yes" {
 		return 1.0, nil
@@ -221,16 +221,35 @@ func MetricFromBool(value string) (float64, error) {
 	return 0.0, nil
 }
 
-// metricConstantValue always return 1.0.
+// MetricFromBoolNeg return 1.0 if value is "false" or "no"; 0.0 otherwise.
+// Useful for convert disabled=False -> enabled=true.
+func MetricFromBoolNeg(value string) (float64, error) {
+	if value == "false" {
+		return 1.0, nil
+	}
+
+	return 0.0, nil
+}
+
+// MetricConstantValue always return 1.0.
 func MetricConstantValue(value string) (float64, error) {
 	_ = value
 
 	return 1.0, nil
 }
 
-// metricFromEnabled return 1.0 if value is "enabled""; 0.0 otherwise.
+// MetricFromEnabled return 1.0 if value is "enabled""; 0.0 otherwise.
 func MetricFromEnabled(value string) (float64, error) {
 	if value == "enabled" {
+		return 1.0, nil
+	}
+
+	return 0.0, nil
+}
+
+// MetricFromEnabled return 1.0 if value is "running""; 0.0 otherwise.
+func MetricFromRunning(inp string) (float64, error) {
+	if inp == "running" {
 		return 1.0, nil
 	}
 

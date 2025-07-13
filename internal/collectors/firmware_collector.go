@@ -3,8 +3,10 @@ package collectors
 import (
 	"fmt"
 
+	"mikrotik-exporter/internal/convert"
 	"mikrotik-exporter/internal/metrics"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -13,18 +15,21 @@ func init() {
 }
 
 type firmwareCollector struct {
-	description *prometheus.Desc
+	metric metrics.PropertyMetric
 }
 
 func newFirmwareCollector() RouterOSCollector {
 	return &firmwareCollector{
-		description: metrics.Description("system", "package_enabled", "system packages version and status",
-			metrics.LabelDevName, metrics.LabelDevAddress, "name", "version", "build_time"),
+		metric: metrics.NewPropertyGaugeMetric("system", "disabled", "name", "version", "build_time").
+			WithName("package_enabled").
+			WithConverter(convert.MetricFromBoolNeg).
+			Build(),
 	}
 }
 
 func (c *firmwareCollector) Describe(ch chan<- *prometheus.Desc) {
-	ch <- c.description
+	// ch <- c.description
+	c.metric.Describe(ch)
 }
 
 func (c *firmwareCollector) Collect(ctx *metrics.CollectorContext) error {
@@ -33,14 +38,14 @@ func (c *firmwareCollector) Collect(ctx *metrics.CollectorContext) error {
 		return fmt.Errorf("fetch package error: %w", err)
 	}
 
-	for _, pkg := range reply.Re {
-		enabled := 0.0
-		if pkg.Map["disabled"] == "false" {
-			enabled = 1.0
+	var errs *multierror.Error
+
+	for _, re := range reply.Re {
+		lctx := ctx.WithLabelsFromMap(re.Map, "name", "version", "build-time")
+		if err := c.metric.Collect(re.Map, &lctx); err != nil {
+			errs = multierror.Append(errs, fmt.Errorf("collect from package error: %w", err))
 		}
-		ctx.Ch <- prometheus.MustNewConstMetric(c.description, prometheus.GaugeValue, enabled,
-			ctx.Device.Name, ctx.Device.Address, pkg.Map["name"], pkg.Map["version"], pkg.Map["build-time"])
 	}
 
-	return nil
+	return errs.ErrorOrNil()
 }

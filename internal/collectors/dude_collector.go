@@ -24,7 +24,10 @@ func newDudeCollector() RouterOSCollector {
 	return &dudeCollector{
 		metrics: metrics.PropertyMetricList{
 			metrics.NewPropertyGaugeMetric(prefix, "enabled").WithConverter(convert.MetricFromBool).Build(),
-			metrics.NewPropertyGaugeMetric(prefix, "status").WithName("running").WithConverter(dudeStatusParser).Build(),
+			metrics.NewPropertyGaugeMetric(prefix, "status").
+				WithName("running").
+				WithConverter(convert.MetricFromRunning).
+				Build(),
 		},
 	}
 }
@@ -49,12 +52,4 @@ func (c *dudeCollector) Collect(ctx *metrics.CollectorContext) error {
 	}
 
 	return errs.ErrorOrNil()
-}
-
-func dudeStatusParser(inp string) (float64, error) {
-	if inp == "running" {
-		return 1.0, nil
-	}
-
-	return 0.0, nil
 }

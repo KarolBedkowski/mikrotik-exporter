@@ -44,9 +44,7 @@ func (c *radiusCollector) Collect(ctx *metrics.CollectorContext) error {
 		return nil
 	}
 
-	re := reply.Re[0]
-
-	if err := c.metrics.Collect(re.Map, ctx); err != nil {
+	if err := c.metrics.Collect(reply.Re[0].Map, ctx); err != nil {
 		return fmt.Errorf("collect radius incoming monitor error: %w", err)
 	}
 

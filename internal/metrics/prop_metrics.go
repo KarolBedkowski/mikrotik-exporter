@@ -181,6 +181,7 @@ func (s statusPropertyMetric) Collect(reply map[string]string, ctx *CollectorCon
 
 			return nil
 		}
+
 		propertyVal = s.defaultValue
 	}
 
@@ -233,7 +234,6 @@ func (p *constPropertyMetric) Collect(reply map[string]string, ctx *CollectorCon
 			"property", p.property, "labels", ctx.Labels, "reply_map", reply)
 
 		return nil
-
 	}
 
 	ctx.Ch <- prometheus.MustNewConstMetric(p.desc, prometheus.GaugeValue, 1.0, ctx.Labels...)

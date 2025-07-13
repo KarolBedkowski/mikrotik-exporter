@@ -67,13 +67,12 @@ func (c *ntpcCollector) collectRO6(ctx *metrics.CollectorContext) error {
 		errs = multierror.Append(errs, fmt.Errorf("collect error: %w", err))
 	}
 
-	status := 0.0
-	if as := sentence.Map["active-server"]; as != "" {
-		status = 1.0
-	}
-
 	psStatus, _ := c.status.(metrics.PropertySimpleSet)
-	errs = multierror.Append(errs, psStatus.Set(status, ctx))
+	if as := sentence.Map["active-server"]; as != "" {
+		errs = multierror.Append(errs, psStatus.Set(1.0, ctx))
+	} else {
+		errs = multierror.Append(errs, psStatus.Set(0.0, ctx))
+	}
 
 	if la := sentence.Map["last-adjustment"]; la != "" {
 		if dur, err := convert.MetricFromDuration(la); err != nil {
@@ -81,7 +80,7 @@ func (c *ntpcCollector) collectRO6(ctx *metrics.CollectorContext) error {
 		} else {
 			psOffset, _ := c.offset.(metrics.PropertySimpleSet)
 
-			// RO7 return data as ms, so convert seconds to ms
+			// RO7 return data as ms, so convert seconds to ms to match RO7 response.
 			errs = multierror.Append(errs, psOffset.Set(dur, ctx))
 		}
 	}

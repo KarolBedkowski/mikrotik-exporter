@@ -40,9 +40,7 @@ func (c *dnsAdlistCollector) Collect(ctx *metrics.CollectorContext) error {
 		return NotSupportedError("dns_adlist")
 	}
 
-	reply, err := ctx.Client.Run("/ip/dns/adlist/print",
-		"?disabled=false",
-		"=.proplist=url,match-count,name-count")
+	reply, err := ctx.Client.Run("/ip/dns/adlist/print", "?disabled=false", "=.proplist=url,match-count,name-count")
 	if err != nil {
 		return fmt.Errorf("fetch dns adlist stats error: %w", err)
 	}

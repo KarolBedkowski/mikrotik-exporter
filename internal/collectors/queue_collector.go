@@ -31,8 +31,12 @@ func newQueueCollector() RouterOSCollector {
 		monitorQueuedPackets: metrics.NewPropertyGaugeMetric("queue", "queued-packets").Build(),
 
 		metrics: metrics.PropertyMetricList{
-			metrics.NewPropertyRxTxMetric(sqPrefix, "packets", labelNames...).WithRxTxConverter(metricFromQueueTxRx).Build(),
-			metrics.NewPropertyRxTxMetric(sqPrefix, "bytes", labelNames...).WithRxTxConverter(metricFromQueueTxRx).Build(),
+			metrics.NewPropertyRxTxMetric(sqPrefix, "packets", labelNames...).
+				WithRxTxConverter(metricFromQueueTxRx).
+				Build(),
+			metrics.NewPropertyRxTxMetric(sqPrefix, "bytes", labelNames...).
+				WithRxTxConverter(metricFromQueueTxRx).
+				Build(),
 			metrics.NewPropertyRxTxMetric(sqPrefix, "queued-packets", labelNames...).
 				WithRxTxConverter(metricFromQueueTxRx).
 				Build(),

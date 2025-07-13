@@ -21,7 +21,7 @@ type cloudCollector struct {
 	ifaceStatus    metrics.PropertyMetric
 	ddnsEnabled    metrics.PropertyMetric
 	bthMetrics     metrics.PropertyMetric
-	bthActiveUsers *prometheus.Desc
+	bthActiveUsers metrics.PropertyMetric
 }
 
 func newCloudCollector() RouterOSCollector {
@@ -42,7 +42,7 @@ func newCloudCollector() RouterOSCollector {
 				Build(),
 			metrics.NewPropertyGaugeMetric(prefix, "vpn-status").
 				WithName("bth_vpn_running").
-				WithConverter(bthStatusToMetric).
+				WithConverter(convert.MetricFromRunning).
 				WithDefault("unknown").
 				Build(),
 			metrics.NewPropertyGaugeMetric(prefix, "vpn-relay-ipv4-status").
@@ -55,16 +55,15 @@ func newCloudCollector() RouterOSCollector {
 				Build(),
 		},
 
-		bthActiveUsers: metrics.Description(prefix, "bth_users",
-			"number of active bth users",
-			metrics.LabelDevName, metrics.LabelDevAddress),
+		bthActiveUsers: metrics.NewPropertyRetMetric(prefix, "bth_users").
+			WithHelp("number of active bth users").Build(),
 	}
 }
 
 func (c *cloudCollector) Describe(ch chan<- *prometheus.Desc) {
 	c.ifaceStatus.Describe(ch)
 	c.bthMetrics.Describe(ch)
-	ch <- c.bthActiveUsers
+	c.bthActiveUsers.Describe(ch)
 }
 
 func (c *cloudCollector) Collect(ctx *metrics.CollectorContext) error {
@@ -104,22 +103,11 @@ func (c *cloudCollector) Collect(ctx *metrics.CollectorContext) error {
 		return fmt.Errorf("fetch active bth users error: %w", err)
 	}
 
-	if cnt, err := convert.MetricFromString(reply.Done.Map["ret"]); err == nil {
-		ctx.Ch <- prometheus.MustNewConstMetric(c.bthActiveUsers, prometheus.GaugeValue, cnt,
-			ctx.Device.Name, ctx.Device.Address)
-	} else {
+	if err := c.bthActiveUsers.Collect(reply.Done.Map, ctx); err != nil {
 		return fmt.Errorf("parse ret %v error: %w", reply, err)
 	}
 
 	return nil
-}
-
-func bthStatusToMetric(value string) (float64, error) {
-	if value == "running" {
-		return 1.0, nil
-	}
-
-	return 0.0, nil
 }
 
 func bthRelayStatus(value string) (float64, error) {

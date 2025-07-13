@@ -75,7 +75,6 @@ func (c *wlanIFCollector) collectForInterface(iface string, ctx *metrics.Collect
 	}
 
 	re := reply.Re[0]
-
 	lctx := ctx.WithLabels(iface)
 
 	if err := c.metrics.Collect(re.Map, &lctx); err != nil {

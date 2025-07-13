@@ -29,7 +29,9 @@ func newDiskCollector() RouterOSCollector {
 		metrics: metrics.PropertyMetricList{
 			metrics.NewPropertyGaugeMetric(prefix, "size", labelNames...).Build(),
 			metrics.NewPropertyGaugeMetric(prefix, "free", labelNames...).Build(),
-			metrics.NewPropertyGaugeMetric(prefix, "mounted", labelNames...).WithConverter(convert.MetricFromBool).Build(),
+			metrics.NewPropertyGaugeMetric(prefix, "mounted", labelNames...).
+				WithConverter(convert.MetricFromBool).
+				Build(),
 		},
 		entries: metrics.NewPropertyGaugeMetric(prefix, "slot", entryLabelNames...).
 			WithName("entry").
