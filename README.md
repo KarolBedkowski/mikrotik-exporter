@@ -1,4 +1,4 @@
-## prometheus-mikrotik
+## Prometheus Mikrotik Exporter 3.x.x
 
 tl;dr - prometheus exporter for mikrotik devices
 
