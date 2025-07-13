@@ -45,6 +45,10 @@ func (c *diskCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *diskCollector) Collect(ctx *metrics.CollectorContext) error {
+	if ctx.Device.FirmwareVersion.Compare(7, 7, 0) < 0 { //nolint:mnd
+		return NotSupportedError("disk")
+	}
+
 	reply, err := ctx.Client.Run("/disk/print",
 		"?disabled=false",
 		"=.proplist=slot,type,fs-uuid,comment,size,free,mounted,mount-point,parent,fs,model,serial")
