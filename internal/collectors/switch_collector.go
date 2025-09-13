@@ -66,34 +66,36 @@ func (c *switchCollector) Collect(ctx *metrics.CollectorContext) error {
 
 	details := ctx.FeatureCfg.BoolValue("details", false)
 
-	for _, r := range reply.Re {
-		name := r.Map["name"]
+	for _, re := range reply.Re {
+		name := re.Map["name"]
 
 		lctx := ctx.WithLabels(name)
-		if err := c.statsDriver.Collect(r.Map, &lctx); err != nil {
+		if err := c.statsDriver.Collect(re.Map, &lctx); err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("collect switch %s error: %w", name, err))
 		}
 
-		// do not load details if not configured
-		if !details {
-			continue
-		}
-
-		for k, v := range r.Map {
-			if k == "name" || k == "type" || k == "invalid" || k == ".id" ||
-				strings.HasPrefix(k, "mirror") || strings.HasPrefix(k, "driver-") {
-				continue
-			}
-
-			// ignore non-numeric values
-			if val, err := strconv.ParseInt(v, 10, 64); err == nil {
-				ctx.Ch <- prometheus.MustNewConstMetric(c.stats, prometheus.CounterValue, float64(val),
-					ctx.Device.Name, ctx.Device.Address, name, k)
-			}
+		// load details if configured
+		if details {
+			c.collectDetails(ctx, name, re.Map)
 		}
 	}
 
 	return errs.ErrorOrNil()
+}
+
+func (c *switchCollector) collectDetails(ctx *metrics.CollectorContext, name string, remap map[string]string) {
+	for k, v := range remap {
+		if k == "name" || k == "type" || k == "invalid" || k == ".id" ||
+			strings.HasPrefix(k, "mirror") || strings.HasPrefix(k, "driver-") {
+			continue
+		}
+
+		// ignore non-numeric values
+		if val, err := strconv.ParseInt(v, 10, 64); err == nil {
+			ctx.Ch <- prometheus.MustNewConstMetric(c.stats, prometheus.CounterValue, float64(val),
+				ctx.Device.Name, ctx.Device.Address, name, k)
+		}
+	}
 }
 
 /*
