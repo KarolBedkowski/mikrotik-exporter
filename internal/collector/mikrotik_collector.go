@@ -96,7 +96,7 @@ func (c *mikrotikCollector) Collect(ch chan<- prometheus.Metric) {
 			if devs, err := c.devicesFromSrv(dc); err == nil {
 				realDevices = append(realDevices, devs...)
 			} else {
-				c.logger.Error("resolve srv error", "err", err)
+				c.logger.Error("resolve srv error", "src_record", dc.device.Srv.Record, "err", err)
 			}
 		} else {
 			realDevices = append(realDevices, dc)

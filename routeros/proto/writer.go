@@ -16,8 +16,9 @@ type Writer interface {
 
 type writer struct {
 	*bufio.Writer
-	err error
 	sync.Mutex
+
+	err error
 }
 
 // NewWriter returns a new Writer to write to w.

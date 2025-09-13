@@ -35,7 +35,7 @@ build_arm64:
 
 .PHONY: run
 run:
-	go run ./cli -- -config-file config.yml -log-level debug
+	go run ./cli -config-file config.yml -log-level debug
 
 .PHONY: lint
 lint:

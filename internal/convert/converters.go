@@ -47,7 +47,7 @@ func ParseTS(value string) (float64, error) {
 	return float64(t.Unix()), nil
 }
 
-// ParseTS parse date from `value` (in UTC) into unix timestamp.
+// ParseTSInLocation parse date from `value` (in given timezone) into unix timestamp.
 func ParseTSInLocation(value, timezone string) (float64, error) {
 	if value == "" {
 		return 0.0, nil
@@ -79,12 +79,12 @@ func SplitStringToFloatsOn(sep string) func(string) (float64, float64, error) {
 	}
 }
 
-// splitStringToFloatsOnComma get two floats from `metric` separated by comma.
+// SplitStringToFloatsOnComma get two floats from `metric` separated by comma.
 func SplitStringToFloatsOnComma(metric string) (float64, float64, error) {
 	return SplitStringToFloats(metric, ",")
 }
 
-// splitStringToFloats split `metric` to two floats on `separator.
+// SplitStringToFloats split `metric` to two floats on `separator.
 func SplitStringToFloats(metric, separator string) (float64, float64, error) {
 	if metric == "" {
 		return math.NaN(), math.NaN(), ErrEmptyValue
@@ -247,7 +247,7 @@ func MetricFromEnabled(value string) (float64, error) {
 	return 0.0, nil
 }
 
-// MetricFromEnabled return 1.0 if value is "running""; 0.0 otherwise.
+// MetricFromRunning return 1.0 if value is "running""; 0.0 otherwise.
 func MetricFromRunning(inp string) (float64, error) {
 	if inp == "running" {
 		return 1.0, nil

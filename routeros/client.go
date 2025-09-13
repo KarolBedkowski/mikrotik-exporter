@@ -45,7 +45,7 @@ func Dial(address, username, password string) (*Client, error) {
 	return newClientAndLogin(conn, username, password)
 }
 
-// Dial connects and logs in to a RouterOS device.
+// DialContext connects and logs in to a RouterOS device.
 func DialContext(ctx context.Context, address, username, password string) (*Client, error) {
 	dialer := net.Dialer{}
 
@@ -67,7 +67,7 @@ func DialTLS(address, username, password string, tlsConfig *tls.Config) (*Client
 	return newClientAndLogin(conn, username, password)
 }
 
-// DialTLS connects and logs in to a RouterOS device using TLS.
+// DialTLSContext connects and logs in to a RouterOS device using TLS.
 func DialTLSContext(ctx context.Context, address, username, password string, tlsConfig *tls.Config) (*Client, error) {
 	dialer := tls.Dialer{Config: tlsConfig}
 
