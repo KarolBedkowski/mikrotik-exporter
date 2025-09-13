@@ -197,12 +197,12 @@ func (dc *deviceCollector) collect(ch chan<- prometheus.Metric) error {
 		}
 	}
 
+	ch <- prometheus.MustNewConstMetric(scrapeCollectorErrorsDesc, prometheus.CounterValue,
+		float64(dc.errors), name, address)
+
 	if err := result.ErrorOrNil(); err != nil {
 		return fmt.Errorf("collect error: %w", err)
 	}
-
-	ch <- prometheus.MustNewConstMetric(scrapeCollectorErrorsDesc, prometheus.CounterValue,
-		float64(dc.errors), name, address)
 
 	return nil
 }
