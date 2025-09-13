@@ -4,6 +4,7 @@ Package routeros is a pure Go client library for accessing Mikrotik devices usin
 package routeros
 
 import (
+	"context"
 	"crypto/md5" //nolint:gosec
 	"crypto/tls"
 	"encoding/hex"
@@ -36,7 +37,19 @@ func NewClient(rwc io.ReadWriteCloser) (*Client, error) {
 
 // Dial connects and logs in to a RouterOS device.
 func Dial(address, username, password string) (*Client, error) {
-	conn, err := net.Dial("tcp", address)
+	conn, err := net.Dial("tcp", address) //nolint: noctx
+	if err != nil {
+		return nil, fmt.Errorf("dial error: %w", err)
+	}
+
+	return newClientAndLogin(conn, username, password)
+}
+
+// Dial connects and logs in to a RouterOS device.
+func DialContext(ctx context.Context, address, username, password string) (*Client, error) {
+	dialer := net.Dialer{}
+
+	conn, err := dialer.DialContext(ctx, "tcp", address)
 	if err != nil {
 		return nil, fmt.Errorf("dial error: %w", err)
 	}
@@ -46,7 +59,19 @@ func Dial(address, username, password string) (*Client, error) {
 
 // DialTLS connects and logs in to a RouterOS device using TLS.
 func DialTLS(address, username, password string, tlsConfig *tls.Config) (*Client, error) {
-	conn, err := tls.Dial("tcp", address, tlsConfig)
+	conn, err := tls.Dial("tcp", address, tlsConfig) //nolint: noctx
+	if err != nil {
+		return nil, fmt.Errorf("tls dial error: %w", err)
+	}
+
+	return newClientAndLogin(conn, username, password)
+}
+
+// DialTLS connects and logs in to a RouterOS device using TLS.
+func DialTLSContext(ctx context.Context, address, username, password string, tlsConfig *tls.Config) (*Client, error) {
+	dialer := tls.Dialer{Config: tlsConfig}
+
+	conn, err := dialer.DialContext(ctx, "tcp", address)
 	if err != nil {
 		return nil, fmt.Errorf("tls dial error: %w", err)
 	}

@@ -7,6 +7,7 @@ package collector
 //
 
 import (
+	"context"
 	"crypto/tls"
 	"errors"
 	"fmt"
@@ -82,7 +83,7 @@ func (dc *deviceCollector) disconnect() {
 	}
 }
 
-func (dc *deviceCollector) connect() (*routeros.Client, error) {
+func (dc *deviceCollector) connect(ctx context.Context) (*routeros.Client, error) {
 	// try do get connection from cache
 	if dc.cl != nil {
 		// check is connection alive
@@ -99,7 +100,7 @@ func (dc *deviceCollector) connect() (*routeros.Client, error) {
 
 	dc.logger.Debug("trying to Dial")
 
-	conn, err := dc.dial()
+	conn, err := dc.dial(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -125,26 +126,24 @@ func (dc *deviceCollector) connect() (*routeros.Client, error) {
 	return client, nil
 }
 
-func (dc *deviceCollector) dial() (net.Conn, error) {
+func (dc *deviceCollector) dial(ctx context.Context) (net.Conn, error) {
 	var (
 		con     net.Conn
 		err     error
 		timeout = time.Duration(dc.device.Timeout) * time.Second
 	)
 
+	dialer := net.Dialer{Timeout: timeout}
 	if !dc.device.TLS {
-		con, err = net.DialTimeout("tcp", dc.device.Address+":"+dc.device.Port, timeout)
+		con, err = dialer.DialContext(ctx, "tcp", dc.device.Address+":"+dc.device.Port)
 	} else {
-		con, err = tls.DialWithDialer(
-			&net.Dialer{
-				Timeout: timeout,
-			},
-			"tcp",
-			dc.device.Address+":"+dc.device.Port,
-			&tls.Config{
+		dialer := tls.Dialer{
+			NetDialer: &dialer,
+			Config: &tls.Config{
 				InsecureSkipVerify: dc.device.Insecure, // #nosec
 			},
-		)
+		}
+		con, err = dialer.DialContext(ctx, "tcp", dc.device.Address+":"+dc.device.Port)
 	}
 
 	if err != nil {
@@ -156,8 +155,8 @@ func (dc *deviceCollector) dial() (net.Conn, error) {
 
 // collect data for device and return number of failed collectors and
 // error if any.
-func (dc *deviceCollector) collect(ch chan<- prometheus.Metric) error {
-	client, err := dc.connect()
+func (dc *deviceCollector) collect(ctx context.Context, ch chan<- prometheus.Metric) error {
+	client, err := dc.connect(ctx)
 	if err != nil {
 		// clear FirmwareVersion and reload on next successful connection.
 		dc.device.FirmwareVersion.Major = 0
