@@ -90,6 +90,11 @@ features:
       - script1
       - script2
   service: false
+  switch:
+    enable: false
+    # gather detailed (all) statistics ad `_switch_stats` metric
+    # with "metric" label
+    details: false
   w60g: true
   wireguard:
     # disable details; count only connected/waitine peers

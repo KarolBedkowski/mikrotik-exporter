@@ -54,7 +54,7 @@ type PropertySimpleSet interface {
 
 // --------------------------------------------
 
-// metrics.PropertyMetricList is list of PropertyMetric that can be collected at once.
+// PropertyMetricList is list of PropertyMetric that can be collected at once.
 type PropertyMetricList []PropertyMetric
 
 func (p PropertyMetricList) Describe(ch chan<- *prometheus.Desc) {

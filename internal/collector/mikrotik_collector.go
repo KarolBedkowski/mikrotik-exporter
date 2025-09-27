@@ -7,6 +7,7 @@ package collector
 //
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -95,7 +96,7 @@ func (c *mikrotikCollector) Collect(ch chan<- prometheus.Metric) {
 			if devs, err := c.devicesFromSrv(dc); err == nil {
 				realDevices = append(realDevices, devs...)
 			} else {
-				c.logger.Error("resolve srv error", "err", err)
+				c.logger.Error("resolve srv error", "src_record", dc.device.Srv.Record, "err", err)
 			}
 		} else {
 			realDevices = append(realDevices, dc)
@@ -104,9 +105,11 @@ func (c *mikrotikCollector) Collect(ch chan<- prometheus.Metric) {
 
 	wg.Add(len(realDevices))
 
+	ctx := context.Background()
+
 	for _, dev := range realDevices {
 		go func(d *deviceCollector) {
-			c.collectFromDevice(d, ch)
+			c.collectFromDevice(ctx, d, ch)
 			wg.Done()
 		}(dev)
 	}
@@ -116,14 +119,14 @@ func (c *mikrotikCollector) Collect(ch chan<- prometheus.Metric) {
 	_, _ = daemon.SdNotify(false, "STATUS=waiting")
 }
 
-func (c *mikrotikCollector) collectFromDevice(d *deviceCollector, ch chan<- prometheus.Metric) {
+func (c *mikrotikCollector) collectFromDevice(ctx context.Context, d *deviceCollector, ch chan<- prometheus.Metric) {
 	address, name := d.device.Address, d.device.Name
 
 	logger := c.logger.With("device", name)
 	logger.Debug("start collect for device", "device", &d.device)
 
 	begin := time.Now()
-	err := d.collect(ch)
+	err := d.collect(ctx, ch)
 	duration := time.Since(begin)
 
 	if err != nil {

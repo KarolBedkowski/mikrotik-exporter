@@ -389,7 +389,7 @@ func (p *PropertyMetricBuilder) WithDefault(defaultValue string) *PropertyMetric
 	return p
 }
 
-// / Build create PropertyMetric from configuration.
+// Build create PropertyMetric from configuration.
 func (p *PropertyMetricBuilder) Build() PropertyMetric {
 	p.prepare()
 	slog.Debug("build metric", "b", p)

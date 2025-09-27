@@ -21,7 +21,7 @@ type interfaceCollector struct {
 func newInterfaceCollector() RouterOSCollector {
 	const prefix = "interface"
 
-	labelNames := []string{metrics.LabelInterface, "type", metrics.LabelComment, "slave"}
+	labelNames := []string{metrics.LabelInterface, "type"}
 
 	return &interfaceCollector{
 		metrics: metrics.PropertyMetricList{
@@ -37,6 +37,10 @@ func newInterfaceCollector() RouterOSCollector {
 			metrics.NewPropertyCounterMetric(prefix, "tx-drop", labelNames...).Build(),
 			metrics.NewPropertyCounterMetric(prefix, "link-downs", labelNames...).Build(),
 			metrics.NewPropertyCounterMetric(prefix, "tx-queue-drop", labelNames...).Build(),
+			metrics.NewPropertyCounterMetric(prefix, "fp-rx-byte", labelNames...).Build(),
+			metrics.NewPropertyCounterMetric(prefix, "fp-rx-packet", labelNames...).Build(),
+			metrics.NewPropertyCounterMetric(prefix, "fp-tx-byte", labelNames...).Build(),
+			metrics.NewPropertyCounterMetric(prefix, "fp-tx-packet", labelNames...).Build(),
 		},
 	}
 }
@@ -48,8 +52,9 @@ func (c *interfaceCollector) Describe(ch chan<- *prometheus.Desc) {
 func (c *interfaceCollector) Collect(ctx *metrics.CollectorContext) error {
 	reply, err := ctx.Client.Run("/interface/print",
 		"?disabled=false",
-		"=.proplist=name,type,disabled,comment,slave,actual-mtu,running,rx-byte,tx-byte,"+
-			"rx-packet,tx-packet,rx-error,tx-error,rx-drop,tx-drop,link-downs,tx-queue-drop")
+		"=.proplist=name,type,disabled,actual-mtu,running,rx-byte,tx-byte,"+
+			"rx-packet,tx-packet,rx-error,tx-error,rx-drop,tx-drop,link-downs,tx-queue-drop,"+
+			"fp-tx-byte,fp-tx-packet,fp-rx-byte,fp-tx-packet")
 	if err != nil {
 		return fmt.Errorf("fetch interfaces detail error: %w", err)
 	}
@@ -61,7 +66,7 @@ func (c *interfaceCollector) Collect(ctx *metrics.CollectorContext) error {
 			continue
 		}
 
-		lctx := ctx.WithLabelsFromMap(re.Map, "name", "type", "comment", "slave")
+		lctx := ctx.WithLabelsFromMap(re.Map, "name", "type")
 
 		if err := c.metrics.Collect(re.Map, &lctx); err != nil {
 			errs = multierror.Append(errs, err)

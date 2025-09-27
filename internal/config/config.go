@@ -134,8 +134,8 @@ func (f *FeatureConf) UnmarshalYAML(value *yaml.Node) error {
 
 // ------------------------------------
 
-// / Features is map of feature name -> feature configuration.
-// / Configuration can be bool value (enabled or not) or map (FeatureConf) or nil == bool == enabled.
+// Features is map of feature name -> feature configuration.
+// Configuration can be bool value (enabled or not) or map (FeatureConf) or nil == bool == enabled.
 type Features map[string]FeatureConf
 
 func (f Features) ConfigFor(name string) FeatureConf {
