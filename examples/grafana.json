@@ -21,7 +21,7 @@
       "type": "grafana",
       "id": "grafana",
       "name": "Grafana",
-      "version": "12.1.1"
+      "version": "12.2.0"
     },
     {
       "type": "panel",
@@ -104,6 +104,9 @@
             "cellOptions": {
               "type": "auto"
             },
+            "footer": {
+              "reducers": []
+            },
             "inspect": false
           },
           "mappings": [],
@@ -141,18 +144,10 @@
       "id": 14,
       "options": {
         "cellHeight": "sm",
-        "footer": {
-          "countRows": false,
-          "fields": "",
-          "reducer": [
-            "sum"
-          ],
-          "show": false
-        },
         "frameIndex": 1,
         "showHeader": true
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "12.2.0",
       "targets": [
         {
           "editorMode": "code",
@@ -251,6 +246,9 @@
             "cellOptions": {
               "type": "auto"
             },
+            "footer": {
+              "reducers": []
+            },
             "inspect": false
           },
           "mappings": [],
@@ -292,17 +290,9 @@
       "id": 8,
       "options": {
         "cellHeight": "sm",
-        "footer": {
-          "countRows": false,
-          "fields": "",
-          "reducer": [
-            "sum"
-          ],
-          "show": false
-        },
         "showHeader": true
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "12.2.0",
       "targets": [
         {
           "editorMode": "code",
@@ -392,6 +382,7 @@
               "type": "linear"
             },
             "showPoints": "never",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -441,7 +432,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "12.2.0",
       "targets": [
         {
           "datasource": {
@@ -494,6 +485,7 @@
               "type": "linear"
             },
             "showPoints": "never",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -543,7 +535,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "12.2.0",
       "targets": [
         {
           "datasource": {
@@ -596,6 +588,7 @@
               "type": "linear"
             },
             "showPoints": "auto",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -653,7 +646,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "12.2.0",
       "targets": [
         {
           "datasource": {
@@ -708,6 +701,7 @@
               "type": "linear"
             },
             "showPoints": "never",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -758,7 +752,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "12.2.0",
       "targets": [
         {
           "datasource": {
@@ -825,6 +819,7 @@
               "type": "linear"
             },
             "showPoints": "never",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -885,7 +880,7 @@
           "sort": "desc"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "12.2.0",
       "targets": [
         {
           "datasource": {
@@ -951,6 +946,7 @@
               "type": "linear"
             },
             "showPoints": "never",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -1011,7 +1007,7 @@
           "sort": "desc"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "12.2.0",
       "targets": [
         {
           "datasource": {
@@ -1077,6 +1073,7 @@
               "type": "linear"
             },
             "showPoints": "never",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -1138,7 +1135,7 @@
           "sort": "desc"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "12.2.0",
       "targets": [
         {
           "datasource": {
@@ -1217,6 +1214,7 @@
               "type": "linear"
             },
             "showPoints": "never",
+            "showValues": false,
             "spanNulls": false,
             "stacking": {
               "group": "A",
@@ -1274,7 +1272,7 @@
           "sort": "desc"
         }
       },
-      "pluginVersion": "12.1.1",
+      "pluginVersion": "12.2.0",
       "targets": [
         {
           "datasource": {
@@ -6717,7 +6715,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 70
+        "y": 67
       },
       "id": 50,
       "panels": [
@@ -6925,7 +6923,7 @@
       "type": "row"
     }
   ],
-  "schemaVersion": 41,
+  "schemaVersion": 42,
   "tags": [
     "mikrotik",
     "routeros"
