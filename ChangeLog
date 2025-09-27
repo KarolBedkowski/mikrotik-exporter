@@ -1,3 +1,15 @@
+v3.1.0 2025-09-27
+
+Features:
+
+* add collector for switch
+
+Fix:
+
+* interface: remove comments & slave labels, add fp-* metrics
+* fix metrics for collect errors
+
+
 v3.0.0 2025-07-13
 
 Breaking:
