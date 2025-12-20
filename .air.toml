@@ -3,7 +3,8 @@ testdata_dir = "testdata"
 tmp_dir = "tmp"
 
 [build]
-  bin = "./mikrotik-exporter -log-level debug -log-format tint -config-file config.yml"
+  bin = "./mikrotik-exporter"
+  args_bin = ["-log-level", "debug", "-log-format", "tint", "-config-file", "config.yml"]
   cmd = "make build"
   delay = 1000
   exclude_dir = ["scripts", "examples"]
