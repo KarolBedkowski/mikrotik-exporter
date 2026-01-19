@@ -253,7 +253,7 @@ func parseFirmwareVersion(version string) (config.FirmwareVersion, error) {
 	version, _, _ = strings.Cut(version, " ")
 
 	parts := strings.Split(version, ".")
-	if len(parts) != 3 { //nolint:mnd
+	if len(parts) != 3 && len(parts) != 2 { //nolint:mnd
 		return config.FirmwareVersion{}, ErrInvalidVersion
 	}
 
@@ -267,9 +267,13 @@ func parseFirmwareVersion(version string) (config.FirmwareVersion, error) {
 		return config.FirmwareVersion{}, fmt.Errorf("parse error: %w", err)
 	}
 
-	patch, err := strconv.Atoi(parts[2])
-	if err != nil {
-		return config.FirmwareVersion{}, fmt.Errorf("parse error: %w", err)
+	var patch int
+
+	if len(parts) == 3 { //nolint:mnd
+		patch, err = strconv.Atoi(parts[2])
+		if err != nil {
+			return config.FirmwareVersion{}, fmt.Errorf("parse error: %w", err)
+		}
 	}
 
 	return config.FirmwareVersion{Major: major, Minor: minor, Patch: patch}, nil
