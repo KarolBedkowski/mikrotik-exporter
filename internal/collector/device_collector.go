@@ -253,7 +253,7 @@ func parseFirmwareVersion(version string) (config.FirmwareVersion, error) {
 	version, _, _ = strings.Cut(version, " ")
 
 	parts := strings.Split(version, ".")
-	if len(parts) != 3 && len(parts) != 2 { //nolint:mnd
+	if len(parts) != 3 && len(parts) != 2 {
 		return config.FirmwareVersion{}, ErrInvalidVersion
 	}
 

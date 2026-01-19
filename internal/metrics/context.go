@@ -63,7 +63,9 @@ func (c *CollectorContext) WithLabels(labels ...string) CollectorContext {
 
 // WithLabelsFromMap create new CollectorContext with labels from map.
 func (c *CollectorContext) WithLabelsFromMap(values map[string]string, labelName ...string) CollectorContext {
-	labels := []string{c.Device.Name, c.Device.Address}
+	labels := make([]string, 0, len(labelName)+2) //nolint:mnd
+	labels = append(labels, c.Device.Name, c.Device.Address)
+
 	for _, n := range labelName {
 		labels = append(labels, values[n])
 	}
