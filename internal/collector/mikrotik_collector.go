@@ -119,14 +119,22 @@ func (c *mikrotikCollector) Collect(ch chan<- prometheus.Metric) {
 	_, _ = daemon.SdNotify(false, "STATUS=waiting")
 }
 
-func (c *mikrotikCollector) collectFromDevice(ctx context.Context, d *deviceCollector, ch chan<- prometheus.Metric) {
-	address, name := d.device.Address, d.device.Name
+func (c *mikrotikCollector) collectFromDevice(ctx context.Context,
+	devcollector *deviceCollector, ch chan<- prometheus.Metric,
+) {
+	address, name := devcollector.device.Address, devcollector.device.Name
 
 	logger := c.logger.With("device", name)
-	logger.Debug("start collect for device", "device", &d.device)
+	logger.Debug("start collect for device", "device", &devcollector.device)
+
+	defer func() {
+		if r := recover(); r != nil {
+			logger.Error("collect from device error - recovered", "err", r)
+		}
+	}()
 
 	begin := time.Now()
-	err := d.collect(ctx, ch)
+	err := devcollector.collect(ctx, ch)
 	duration := time.Since(begin)
 
 	if err != nil {

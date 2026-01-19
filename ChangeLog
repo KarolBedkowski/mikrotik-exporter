@@ -1,3 +1,22 @@
+v3.1.1 2026-01-19
+
+Fix:
+
+* Fix parsing version without patch number (7.21)
+
+
+Documentation:
+
+* Update grafana.json
+
+
+Miscellaneous:
+
+* Update deps
+* Update .air.toml
+* Catch panics in collectFromDevice
+
+
 v3.1.0 2025-09-27
 
 Features:
