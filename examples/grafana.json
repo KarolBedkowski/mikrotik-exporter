@@ -4811,7 +4811,7 @@
               "refId": "B"
             }
           ],
-          "title": "Simple Queue Qeued bytes",
+          "title": "Simple Queue Queded bytes",
           "type": "timeseries"
         }
       ],
