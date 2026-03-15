@@ -194,6 +194,11 @@ func (dc *deviceCollector) collect(ctx context.Context, ch chan<- prometheus.Met
 
 			dc.errors++
 		}
+
+		// check is context done / canceled
+		if ctx.Err() != nil {
+			break
+		}
 	}
 
 	ch <- prometheus.MustNewConstMetric(scrapeCollectorErrorsDesc, prometheus.CounterValue,
