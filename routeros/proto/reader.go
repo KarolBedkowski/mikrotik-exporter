@@ -85,13 +85,13 @@ func (r *reader) readLength() (int64, error) {
 	switch {
 	case res&0x80 == 0x00:
 	case (res & 0xC0) == 0x80:
-		buf[2] = byte(res & ^0xC0)
+		buf[2] = byte((res & ^0xC0) & 0xFF)
 		err = r.readBytes(buf[3:], 1)
 	case res&0xE0 == 0xC0:
-		buf[1] = byte(res & ^0xE0)
+		buf[1] = byte((res & ^0xE0) & 0xFF)
 		err = r.readBytes(buf[2:], 2)
 	case res&0xF0 == 0xE0:
-		buf[0] = byte(res & ^0xF0)
+		buf[0] = byte((res & ^0xF0) & 0xFF)
 		err = r.readBytes(buf[1:], 3)
 	case res&0xF8 == 0xF0:
 		err = r.readBytes(buf, 4)
