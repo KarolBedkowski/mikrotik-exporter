@@ -11,7 +11,6 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"log/slog"
 	"net"
 	"strconv"
 	"strings"
@@ -41,7 +40,6 @@ type (
 	}
 
 	deviceCollector struct {
-		logger     *slog.Logger
 		cl         *routeros.Client
 		device     config.Device
 		collectors []deviceCollectorRC
@@ -69,7 +67,6 @@ func newDeviceCollector(device config.Device, collectors []deviceCollectorRC) *d
 		device:     device,
 		collectors: collectors,
 		isSrv:      device.Srv != nil,
-		logger:     slog.Default().With("device", device.Name),
 	}
 }
 
@@ -84,6 +81,8 @@ func (dc *deviceCollector) disconnect() {
 }
 
 func (dc *deviceCollector) connect(ctx context.Context) (*routeros.Client, error) {
+	logger := config.LogFromCtx(ctx)
+
 	// try do get connection from cache
 	if dc.cl != nil {
 		// check is connection alive
@@ -91,28 +90,28 @@ func (dc *deviceCollector) connect(ctx context.Context) (*routeros.Client, error
 			return dc.cl, nil
 		}
 
-		dc.logger.Info("reconnecting")
+		logger.Info("reconnecting")
 
 		// check failed, reconnect
 		dc.cl.Close()
 		dc.cl = nil
 	}
 
-	dc.logger.Debug("trying to Dial")
+	logger.Debug("trying to Dial")
 
 	conn, err := dc.dial(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	dc.logger.Debug("done dialing")
+	logger.Debug("done dialing")
 
 	client, err := routeros.NewClient(conn)
 	if err != nil {
 		return nil, fmt.Errorf("create client error: %w", err)
 	}
 
-	dc.logger.Debug("got client, trying to login")
+	logger.Debug("got client, trying to login")
 
 	if err := client.Login(dc.device.User, dc.device.Password); err != nil {
 		client.Close()
@@ -120,7 +119,8 @@ func (dc *deviceCollector) connect(ctx context.Context) (*routeros.Client, error
 		return nil, fmt.Errorf("login error: %w", err)
 	}
 
-	dc.logger.Debug("done with login")
+	logger.Debug("done with login")
+
 	dc.cl = client
 
 	return client, nil
@@ -156,6 +156,8 @@ func (dc *deviceCollector) dial(ctx context.Context) (net.Conn, error) {
 // collect data for device and return number of failed collectors and
 // error if any.
 func (dc *deviceCollector) collect(ctx context.Context, ch chan<- prometheus.Metric) error {
+	logger := config.LogFromCtx(ctx)
+
 	client, err := dc.connect(ctx)
 	if err != nil {
 		// clear FirmwareVersion and reload on next successful connection.
@@ -179,13 +181,13 @@ func (dc *deviceCollector) collect(ctx context.Context, ch chan<- prometheus.Met
 	// get once version
 	if dc.device.FirmwareVersion.Major == 0 {
 		if err := dc.getVersion(client); err != nil {
-			dc.logger.Warn("get version error", "err", err)
+			logger.Warn("get version error", "err", err)
 		}
 	}
 
 	for _, drc := range dc.collectors {
-		logger := dc.logger.With("collector", drc.name)
-		cctx := metrics.NewCollectorContext(ch, &dc.device, client, drc.name, logger, drc.featureConf)
+		llogger := logger.With("collector", drc.name)
+		cctx := metrics.NewCollectorContext(ch, &dc.device, client, drc.name, llogger, drc.featureConf)
 
 		logger.Debug("start collect", "feature_conf", drc.featureConf)
 

@@ -8,6 +8,7 @@
 package config
 
 import (
+	"context"
 	"log/slog"
 	"os"
 	"time"
@@ -74,4 +75,23 @@ func parseLevel(s *string) slog.Level {
 	}
 
 	return level
+}
+
+// ----------------------------------------------------------------------------
+
+type ctxkey struct{}
+
+var slogctxkey = ctxkey{}
+
+func LogFromCtx(ctx context.Context) *slog.Logger {
+	l, ok := ctx.Value(slogctxkey).(*slog.Logger)
+	if ok {
+		return l
+	}
+
+	return slog.Default()
+}
+
+func CtxWithLog(ctx context.Context, logger *slog.Logger) context.Context {
+	return context.WithValue(ctx, slogctxkey, logger)
 }
