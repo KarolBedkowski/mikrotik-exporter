@@ -63,6 +63,10 @@ func newDeviceCollector(device config.Device, collectors []deviceCollectorRC) *d
 		device.Timeout = config.DefaultTimeout
 	}
 
+	if device.CollectTimeout == 0 {
+		device.CollectTimeout = device.Timeout * 10 //nolint:mnd
+	}
+
 	return &deviceCollector{
 		device:     device,
 		collectors: collectors,
@@ -185,6 +189,7 @@ func (dc *deviceCollector) collect(ctx context.Context, ch chan<- prometheus.Met
 		}
 	}
 
+loop:
 	for _, drc := range dc.collectors {
 		llogger := logger.With("collector", drc.name)
 		cctx := metrics.NewCollectorContext(ch, &dc.device, client, drc.name, llogger, drc.featureConf)
@@ -198,8 +203,10 @@ func (dc *deviceCollector) collect(ctx context.Context, ch chan<- prometheus.Met
 		}
 
 		// check is context done / canceled
-		if ctx.Err() != nil {
-			break
+		select {
+		case <-ctx.Done():
+			break loop
+		default:
 		}
 	}
 

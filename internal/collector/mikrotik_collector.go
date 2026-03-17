@@ -121,13 +121,20 @@ func (c *mikrotikCollector) collectFromDevice(ctx context.Context,
 ) {
 	address, name := devcollector.device.Address, devcollector.device.Name
 
-	logger := config.LogFromCtx(ctx).With("device", name)
-	logger.Debug("start collect for device", "device", &devcollector.device)
+	logger := slog.Default().With("device", name)
+	logger.DebugContext(ctx, "start collect for device", "device", &devcollector.device)
 	ctx = config.CtxWithLog(ctx, logger)
+
+	ctx, cancel := context.WithTimeout(ctx, time.Duration(devcollector.device.CollectTimeout)*time.Second)
+	defer cancel()
 
 	defer func() {
 		if r := recover(); r != nil {
-			logger.Error("collect from device error - recovered", "err", r)
+			logger.ErrorContext(ctx, "collect from device error - recovered", "err", r)
+		}
+
+		if err := ctx.Err(); err != nil {
+			slog.ErrorContext(ctx, "context error", "err", err)
 		}
 	}()
 
@@ -136,10 +143,10 @@ func (c *mikrotikCollector) collectFromDevice(ctx context.Context,
 	duration := time.Since(begin)
 
 	if err != nil {
-		logger.Error(fmt.Sprintf("collector failed after %fs", duration.Seconds()), "err", err)
+		logger.ErrorContext(ctx, fmt.Sprintf("collector failed after %fs", duration.Seconds()), "err", err)
 		ch <- prometheus.MustNewConstMetric(scrapeDeviceSuccessDesc, prometheus.GaugeValue, 0.0, name, address)
 	} else {
-		logger.Debug(fmt.Sprintf("collector succeeded after %fs", duration.Seconds()))
+		logger.DebugContext(ctx, fmt.Sprintf("collector succeeded after %fs", duration.Seconds()))
 		ch <- prometheus.MustNewConstMetric(scrapeDeviceSuccessDesc, prometheus.GaugeValue, 1.0, name, address)
 	}
 

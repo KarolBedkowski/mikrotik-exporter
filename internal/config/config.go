@@ -294,18 +294,19 @@ type DNSServer struct {
 
 // Device represents a target device.
 type Device struct {
-	Srv          *SrvRecord `yaml:"srv,omitempty"`
-	Profile      string     `yaml:"profile,omitempty"`
-	User         string     `yaml:"user"`
-	Password     string     `yaml:"password"`
-	Port         string     `yaml:"port"`
-	Name         string     `yaml:"name"`
-	Address      string     `yaml:"address,omitempty"`
-	Timeout      int        `yaml:"timeout,omitempty"`
-	IPv6Disabled bool       `yaml:"ipv6_disabled"`
-	TLS          bool       `yaml:"tls,omitempty"`
-	Insecure     bool       `yaml:"insecure,omitempty"`
-	Disabled     bool       `yaml:"disabled,omitempty"`
+	Srv            *SrvRecord `yaml:"srv,omitempty"`
+	Profile        string     `yaml:"profile,omitempty"`
+	User           string     `yaml:"user"`
+	Password       string     `yaml:"password"`
+	Port           string     `yaml:"port"`
+	Name           string     `yaml:"name"`
+	Address        string     `yaml:"address,omitempty"`
+	Timeout        int        `yaml:"timeout,omitempty"`
+	CollectTimeout int        `yaml:"collect_timeout,omitempty"`
+	IPv6Disabled   bool       `yaml:"ipv6_disabled"`
+	TLS            bool       `yaml:"tls,omitempty"`
+	Insecure       bool       `yaml:"insecure,omitempty"`
+	Disabled       bool       `yaml:"disabled,omitempty"`
 
 	FirmwareVersion FirmwareVersion `yaml:"-"`
 	Timezone        string          `yaml:"-"`
