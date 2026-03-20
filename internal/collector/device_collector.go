@@ -87,7 +87,7 @@ func (dc *deviceCollector) disconnect() {
 func (dc *deviceCollector) connect(ctx context.Context) (*routeros.Client, error) {
 	logger := config.LogFromCtx(ctx)
 
-	// try do get connection from cache
+	// try do get connection from cache (only for non-srv)
 	if dc.cl != nil {
 		// check is connection alive
 		if reply, err := dc.cl.Run("/system/identity/print"); err == nil && len(reply.Re) > 0 {
@@ -124,6 +124,15 @@ func (dc *deviceCollector) connect(ctx context.Context) (*routeros.Client, error
 	}
 
 	logger.Debug("done with login")
+
+	if dc.device.Srv != nil {
+		// get identity for service-defined devices
+		if err := dc.updateIdentity(client); err != nil {
+			return nil, fmt.Errorf("get identity error: %w", err)
+		}
+
+		logger.Info("updated device identity", "identity", dc.device.Name)
+	}
 
 	dc.cl = client
 
@@ -172,15 +181,6 @@ func (dc *deviceCollector) collect(ctx context.Context, ch chan<- prometheus.Met
 
 	defer dc.disconnect()
 
-	if dc.device.Srv != nil {
-		// get identity for service-defined devices
-		if err := dc.updateIdentity(client); err != nil {
-			return fmt.Errorf("get identity error: %w", err)
-		}
-	}
-
-	address, name := dc.device.Address, dc.device.Name
-
 	var result *multierror.Error
 	// get once version
 	if dc.device.FirmwareVersion.Major == 0 {
@@ -194,7 +194,7 @@ loop:
 		llogger := logger.With("collector", drc.name)
 		cctx := metrics.NewCollectorContext(ch, &dc.device, client, drc.name, llogger, drc.featureConf)
 
-		logger.Debug("start collect", "feature_conf", drc.featureConf)
+		llogger.Debug("start collect", "feature_conf", drc.featureConf)
 
 		if err := drc.collector.Collect(&cctx); err != nil {
 			result = multierror.Append(result, fmt.Errorf("collect %s error: %w", drc.name, err))
@@ -211,7 +211,7 @@ loop:
 	}
 
 	ch <- prometheus.MustNewConstMetric(scrapeCollectorErrorsDesc, prometheus.CounterValue,
-		float64(dc.errors), name, address)
+		float64(dc.errors), dc.device.Name, dc.device.Address)
 
 	if err := result.ErrorOrNil(); err != nil {
 		return fmt.Errorf("collect error: %w", err)
