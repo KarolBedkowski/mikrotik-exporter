@@ -20,6 +20,7 @@ import (
 	"mikrotik-exporter/internal/config"
 	"mikrotik-exporter/internal/metrics"
 	"mikrotik-exporter/routeros"
+	"mikrotik-exporter/routeros/proto"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
@@ -244,11 +245,9 @@ func (dc *deviceCollector) getVersion(client *routeros.Client) error {
 		return fmt.Errorf("get version error: %w", err)
 	}
 
-	version := reply.Re[0].Map["version"]
-
-	dc.device.FirmwareVersion, err = parseFirmwareVersion(version)
+	dc.device.FirmwareVersion, err = parseFirmwareVersion(reply.Re[0])
 	if err != nil {
-		return fmt.Errorf("parse version %q error: %w", version, err)
+		return fmt.Errorf("parse version %v error: %w", reply.Re[0], err)
 	}
 
 	reply, err = client.Run("/system/clock/print")
@@ -263,8 +262,13 @@ func (dc *deviceCollector) getVersion(client *routeros.Client) error {
 
 var ErrInvalidVersion = errors.New("invalid version")
 
-func parseFirmwareVersion(version string) (config.FirmwareVersion, error) {
+func parseFirmwareVersion(re *proto.Sentence) (config.FirmwareVersion, error) {
+	version := re.Map["version"]
 	version, _, _ = strings.Cut(version, " ")
+
+	if version == "" {
+		return config.FirmwareVersion{}, ErrInvalidVersion
+	}
 
 	parts := strings.Split(version, ".")
 	if len(parts) != 3 && len(parts) != 2 {
@@ -290,5 +294,7 @@ func parseFirmwareVersion(version string) (config.FirmwareVersion, error) {
 		}
 	}
 
-	return config.FirmwareVersion{Major: major, Minor: minor, Patch: patch}, nil
+	arch := re.Map["architecture-name"]
+
+	return config.FirmwareVersion{Major: major, Minor: minor, Patch: patch, Architecture: arch}, nil
 }

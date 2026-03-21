@@ -379,10 +379,15 @@ type FirmwareVersion struct {
 	Major int
 	Minor int
 	Patch int
+
+	Architecture string
 }
 
 func (f *FirmwareVersion) LogValue() slog.Value {
-	return slog.GroupValue(slog.String("version", fmt.Sprintf("%d.%d.%d", f.Major, f.Minor, f.Patch)))
+	return slog.GroupValue(
+		slog.String("version", fmt.Sprintf("%d.%d.%d", f.Major, f.Minor, f.Patch)),
+		slog.String("architecture", f.Architecture),
+	)
 }
 
 func (f *FirmwareVersion) Compare(major, minor, patch int) int {
@@ -405,6 +410,10 @@ func (f *FirmwareVersion) Compare(major, minor, patch int) int {
 	}
 
 	return 0
+}
+
+func (f *FirmwareVersion) CheckArchitecture(expected ...string) bool {
+	return slices.Contains(expected, f.Architecture)
 }
 
 // --------------------------------------
