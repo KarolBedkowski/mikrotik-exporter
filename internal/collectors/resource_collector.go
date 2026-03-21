@@ -45,7 +45,7 @@ func newResourceCollector() RouterOSCollector {
 		},
 
 		versionDesc: metrics.Description(prefix, "routeros", "Board and system version",
-			metrics.LabelDevName, metrics.LabelDevAddress, "board_name", "version"),
+			metrics.LabelDevName, metrics.LabelDevAddress, "board_name", "version", "architecture"),
 	}
 }
 
@@ -57,7 +57,7 @@ func (c *resourceCollector) Describe(ch chan<- *prometheus.Desc) {
 func (c *resourceCollector) Collect(ctx *metrics.CollectorContext) error {
 	reply, err := ctx.Client.Run("/system/resource/print",
 		"=.proplist=free-memory,total-memory,cpu-load,free-hdd-space,total-hdd-space,"+
-			"cpu-frequency,bad-blocks,uptime,cpu-count,board-name,version")
+			"cpu-frequency,bad-blocks,uptime,cpu-count,board-name,version,architecture-name")
 	if err != nil {
 		return fmt.Errorf("fetch resource error: %w", err)
 	}
@@ -76,9 +76,10 @@ func (c *resourceCollector) Collect(ctx *metrics.CollectorContext) error {
 func (c *resourceCollector) collectForStat(reply *proto.Sentence, ctx *metrics.CollectorContext) error {
 	boardname := reply.Map["board-name"]
 	version := reply.Map["version"]
+	arch := reply.Map["architecture-name"]
 
 	ctx.Ch <- prometheus.MustNewConstMetric(c.versionDesc, prometheus.GaugeValue, 1,
-		ctx.Device.Name, ctx.Device.Address, boardname, version)
+		ctx.Device.Name, ctx.Device.Address, boardname, version, arch)
 
 	if err := c.metrics.Collect(reply.Map, ctx); err != nil {
 		return fmt.Errorf("collect error: %w", err)
