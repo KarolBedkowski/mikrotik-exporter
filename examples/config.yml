@@ -45,6 +45,8 @@ features:
   certs: true
   cloud: true
   conntrack: true
+  # collect containers metrics
+  container: true
   dhcp: true
   dhcpl:
     # disable details - count only number of lease in each state (default)
