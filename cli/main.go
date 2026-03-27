@@ -67,10 +67,11 @@ func main() {
 	if *listCollectors {
 		fmt.Printf("\nAvailable collectors:\n")
 
-		var colls []string
-		for _, c := range collectors.AvailableCollectors() {
-			colls = append(colls,
-				fmt.Sprintf(" - %-12s %s", c.Name, c.Description))
+		available := collectors.AvailableCollectors()
+
+		colls := make([]string, len(available))
+		for i, c := range available {
+			colls[i] = fmt.Sprintf(" - %-12s %s", c.Name, c.Description)
 		}
 
 		sort.Strings(colls)

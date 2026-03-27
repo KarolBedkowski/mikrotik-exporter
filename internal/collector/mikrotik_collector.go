@@ -40,15 +40,13 @@ var (
 // --------------------------------------------
 
 type mikrotikCollector struct {
-	logger     *slog.Logger
 	devices    []*deviceCollector
 	collectors []collectors.RouterOSCollector
 }
 
 // NewCollector creates a collector instance.
 func NewCollector(cfg *config.Config) prometheus.Collector {
-	logger := slog.Default()
-	logger.Info("setting up collector for devices", "numDevices", len(cfg.Devices))
+	slog.Info("setting up collector for devices", "numDevices", len(cfg.Devices))
 
 	dcs := make([]*deviceCollector, 0, len(cfg.Devices))
 	collectorInstances := createCollectors(cfg)
@@ -59,7 +57,7 @@ func NewCollector(cfg *config.Config) prometheus.Collector {
 		dcols := collectorInstances.get(featNames, feat)
 		dcs = append(dcs, newDeviceCollector(dev, dcols))
 
-		logger.Debug("new device", "device",
+		slog.Debug("new device", "device",
 			fmt.Sprintf("%#v", dev), "feat", fmt.Sprintf("%v", featNames))
 	}
 
@@ -67,7 +65,6 @@ func NewCollector(cfg *config.Config) prometheus.Collector {
 	c := &mikrotikCollector{
 		devices:    dcs,
 		collectors: colls,
-		logger:     logger,
 	}
 
 	return c
@@ -96,7 +93,7 @@ func (c *mikrotikCollector) Collect(ch chan<- prometheus.Metric) {
 			if devs, err := c.devicesFromSrv(dc); err == nil {
 				realDevices = append(realDevices, devs...)
 			} else {
-				c.logger.Error("resolve srv error", "src_record", dc.device.Srv.Record, "err", err)
+				slog.Error("resolve srv error", "src_record", dc.device.Srv.Record, "err", err)
 			}
 		} else {
 			realDevices = append(realDevices, dc)
@@ -124,12 +121,20 @@ func (c *mikrotikCollector) collectFromDevice(ctx context.Context,
 ) {
 	address, name := devcollector.device.Address, devcollector.device.Name
 
-	logger := c.logger.With("device", name)
-	logger.Debug("start collect for device", "device", &devcollector.device)
+	logger := slog.Default().With("device", name)
+	logger.DebugContext(ctx, "start collect for device", "device", &devcollector.device)
+	ctx = config.CtxWithLog(ctx, logger)
+
+	ctx, cancel := context.WithTimeout(ctx, time.Duration(devcollector.device.CollectTimeout)*time.Second)
+	defer cancel()
 
 	defer func() {
 		if r := recover(); r != nil {
-			logger.Error("collect from device error - recovered", "err", r)
+			logger.ErrorContext(ctx, "collect from device error - recovered", "err", r)
+		}
+
+		if err := ctx.Err(); err != nil {
+			slog.ErrorContext(ctx, "context error", "err", err)
 		}
 	}()
 
@@ -138,10 +143,10 @@ func (c *mikrotikCollector) collectFromDevice(ctx context.Context,
 	duration := time.Since(begin)
 
 	if err != nil {
-		logger.Error(fmt.Sprintf("collector failed after %fs", duration.Seconds()), "err", err)
+		logger.ErrorContext(ctx, fmt.Sprintf("collector failed after %fs", duration.Seconds()), "err", err)
 		ch <- prometheus.MustNewConstMetric(scrapeDeviceSuccessDesc, prometheus.GaugeValue, 0.0, name, address)
 	} else {
-		logger.Debug(fmt.Sprintf("collector succeeded after %fs", duration.Seconds()))
+		logger.DebugContext(ctx, fmt.Sprintf("collector succeeded after %fs", duration.Seconds()))
 		ch <- prometheus.MustNewConstMetric(scrapeDeviceSuccessDesc, prometheus.GaugeValue, 1.0, name, address)
 	}
 

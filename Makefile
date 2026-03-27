@@ -23,6 +23,14 @@ build:
 		-asmflags=-trimpath=$(CURRENT_DIR) \
 		./cli/
 
+.PHONY: whydeadcode
+whydeadcode:
+	go build -o mikrotik-exporter \
+		-ldflags="-dumpdep $(LDFLAGS)" \
+		-gcflags=-trimpath=$(CURRENT_DIR) \
+		-asmflags=-trimpath=$(CURRENT_DIR) \
+		./cli/ 2>&1 | whydeadcode
+
 .PHONY: build_arm64
 build_arm64:
 	GOARCH=arm64 \
@@ -43,6 +51,9 @@ lint:
 	# go install go.uber.org/nilaway/cmd/nilaway@latest
 	nilaway ./... || true
 	typos
+	# go install golang.org/x/vuln/cmd/govulncheck@lates
+	govulncheck ./...
+
 
 
 .PHONY: format

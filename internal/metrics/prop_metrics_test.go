@@ -32,9 +32,9 @@ func TestSimplePropertyGauge(t *testing.T) {
 	defer close(chout)
 
 	device := config.Device{Name: "devname", Address: "devaddress"}
-	ctx := NewCollectorContext(chout, &device, nil, "coltest", slog.Default(), nil)
+	cctx := NewCollectorContext(chout, &device, nil, "coltest", slog.Default(), nil)
 	sent := map[string]string{"property1": "123.23", "aa": "valaa", "bb": ""}
-	lctx := ctx.WithLabelsFromMap(sent, "aa", "bb")
+	lctx := cctx.WithLabelsFromMap(sent, "aa", "bb")
 
 	err := sp.Collect(sent, &lctx)
 	assert.NoError(t, err)
@@ -68,10 +68,10 @@ func TestSimplePropertyCounter(t *testing.T) {
 	defer close(chout)
 
 	device := config.Device{Name: "devname2", Address: "devaddress2"}
-	ctx := NewCollectorContext(chout, &device, nil, "coltest", slog.Default(), nil)
+	cctx := NewCollectorContext(chout, &device, nil, "coltest", slog.Default(), nil)
 	sent := map[string]string{"property1": "123.567", "aa": "valaa", "bb": ""}
 
-	err := sp.Collect(sent, &ctx)
+	err := sp.Collect(sent, &cctx)
 	assert.NoError(t, err)
 
 	metric, labels := collectMetric(t, chout)
@@ -102,7 +102,7 @@ func TestSimplePropertyConsts(t *testing.T) {
 	defer close(chout)
 
 	device := config.Device{Name: "devname2", Address: "devaddress2"}
-	ctx := NewCollectorContext(chout, &device, nil, "coltest", slog.Default(), nil)
+	cctx := NewCollectorContext(chout, &device, nil, "coltest", slog.Default(), nil)
 
 	testCase := []struct {
 		input map[string]string
@@ -115,7 +115,7 @@ func TestSimplePropertyConsts(t *testing.T) {
 
 	for _, tc := range testCase {
 		t.Run(fmt.Sprintf("test_%+v", testCase), func(t *testing.T) {
-			err := sp.Collect(tc.input, &ctx)
+			err := sp.Collect(tc.input, &cctx)
 			assert.NoError(t, err)
 
 			if tc.value == 0.0 {

@@ -11,7 +11,6 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"log/slog"
 	"net"
 	"strconv"
 	"strings"
@@ -21,6 +20,7 @@ import (
 	"mikrotik-exporter/internal/config"
 	"mikrotik-exporter/internal/metrics"
 	"mikrotik-exporter/routeros"
+	"mikrotik-exporter/routeros/proto"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
@@ -41,7 +41,6 @@ type (
 	}
 
 	deviceCollector struct {
-		logger     *slog.Logger
 		cl         *routeros.Client
 		device     config.Device
 		collectors []deviceCollectorRC
@@ -65,11 +64,14 @@ func newDeviceCollector(device config.Device, collectors []deviceCollectorRC) *d
 		device.Timeout = config.DefaultTimeout
 	}
 
+	if device.CollectTimeout == 0 {
+		device.CollectTimeout = device.Timeout * 10 //nolint:mnd
+	}
+
 	return &deviceCollector{
 		device:     device,
 		collectors: collectors,
 		isSrv:      device.Srv != nil,
-		logger:     slog.Default().With("device", device.Name),
 	}
 }
 
@@ -84,35 +86,37 @@ func (dc *deviceCollector) disconnect() {
 }
 
 func (dc *deviceCollector) connect(ctx context.Context) (*routeros.Client, error) {
-	// try do get connection from cache
+	logger := config.LogFromCtx(ctx)
+
+	// try do get connection from cache (only for non-srv)
 	if dc.cl != nil {
 		// check is connection alive
 		if reply, err := dc.cl.Run("/system/identity/print"); err == nil && len(reply.Re) > 0 {
 			return dc.cl, nil
 		}
 
-		dc.logger.Info("reconnecting")
+		logger.Info("reconnecting")
 
 		// check failed, reconnect
 		dc.cl.Close()
 		dc.cl = nil
 	}
 
-	dc.logger.Debug("trying to Dial")
+	logger.Debug("trying to Dial")
 
 	conn, err := dc.dial(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	dc.logger.Debug("done dialing")
+	logger.Debug("done dialing")
 
 	client, err := routeros.NewClient(conn)
 	if err != nil {
 		return nil, fmt.Errorf("create client error: %w", err)
 	}
 
-	dc.logger.Debug("got client, trying to login")
+	logger.Debug("got client, trying to login")
 
 	if err := client.Login(dc.device.User, dc.device.Password); err != nil {
 		client.Close()
@@ -120,7 +124,17 @@ func (dc *deviceCollector) connect(ctx context.Context) (*routeros.Client, error
 		return nil, fmt.Errorf("login error: %w", err)
 	}
 
-	dc.logger.Debug("done with login")
+	logger.Debug("done with login")
+
+	if dc.device.Srv != nil {
+		// get identity for service-defined devices
+		if err := dc.updateIdentity(client); err != nil {
+			return nil, fmt.Errorf("get identity error: %w", err)
+		}
+
+		logger.Info("updated device identity", "identity", dc.device.Name)
+	}
+
 	dc.cl = client
 
 	return client, nil
@@ -156,6 +170,8 @@ func (dc *deviceCollector) dial(ctx context.Context) (net.Conn, error) {
 // collect data for device and return number of failed collectors and
 // error if any.
 func (dc *deviceCollector) collect(ctx context.Context, ch chan<- prometheus.Metric) error {
+	logger := config.LogFromCtx(ctx)
+
 	client, err := dc.connect(ctx)
 	if err != nil {
 		// clear FirmwareVersion and reload on next successful connection.
@@ -166,38 +182,37 @@ func (dc *deviceCollector) collect(ctx context.Context, ch chan<- prometheus.Met
 
 	defer dc.disconnect()
 
-	if dc.device.Srv != nil {
-		// get identity for service-defined devices
-		if err := dc.updateIdentity(client); err != nil {
-			return fmt.Errorf("get identity error: %w", err)
-		}
-	}
-
-	address, name := dc.device.Address, dc.device.Name
-
 	var result *multierror.Error
 	// get once version
 	if dc.device.FirmwareVersion.Major == 0 {
 		if err := dc.getVersion(client); err != nil {
-			dc.logger.Warn("get version error", "err", err)
+			logger.Warn("get version error", "err", err)
 		}
 	}
 
+loop:
 	for _, drc := range dc.collectors {
-		logger := dc.logger.With("collector", drc.name)
-		ctx := metrics.NewCollectorContext(ch, &dc.device, client, drc.name, logger, drc.featureConf)
+		llogger := logger.With("collector", drc.name)
+		cctx := metrics.NewCollectorContext(ch, &dc.device, client, drc.name, llogger, drc.featureConf)
 
-		logger.Debug("start collect", "feature_conf", drc.featureConf)
+		llogger.Debug("start collect", "feature_conf", drc.featureConf)
 
-		if err := drc.collector.Collect(&ctx); err != nil {
+		if err := drc.collector.Collect(&cctx); err != nil {
 			result = multierror.Append(result, fmt.Errorf("collect %s error: %w", drc.name, err))
 
 			dc.errors++
 		}
+
+		// check is context done / canceled
+		select {
+		case <-ctx.Done():
+			break loop
+		default:
+		}
 	}
 
 	ch <- prometheus.MustNewConstMetric(scrapeCollectorErrorsDesc, prometheus.CounterValue,
-		float64(dc.errors), name, address)
+		float64(dc.errors), dc.device.Name, dc.device.Address)
 
 	if err := result.ErrorOrNil(); err != nil {
 		return fmt.Errorf("collect error: %w", err)
@@ -230,11 +245,9 @@ func (dc *deviceCollector) getVersion(client *routeros.Client) error {
 		return fmt.Errorf("get version error: %w", err)
 	}
 
-	version := reply.Re[0].Map["version"]
-
-	dc.device.FirmwareVersion, err = parseFirmwareVersion(version)
+	dc.device.FirmwareVersion, err = parseFirmwareVersion(reply.Re[0])
 	if err != nil {
-		return fmt.Errorf("parse version %q error: %w", version, err)
+		return fmt.Errorf("parse version %v error: %w", reply.Re[0], err)
 	}
 
 	reply, err = client.Run("/system/clock/print")
@@ -249,11 +262,16 @@ func (dc *deviceCollector) getVersion(client *routeros.Client) error {
 
 var ErrInvalidVersion = errors.New("invalid version")
 
-func parseFirmwareVersion(version string) (config.FirmwareVersion, error) {
+func parseFirmwareVersion(re *proto.Sentence) (config.FirmwareVersion, error) {
+	version := re.Map["version"]
 	version, _, _ = strings.Cut(version, " ")
 
+	if version == "" {
+		return config.FirmwareVersion{}, ErrInvalidVersion
+	}
+
 	parts := strings.Split(version, ".")
-	if len(parts) != 3 && len(parts) != 2 { //nolint:mnd
+	if len(parts) != 3 && len(parts) != 2 {
 		return config.FirmwareVersion{}, ErrInvalidVersion
 	}
 
@@ -276,5 +294,7 @@ func parseFirmwareVersion(version string) (config.FirmwareVersion, error) {
 		}
 	}
 
-	return config.FirmwareVersion{Major: major, Minor: minor, Patch: patch}, nil
+	arch := re.Map["architecture-name"]
+
+	return config.FirmwareVersion{Major: major, Minor: minor, Patch: patch, Architecture: arch}, nil
 }

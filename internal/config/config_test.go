@@ -300,7 +300,7 @@ func TestFirmwareVersionCompare(t *testing.T) {
 		{6, 10, 1, -1},
 	}
 
-	ver := FirmwareVersion{5, 10, 15}
+	ver := FirmwareVersion{5, 10, 15, ""}
 
 	for _, tc := range tests {
 		t.Run(fmt.Sprintf("test_%+v", tc), func(t *testing.T) {

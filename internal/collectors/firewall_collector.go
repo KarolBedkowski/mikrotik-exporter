@@ -66,6 +66,8 @@ func (c *firewallCollector) Collect(ctx *metrics.CollectorContext) error {
 }
 
 func (c *firewallCollector) collectStats(firewall, chain string, ctx *metrics.CollectorContext) error {
+	ctx.Logger.Debug("collecting firewall stats", "firewall", firewall, "chain", chain)
+
 	if firewall != "filter" && firewall != "mangle" && firewall != "raw" && firewall != "nat" {
 		return config.InvalidConfigurationError("unknown firewall '" + firewall + "'")
 	}
@@ -75,8 +77,8 @@ func (c *firewallCollector) collectStats(firewall, chain string, ctx *metrics.Co
 	}
 
 	reply, err := ctx.Client.Run("/ip/firewall/"+firewall+"/print",
-		"=stats=", "=chain="+chain, "?disabled=no",
-		"=.proplist=comment,bytes,packets")
+		"?=chain="+chain, "?=disabled=true", "?#!",
+		"=stats=", "=.proplist=comment,bytes,packets")
 	if err != nil {
 		return fmt.Errorf("fetch fw stats %s/%s error: %w", firewall, chain, err)
 	}

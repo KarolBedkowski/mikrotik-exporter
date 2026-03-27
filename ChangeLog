@@ -1,3 +1,17 @@
+v3.1.2 2026-03-27
+
+Features:
+
+* Add collect_timeout device parameter
+* Load device architecture, add it to mikrotik_system_routeros metric
+* Add containers status collector
+
+Fix:
+
+* Fix gathering stats by firewall_collector
+* Minor code fixes
+
+
 v3.1.1 2026-01-19
 
 Fix:

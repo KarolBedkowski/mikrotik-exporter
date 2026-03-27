@@ -71,14 +71,14 @@ func (w *writer) write(b []byte) {
 func encodeLength(l int) []byte {
 	switch {
 	case l < 0x80:
-		return []byte{byte(l)}
+		return []byte{byte(l & 0xFF)}
 	case l < 0x4000:
-		return []byte{byte(l>>8) | 0x80, byte(l)}
+		return []byte{byte(l>>8) | 0x80, byte(l & 0xFF)}
 	case l < 0x200000:
-		return []byte{byte(l>>16) | 0xC0, byte(l >> 8), byte(l)}
+		return []byte{byte((l>>16)&0xFF) | 0xC0, byte((l >> 8) & 0xFF), byte(l & 0xFF)}
 	case l < 0x10000000:
-		return []byte{byte(l>>24) | 0xE0, byte(l >> 16), byte(l >> 8), byte(l)}
+		return []byte{byte((l>>24)&0xFF) | 0xE0, byte((l >> 16) & 0xFF), byte((l >> 8) & 0xFF), byte(l & 0xFF)}
 	default:
-		return []byte{0xF0, byte(l >> 24), byte(l >> 16), byte(l >> 8), byte(l)}
+		return []byte{0xF0, byte((l >> 24) & 0xFF), byte((l >> 16) & 0xFF), byte((l >> 8) & 0xFF), byte(l & 0xFF)}
 	}
 }

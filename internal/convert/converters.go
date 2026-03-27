@@ -119,6 +119,8 @@ func indexFuncChar(c rune) bool  { return c >= 'A' }
 var ErrUnknownUnit = errors.New("unknown unit")
 
 // adjustDuration create Duration by multiple duration by unit.
+//
+//nolint:durationcheck
 func adjustDuration(duration int, unit string) (time.Duration, error) {
 	dur := time.Duration(duration)
 
