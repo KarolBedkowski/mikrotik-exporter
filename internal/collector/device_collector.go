@@ -178,6 +178,7 @@ func (dc *deviceCollector) collect(ctx context.Context, ch chan<- prometheus.Met
 	if err != nil {
 		// clear FirmwareVersion and reload on next successful connection.
 		dc.device.FirmwareVersion.Major = 0
+		dc.errors += int64(len(dc.collectors))
 
 		return fmt.Errorf("connect error: %w", err)
 	}
@@ -189,6 +190,8 @@ func (dc *deviceCollector) collect(ctx context.Context, ch chan<- prometheus.Met
 	if dc.device.FirmwareVersion.Major == 0 {
 		if err := dc.getVersion(client); err != nil {
 			logger.Warn("get version error; abort collecting", "err", err)
+
+			dc.errors += int64(len(dc.collectors))
 
 			return fmt.Errorf("get version error: %w", err)
 		}
@@ -225,9 +228,6 @@ loop:
 		default:
 		}
 	}
-
-	ch <- prometheus.MustNewConstMetric(scrapeCollectorErrorsDesc, prometheus.CounterValue,
-		float64(dc.errors), dc.device.Name, dc.device.Address)
 
 	if err := result.ErrorOrNil(); err != nil {
 		return fmt.Errorf("collect error: %w", err)

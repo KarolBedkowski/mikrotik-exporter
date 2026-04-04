@@ -150,6 +150,9 @@ func (c *mikrotikCollector) collectFromDevice(ctx context.Context,
 		ch <- prometheus.MustNewConstMetric(scrapeDeviceSuccessDesc, prometheus.GaugeValue, 1.0, name, address)
 	}
 
+	ch <- prometheus.MustNewConstMetric(scrapeCollectorErrorsDesc, prometheus.CounterValue,
+		float64(devcollector.errors), devcollector.device.Name, devcollector.device.Address)
+
 	ch <- prometheus.MustNewConstMetric(scrapeDeviceDurationDesc, prometheus.GaugeValue, duration.Seconds(),
 		name, address)
 }
