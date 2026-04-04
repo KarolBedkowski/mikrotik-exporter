@@ -26,6 +26,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+const stopAfterErrors = 5
+
 var scrapeCollectorErrorsDesc = prometheus.NewDesc(
 	prometheus.BuildFQName(config.Namespace, "scrape", "device_errors_total"),
 	"mikrotik_exporter: number of failed collection per device",
@@ -186,12 +188,16 @@ func (dc *deviceCollector) collect(ctx context.Context, ch chan<- prometheus.Met
 	// get once version
 	if dc.device.FirmwareVersion.Major == 0 {
 		if err := dc.getVersion(client); err != nil {
-			logger.Warn("get version error", "err", err)
+			logger.Warn("get version error; abort collecting", "err", err)
+
+			return fmt.Errorf("get version error: %w", err)
 		}
 	}
 
+	collectErrors := 0
+
 loop:
-	for _, drc := range dc.collectors {
+	for idx, drc := range dc.collectors {
 		llogger := logger.With("collector", drc.name)
 		cctx := metrics.NewCollectorContext(ch, &dc.device, client, drc.name, llogger, drc.featureConf)
 
@@ -201,6 +207,15 @@ loop:
 			result = multierror.Append(result, fmt.Errorf("collect %s error: %w", drc.name, err))
 
 			dc.errors++
+			collectErrors++
+
+			if collectErrors == stopAfterErrors {
+				llogger.Warn("abort collecting because of errors limit",
+					"errors", collectErrors, "errors_limit", stopAfterErrors,
+					"iterations", idx+1)
+
+				break loop
+			}
 		}
 
 		// check is context done / canceled
