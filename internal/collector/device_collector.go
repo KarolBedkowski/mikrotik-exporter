@@ -172,8 +172,6 @@ func (dc *deviceCollector) dial(ctx context.Context) (net.Conn, error) {
 // collect data for device and return number of failed collectors and
 // error if any.
 func (dc *deviceCollector) collect(ctx context.Context, ch chan<- prometheus.Metric) error {
-	logger := config.LogFromCtx(ctx)
-
 	client, err := dc.connect(ctx)
 	if err != nil {
 		// clear FirmwareVersion and reload on next successful connection.
@@ -185,22 +183,32 @@ func (dc *deviceCollector) collect(ctx context.Context, ch chan<- prometheus.Met
 
 	defer dc.disconnect()
 
-	var result *multierror.Error
 	// get once version
 	if dc.device.FirmwareVersion.Major == 0 {
 		if err := dc.getVersion(client); err != nil {
-			logger.Warn("get version error; abort collecting", "err", err)
-
 			dc.errors += int64(len(dc.collectors))
 
 			return fmt.Errorf("get version error: %w", err)
 		}
 	}
 
+	if err := dc.gatherMetrics(ctx, client, ch); err != nil {
+		return fmt.Errorf("collect error: %w", err)
+	}
+
+	return nil
+}
+
+func (dc *deviceCollector) gatherMetrics(ctx context.Context, client *routeros.Client,
+	ch chan<- prometheus.Metric,
+) error {
+	logger := config.LogFromCtx(ctx)
 	collectErrors := 0
 
+	var result *multierror.Error
+
 loop:
-	for idx, drc := range dc.collectors {
+	for _, drc := range dc.collectors {
 		llogger := logger.With("collector", drc.name)
 		cctx := metrics.NewCollectorContext(ch, &dc.device, client, drc.name, llogger, drc.featureConf)
 
@@ -212,13 +220,13 @@ loop:
 			dc.errors++
 			collectErrors++
 
+			// check limit of errors
 			if collectErrors == stopAfterErrors {
-				llogger.Warn("abort collecting because of errors limit",
-					"errors", collectErrors, "errors_limit", stopAfterErrors,
-					"iterations", idx+1)
-
-				break loop
+				return multierror.Append(result, ErrTooManyErrors).ErrorOrNil()
 			}
+		} else {
+			// reset errors counter on success
+			collectErrors = 0
 		}
 
 		// check is context done / canceled
@@ -229,11 +237,7 @@ loop:
 		}
 	}
 
-	if err := result.ErrorOrNil(); err != nil {
-		return fmt.Errorf("collect error: %w", err)
-	}
-
-	return nil
+	return result.ErrorOrNil()
 }
 
 func (dc *deviceCollector) updateIdentity(client *routeros.Client) error {
