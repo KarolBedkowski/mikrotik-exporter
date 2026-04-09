@@ -1,12 +1,12 @@
 package collectors
 
 import (
+	"errors"
 	"fmt"
 
 	"mikrotik-exporter/internal/convert"
 	"mikrotik-exporter/internal/metrics"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -57,10 +57,10 @@ func (c *wireguardCollector) Collect(ctx *metrics.CollectorContext) error {
 		return NotSupportedError("wireguard")
 	}
 
-	return multierror.Append(nil,
+	return errors.Join(
 		c.collectWG(ctx),
 		c.collectWGPeers(ctx),
-	).ErrorOrNil()
+	)
 }
 
 func (c *wireguardCollector) collectWGPeers(ctx *metrics.CollectorContext) error {
@@ -88,7 +88,7 @@ func (c *wireguardCollector) collectWGPeers(ctx *metrics.CollectorContext) error
 		return nil
 	}
 
-	var errs *multierror.Error
+	var errs error
 
 	for _, re := range reply.Re {
 		pubKey := re.Map["public-key"]
@@ -99,34 +99,34 @@ func (c *wireguardCollector) collectWGPeers(ctx *metrics.CollectorContext) error
 		lctx := ctx.WithLabels(pubKey, re.Map["comment"], re.Map["disabled"])
 
 		if err := c.peers.Collect(re.Map, &lctx); err != nil {
-			errs = multierror.Append(errs,
+			errs = errors.Join(errs,
 				fmt.Errorf("collect wireguard %v error: %w", re, err))
 		}
 	}
 
-	return errs.ErrorOrNil()
+	return errs
 }
 
 func (c *wireguardCollector) collectWG(ctx *metrics.CollectorContext) error {
-	var errs *multierror.Error
+	var errs error
 
 	reply, err := ctx.Client.Run("/interface/wireguard/print",
 		"?disabled=false",
 		"=.proplist=comment,public-key,comment,disabled,running,name")
 	if err != nil {
-		errs = multierror.Append(fmt.Errorf("fetch wireguard status error: %w", err))
+		errs = errors.Join(fmt.Errorf("fetch wireguard status error: %w", err))
 
-		return errs.ErrorOrNil()
+		return errs
 	}
 
 	for _, re := range reply.Re {
 		lctx := ctx.WithLabelsFromMap(re.Map, "public-key", "name", "comment")
 
 		if err := c.wg.Collect(re.Map, &lctx); err != nil {
-			errs = multierror.Append(errs,
+			errs = errors.Join(errs,
 				fmt.Errorf("collect wireguard %v error: %w", re, err))
 		}
 	}
 
-	return errs.ErrorOrNil()
+	return errs
 }

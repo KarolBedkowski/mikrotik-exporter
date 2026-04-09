@@ -1,11 +1,11 @@
 package collectors
 
 import (
+	"errors"
 	"fmt"
 
 	"mikrotik-exporter/internal/metrics"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -45,7 +45,7 @@ func (c *healthCollector) Collect(ctx *metrics.CollectorContext) error {
 		return fmt.Errorf("fetch health error: %w", err)
 	}
 
-	var errs *multierror.Error
+	var errs error
 
 	for _, re := range reply.Re {
 		// hack for old ros
@@ -58,9 +58,9 @@ func (c *healthCollector) Collect(ctx *metrics.CollectorContext) error {
 		}
 
 		if err := c.metrics.Collect(re.Map, ctx); err != nil {
-			errs = multierror.Append(errs, err)
+			errs = errors.Join(errs, err)
 		}
 	}
 
-	return errs.ErrorOrNil()
+	return errs
 }

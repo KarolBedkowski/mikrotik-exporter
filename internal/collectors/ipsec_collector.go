@@ -1,12 +1,12 @@
 package collectors
 
 import (
+	"errors"
 	"fmt"
 
 	"mikrotik-exporter/internal/convert"
 	"mikrotik-exporter/internal/metrics"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -64,10 +64,10 @@ func (c *ipsecCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *ipsecCollector) Collect(ctx *metrics.CollectorContext) error {
-	return multierror.Append(nil,
+	return errors.Join(
 		c.collectPolicy(ctx),
 		c.collectActivePeers(ctx),
-	).ErrorOrNil()
+	)
 }
 
 func (c *ipsecCollector) collectPolicy(ctx *metrics.CollectorContext) error {
@@ -79,16 +79,16 @@ func (c *ipsecCollector) collectPolicy(ctx *metrics.CollectorContext) error {
 		return fmt.Errorf("fetch ipsec policy error: %w", err)
 	}
 
-	var errs *multierror.Error
+	var errs error
 
 	for _, re := range reply.Re {
 		lctx := ctx.WithLabelsFromMap(re.Map, "src-address", "dst-address", "comment")
 		if err := c.metrics.Collect(re.Map, &lctx); err != nil {
-			errs = multierror.Append(errs, fmt.Errorf("collect policy error %w", err))
+			errs = errors.Join(errs, fmt.Errorf("collect policy error %w", err))
 		}
 	}
 
-	return errs.ErrorOrNil()
+	return errs
 }
 
 func (c *ipsecCollector) collectActivePeers(ctx *metrics.CollectorContext) error {
@@ -99,17 +99,17 @@ func (c *ipsecCollector) collectActivePeers(ctx *metrics.CollectorContext) error
 		return fmt.Errorf("fetch ipsec active peers error: %w", err)
 	}
 
-	var errs *multierror.Error
+	var errs error
 
 	for _, re := range reply.Re {
 		lctx := ctx.WithLabelsFromMap(re.Map, "src-address", "dst-address", "comment", "side")
 		if err := c.activePeers.Collect(re.Map, &lctx); err != nil {
-			errs = multierror.Append(errs,
+			errs = errors.Join(errs,
 				fmt.Errorf("collect active peers error %w", err))
 		}
 	}
 
-	return errs.ErrorOrNil()
+	return errs
 }
 
 func metricFromState(value string) (float64, error) {

@@ -22,7 +22,6 @@ import (
 	"mikrotik-exporter/routeros"
 	"mikrotik-exporter/routeros/proto"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -205,7 +204,7 @@ func (dc *deviceCollector) gatherMetrics(ctx context.Context, client *routeros.C
 	logger := config.LogFromCtx(ctx)
 	collectErrors := 0
 
-	var result *multierror.Error
+	var result error
 
 loop:
 	for _, drc := range dc.collectors {
@@ -215,14 +214,14 @@ loop:
 		llogger.Debug("start collect", "feature_conf", drc.featureConf)
 
 		if err := drc.collector.Collect(&cctx); err != nil {
-			result = multierror.Append(result, fmt.Errorf("collect %s error: %w", drc.name, err))
+			result = errors.Join(result, fmt.Errorf("collect %s error: %w", drc.name, err))
 
 			dc.errors++
 			collectErrors++
 
 			// check limit of errors
 			if collectErrors == stopAfterErrors {
-				return multierror.Append(result, ErrTooManyErrors).ErrorOrNil()
+				return errors.Join(result, ErrTooManyErrors)
 			}
 		} else {
 			// reset errors counter on success
@@ -237,7 +236,7 @@ loop:
 		}
 	}
 
-	return result.ErrorOrNil()
+	return result
 }
 
 func (dc *deviceCollector) updateIdentity(client *routeros.Client) error {

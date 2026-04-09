@@ -4,11 +4,11 @@ package collectors
 // Get metrics from /dns/adlist - number of entries and total match for each adlist.
 
 import (
+	"errors"
 	"fmt"
 
 	"mikrotik-exporter/internal/metrics"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -45,14 +45,14 @@ func (c *dnsAdlistCollector) Collect(ctx *metrics.CollectorContext) error {
 		return fmt.Errorf("fetch dns adlist stats error: %w", err)
 	}
 
-	var errs *multierror.Error
+	var errs error
 
 	for _, re := range reply.Re {
 		lctx := ctx.WithLabelsFromMap(re.Map, "url")
 		if err := c.metrics.Collect(re.Map, &lctx); err != nil {
-			errs = multierror.Append(errs, fmt.Errorf("collect error: %w", err))
+			errs = errors.Join(errs, fmt.Errorf("collect error: %w", err))
 		}
 	}
 
-	return errs.ErrorOrNil()
+	return errs
 }

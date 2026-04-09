@@ -1,11 +1,11 @@
 package collectors
 
 import (
+	"errors"
 	"fmt"
 
 	"mikrotik-exporter/internal/metrics"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -37,14 +37,14 @@ func (c *netwatchCollector) Collect(ctx *metrics.CollectorContext) error {
 		return fmt.Errorf("fetch netwatch error: %w", err)
 	}
 
-	var errs *multierror.Error
+	var errs error
 
 	for _, re := range reply.Re {
 		lctx := ctx.WithLabelsFromMap(re.Map, "host", "comment", "status")
 		if err := c.metric.Collect(re.Map, &lctx); err != nil {
-			errs = multierror.Append(errs, fmt.Errorf("collect error %w", err))
+			errs = errors.Join(errs, fmt.Errorf("collect error %w", err))
 		}
 	}
 
-	return errs.ErrorOrNil()
+	return errs
 }

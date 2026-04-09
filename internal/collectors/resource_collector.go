@@ -1,13 +1,13 @@
 package collectors
 
 import (
+	"errors"
 	"fmt"
 
 	"mikrotik-exporter/internal/convert"
 	"mikrotik-exporter/internal/metrics"
 	"mikrotik-exporter/routeros/proto"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -62,15 +62,15 @@ func (c *resourceCollector) Collect(ctx *metrics.CollectorContext) error {
 		return fmt.Errorf("fetch resource error: %w", err)
 	}
 
-	var errs *multierror.Error
+	var errs error
 
 	for _, re := range reply.Re {
 		if err := c.collectForStat(re, ctx); err != nil {
-			errs = multierror.Append(errs, err)
+			errs = errors.Join(errs, err)
 		}
 	}
 
-	return errs.ErrorOrNil()
+	return errs
 }
 
 func (c *resourceCollector) collectForStat(reply *proto.Sentence, ctx *metrics.CollectorContext) error {

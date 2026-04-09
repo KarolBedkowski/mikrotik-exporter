@@ -8,6 +8,7 @@ package metrics
 //
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"slices"
@@ -15,7 +16,6 @@ import (
 
 	"mikrotik-exporter/internal/convert"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -469,7 +469,7 @@ func (p *PropertyMetricBuilder) prepare() {
 }
 
 func (p *PropertyMetricBuilder) check() error {
-	var errs *multierror.Error
+	var errs error
 
 	// check for duplicated labels
 	for i, l := range p.labels {
@@ -479,18 +479,18 @@ func (p *PropertyMetricBuilder) check() error {
 
 		for _, ll := range p.labels[:i-1] {
 			if l == ll {
-				errs = multierror.Append(errs, newBuilderError("duplicated label %q", l))
+				errs = errors.Join(errs, newBuilderError("duplicated label %q", l))
 			}
 		}
 	}
 
 	if !slices.Contains(p.labels, LabelDevName) {
-		errs = multierror.Append(errs, newBuilderError("missing label %q", LabelDevName))
+		errs = errors.Join(errs, newBuilderError("missing label %q", LabelDevName))
 	}
 
 	if !slices.Contains(p.labels, LabelDevAddress) {
-		errs = multierror.Append(errs, newBuilderError("missing label %q", LabelDevAddress))
+		errs = errors.Join(errs, newBuilderError("missing label %q", LabelDevAddress))
 	}
 
-	return errs.ErrorOrNil()
+	return errs
 }

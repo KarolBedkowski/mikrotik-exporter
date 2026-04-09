@@ -1,13 +1,13 @@
 package collectors
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
 	"mikrotik-exporter/internal/convert"
 	"mikrotik-exporter/internal/metrics"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -66,17 +66,17 @@ func (c *w60gInterfaceCollector) collectw60gMetricsForInterfaces(ifaces []string
 		return fmt.Errorf("fetch w60g monitor error: %w", err)
 	}
 
-	var errs *multierror.Error
+	var errs error
 
 	for _, se := range reply.Re {
 		if name, ok := se.Map["name"]; ok {
 			lctx := ctx.WithLabels(name)
 
 			if err := c.metrics.Collect(se.Map, &lctx); err != nil {
-				errs = multierror.Append(errs, fmt.Errorf("collect %v error: %w", name, err))
+				errs = errors.Join(errs, fmt.Errorf("collect %v error: %w", name, err))
 			}
 		}
 	}
 
-	return errs.ErrorOrNil()
+	return errs
 }

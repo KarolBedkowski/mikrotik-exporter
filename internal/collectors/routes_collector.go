@@ -1,11 +1,11 @@
 package collectors
 
 import (
+	"errors"
 	"fmt"
 
 	"mikrotik-exporter/internal/metrics"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -40,13 +40,13 @@ func (c *routesCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *routesCollector) Collect(ctx *metrics.CollectorContext) error {
-	errs := multierror.Append(nil, c.collectForIPVersion("4", "ip", ctx))
+	errs := errors.Join(nil, c.collectForIPVersion("4", "ip", ctx))
 
 	if !ctx.Device.IPv6Disabled {
-		errs = multierror.Append(errs, c.collectForIPVersion("6", "ipv6", ctx))
+		errs = errors.Join(errs, c.collectForIPVersion("6", "ipv6", ctx))
 	}
 
-	return errs.ErrorOrNil()
+	return errs
 }
 
 func (c *routesCollector) collectForIPVersion(ipVersion, topic string, ctx *metrics.CollectorContext) error {

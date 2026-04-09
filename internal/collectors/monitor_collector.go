@@ -1,13 +1,13 @@
 package collectors
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
 	"mikrotik-exporter/internal/convert"
 	"mikrotik-exporter/internal/metrics"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -58,17 +58,17 @@ func (c *monitorCollector) collectForMonitor(eths []string, ctx *metrics.Collect
 		return fmt.Errorf("get ethernet monitor error: %w", err)
 	}
 
-	var errs *multierror.Error
+	var errs error
 
 	for _, e := range reply.Re {
 		lctx := ctx.WithLabels(e.Map["name"])
 
 		if err := c.metrics.Collect(e.Map, &lctx); err != nil {
-			errs = multierror.Append(errs, fmt.Errorf("collect %v error: %w", e.Map["name"], err))
+			errs = errors.Join(errs, fmt.Errorf("collect %v error: %w", e.Map["name"], err))
 		}
 	}
 
-	return errs.ErrorOrNil()
+	return errs
 }
 
 func metricFromLinkStatus(value string) (float64, error) {

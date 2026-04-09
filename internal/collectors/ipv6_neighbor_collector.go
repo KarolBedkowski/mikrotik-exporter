@@ -1,12 +1,12 @@
 package collectors
 
 import (
+	"errors"
 	"fmt"
 
 	"mikrotik-exporter/internal/convert"
 	"mikrotik-exporter/internal/metrics"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -43,10 +43,10 @@ func (c *ipv6NeighborCollector) Collect(ctx *metrics.CollectorContext) error {
 		return nil
 	}
 
-	return multierror.Append(nil,
+	return errors.Join(
 		c.collectEntries(ctx),
 		c.collectStatuses(ctx),
-	).ErrorOrNil()
+	)
 }
 
 func (c *ipv6NeighborCollector) collectEntries(ctx *metrics.CollectorContext) error {
@@ -63,7 +63,7 @@ func (c *ipv6NeighborCollector) collectEntries(ctx *metrics.CollectorContext) er
 		return fmt.Errorf("fetch ipv6 neighbor error: %w", err)
 	}
 
-	var errs *multierror.Error
+	var errs error
 
 	for _, re := range reply.Re {
 		// create context with labels from reply
@@ -72,20 +72,20 @@ func (c *ipv6NeighborCollector) collectEntries(ctx *metrics.CollectorContext) er
 
 		// collect metrics using context
 		if err := c.metrics.Collect(re.Map, &lctx); err != nil {
-			errs = multierror.Append(errs, fmt.Errorf("collect error: %w", err))
+			errs = errors.Join(errs, fmt.Errorf("collect error: %w", err))
 		}
 	}
 
-	return errs.ErrorOrNil()
+	return errs
 }
 
 func (c *ipv6NeighborCollector) collectStatuses(ctx *metrics.CollectorContext) error {
-	var errs *multierror.Error
+	var errs error
 
 	for _, status := range []string{"noarp", "incomplete", "reachable", "stale", "delay", "probe", "failed"} {
 		reply, err := ctx.Client.Run("/ipv6/neighbor/print", "?status="+status, "=count-only=")
 		if err != nil {
-			errs = multierror.Append(errs, fmt.Errorf("fetch arp status %q  error: %w", status, err))
+			errs = errors.Join(errs, fmt.Errorf("fetch arp status %q  error: %w", status, err))
 
 			continue
 		}
@@ -94,9 +94,9 @@ func (c *ipv6NeighborCollector) collectStatuses(ctx *metrics.CollectorContext) e
 			ctx.Ch <- prometheus.MustNewConstMetric(c.statuses, prometheus.GaugeValue, cnt,
 				ctx.Device.Name, ctx.Device.Address, status)
 		} else {
-			errs = multierror.Append(errs, fmt.Errorf("parse ret %v error: %w", reply, err))
+			errs = errors.Join(errs, fmt.Errorf("parse ret %v error: %w", reply, err))
 		}
 	}
 
-	return errs.ErrorOrNil()
+	return errs
 }

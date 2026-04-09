@@ -1,11 +1,11 @@
 package collectors
 
 import (
+	"errors"
 	"fmt"
 
 	"mikrotik-exporter/internal/metrics"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -43,21 +43,21 @@ func (c *conntrackCollector) Collect(ctx *metrics.CollectorContext) error {
 		return fmt.Errorf("get tracking error: %w", err)
 	}
 
-	var errs *multierror.Error
+	var errs error
 
 	if len(reply.Re) > 0 {
 		re := reply.Re[0]
 
 		if err := c.totalEntries.Collect(re.Map, ctx); err != nil {
-			errs = multierror.Append(errs,
+			errs = errors.Join(errs,
 				fmt.Errorf("collect total entries error: %w", err))
 		}
 
 		if err := c.maxEntries.Collect(re.Map, ctx); err != nil {
-			errs = multierror.Append(errs,
+			errs = errors.Join(errs,
 				fmt.Errorf("collect max entries error: %w", err))
 		}
 	}
 
-	return errs.ErrorOrNil()
+	return errs
 }

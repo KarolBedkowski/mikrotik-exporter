@@ -1,13 +1,13 @@
 package collectors
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 
 	"mikrotik-exporter/internal/metrics"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -62,7 +62,7 @@ func (c *switchCollector) Collect(ctx *metrics.CollectorContext) error {
 		return fmt.Errorf("fetch switch stats error: %w", err)
 	}
 
-	var errs *multierror.Error
+	var errs error
 
 	details := ctx.FeatureCfg.BoolValue("details", false)
 
@@ -71,7 +71,7 @@ func (c *switchCollector) Collect(ctx *metrics.CollectorContext) error {
 
 		lctx := ctx.WithLabels(name)
 		if err := c.statsDriver.Collect(re.Map, &lctx); err != nil {
-			errs = multierror.Append(errs, fmt.Errorf("collect switch %s error: %w", name, err))
+			errs = errors.Join(errs, fmt.Errorf("collect switch %s error: %w", name, err))
 		}
 
 		// load details if configured
@@ -80,7 +80,7 @@ func (c *switchCollector) Collect(ctx *metrics.CollectorContext) error {
 		}
 	}
 
-	return errs.ErrorOrNil()
+	return errs
 }
 
 func (c *switchCollector) collectDetails(ctx *metrics.CollectorContext, name string, remap map[string]string) {

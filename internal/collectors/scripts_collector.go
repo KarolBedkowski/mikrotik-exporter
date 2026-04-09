@@ -1,13 +1,13 @@
 package collectors
 
 import (
+	"errors"
 	"fmt"
 
 	"mikrotik-exporter/internal/config"
 	"mikrotik-exporter/internal/convert"
 	"mikrotik-exporter/internal/metrics"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -41,12 +41,12 @@ func (c *scriptCollector) Collect(ctx *metrics.CollectorContext) error {
 		return config.InvalidConfigurationError("missing configuration")
 	}
 
-	var errs *multierror.Error
+	var errs error
 	for _, script := range scripts {
-		errs = multierror.Append(errs, c.collectScript(ctx, script))
+		errs = errors.Join(errs, c.collectScript(ctx, script))
 	}
 
-	return errs.ErrorOrNil()
+	return errs
 }
 
 func (c *scriptCollector) collectScript(ctx *metrics.CollectorContext, script string) error {

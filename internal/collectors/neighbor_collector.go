@@ -1,11 +1,11 @@
 package collectors
 
 import (
+	"errors"
 	"fmt"
 
 	"mikrotik-exporter/internal/metrics"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -69,7 +69,7 @@ func (c *neighborCollector) Collect(ctx *metrics.CollectorContext) error {
 		return nil
 	}
 
-	var errs *multierror.Error
+	var errs error
 
 	for _, re := range reply.Re {
 		lctx := ctx.WithLabelsFromMap(re.Map,
@@ -79,9 +79,9 @@ func (c *neighborCollector) Collect(ctx *metrics.CollectorContext) error {
 		)
 
 		if err := c.metrics.Collect(re.Map, &lctx); err != nil {
-			errs = multierror.Append(errs, fmt.Errorf("collect error: %w", err))
+			errs = errors.Join(errs, fmt.Errorf("collect error: %w", err))
 		}
 	}
 
-	return errs.ErrorOrNil()
+	return errs
 }

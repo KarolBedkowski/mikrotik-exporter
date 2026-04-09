@@ -8,7 +8,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/hashicorp/go-multierror"
 	yaml "gopkg.in/yaml.v3"
 )
 
@@ -164,15 +163,15 @@ func (f Features) validate(collectors []string) error {
 		return nil
 	}
 
-	var result *multierror.Error
+	var result error
 
 	for key := range f {
 		if !slices.Contains(collectors, strings.ToLower(key)) {
-			result = multierror.Append(result, UnknownFeatureError(key))
+			result = errors.Join(result, UnknownFeatureError(key))
 		}
 	}
 
-	return result.ErrorOrNil()
+	return result
 }
 
 // fix update FeatureCfg for each Features- add enabled: true if missing.
@@ -255,17 +254,17 @@ func (c *Config) validate(collectors []string) error {
 		features["resource"] = nil
 	}
 
-	var errs *multierror.Error
+	var errs error
 
 	for idx, d := range c.Devices {
 		if err := d.validate(c.Profiles); err != nil {
-			errs = multierror.Append(errs,
+			errs = errors.Join(errs,
 				fmt.Errorf("invalid device %d (%s) configuration: %w",
 					idx, d.Name, err))
 		}
 	}
 
-	if err := errs.ErrorOrNil(); err != nil {
+	if err := errs; err != nil {
 		return err
 	}
 
@@ -331,36 +330,36 @@ func (d *Device) LogValue() slog.Value {
 }
 
 func (d *Device) validate(profiles map[string]Features) error {
-	return multierror.Append(nil,
+	return errors.Join(
 		d.validateConnConf(),
-		d.validateProfile(profiles)).
-		ErrorOrNil()
+		d.validateProfile(profiles),
+	)
 }
 
 func (d *Device) validateConnConf() error {
-	var errs *multierror.Error
+	var errs error
 
 	if d.Srv == nil {
 		if d.Name == "" {
-			errs = multierror.Append(errs, MissingFieldError("name"))
+			errs = errors.Join(errs, MissingFieldError("name"))
 		}
 
 		if d.Address == "" {
-			errs = multierror.Append(errs, MissingFieldError("address"))
+			errs = errors.Join(errs, MissingFieldError("address"))
 		}
 	} else if d.Srv.Record == "" {
-		errs = multierror.Append(errs, MissingFieldError("srv.record"))
+		errs = errors.Join(errs, MissingFieldError("srv.record"))
 	}
 
 	if d.User == "" {
-		errs = multierror.Append(errs, MissingFieldError("user"))
+		errs = errors.Join(errs, MissingFieldError("user"))
 	}
 
 	if d.Password == "" {
-		errs = multierror.Append(errs, MissingFieldError("password"))
+		errs = errors.Join(errs, MissingFieldError("password"))
 	}
 
-	return errs.ErrorOrNil()
+	return errs
 }
 
 func (d *Device) validateProfile(profiles map[string]Features) error {

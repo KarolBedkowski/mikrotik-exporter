@@ -1,12 +1,12 @@
 package collectors
 
 import (
+	"errors"
 	"fmt"
 
 	"mikrotik-exporter/internal/convert"
 	"mikrotik-exporter/internal/metrics"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -54,11 +54,11 @@ func (c *arpCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *arpCollector) Collect(ctx *metrics.CollectorContext) error {
-	return multierror.Append(nil,
+	return errors.Join(
 		c.collectEntries(ctx),
 		c.collectStatuses(ctx),
 		c.collectInvalid(ctx),
-	).ErrorOrNil()
+	)
 }
 
 func (c *arpCollector) collectEntries(ctx *metrics.CollectorContext) error {
@@ -83,7 +83,7 @@ func (c *arpCollector) collectEntries(ctx *metrics.CollectorContext) error {
 		return nil
 	}
 
-	var errs *multierror.Error
+	var errs error
 
 	for _, re := range reply.Re {
 		// create context with labels from reply
@@ -92,20 +92,20 @@ func (c *arpCollector) collectEntries(ctx *metrics.CollectorContext) error {
 
 		// collect metrics using context
 		if err := c.metrics.Collect(re.Map, &lctx); err != nil {
-			errs = multierror.Append(errs, fmt.Errorf("collect error: %w", err))
+			errs = errors.Join(errs, fmt.Errorf("collect error: %w", err))
 		}
 	}
 
-	return errs.ErrorOrNil()
+	return errs
 }
 
 func (c *arpCollector) collectStatuses(ctx *metrics.CollectorContext) error {
-	var errs *multierror.Error
+	var errs error
 
 	for _, status := range c.statusesNames {
 		reply, err := ctx.Client.Run("/ip/arp/print", "?status="+status, "=count-only=")
 		if err != nil {
-			errs = multierror.Append(errs, fmt.Errorf("fetch arp status %q  error: %w", status, err))
+			errs = errors.Join(errs, fmt.Errorf("fetch arp status %q  error: %w", status, err))
 
 			continue
 		}
@@ -114,11 +114,11 @@ func (c *arpCollector) collectStatuses(ctx *metrics.CollectorContext) error {
 			ctx.Ch <- prometheus.MustNewConstMetric(c.statuses, prometheus.GaugeValue, cnt,
 				ctx.Device.Name, ctx.Device.Address, status)
 		} else {
-			errs = multierror.Append(errs, fmt.Errorf("parse ret %v error: %w", reply, err))
+			errs = errors.Join(errs, fmt.Errorf("parse ret %v error: %w", reply, err))
 		}
 	}
 
-	return errs.ErrorOrNil()
+	return errs
 }
 
 func (c *arpCollector) collectInvalid(ctx *metrics.CollectorContext) error {

@@ -1,13 +1,13 @@
 package collectors
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 
 	"mikrotik-exporter/internal/convert"
 	"mikrotik-exporter/internal/metrics"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -61,31 +61,31 @@ func (c *ntpcCollector) collectRO6(ctx *metrics.CollectorContext) error {
 
 	sentence := reply.Re[0]
 
-	var errs *multierror.Error
+	var errs error
 
 	if err := c.enabled.Collect(sentence.Map, ctx); err != nil {
-		errs = multierror.Append(errs, fmt.Errorf("collect error: %w", err))
+		errs = errors.Join(errs, fmt.Errorf("collect error: %w", err))
 	}
 
 	psStatus, _ := c.status.(metrics.PropertySimpleSet)
 	if as := sentence.Map["active-server"]; as != "" {
-		errs = multierror.Append(errs, psStatus.Set(1.0, ctx))
+		errs = errors.Join(errs, psStatus.Set(1.0, ctx))
 	} else {
-		errs = multierror.Append(errs, psStatus.Set(0.0, ctx))
+		errs = errors.Join(errs, psStatus.Set(0.0, ctx))
 	}
 
 	if la := sentence.Map["last-adjustment"]; la != "" {
 		if dur, err := convert.MetricFromDuration(la); err != nil {
-			errs = multierror.Append(errs, fmt.Errorf("parse last-adjustment %q error: %w", la, err))
+			errs = errors.Join(errs, fmt.Errorf("parse last-adjustment %q error: %w", la, err))
 		} else {
 			psOffset, _ := c.offset.(metrics.PropertySimpleSet)
 
 			// RO7 return data as ms, so convert seconds to ms to match RO7 response.
-			errs = multierror.Append(errs, psOffset.Set(dur, ctx))
+			errs = errors.Join(errs, psOffset.Set(dur, ctx))
 		}
 	}
 
-	return errs.ErrorOrNil()
+	return errs
 }
 
 func (c *ntpcCollector) collectRO7(ctx *metrics.CollectorContext) error {

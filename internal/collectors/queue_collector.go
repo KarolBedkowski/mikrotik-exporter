@@ -1,12 +1,12 @@
 package collectors
 
 import (
+	"errors"
 	"fmt"
 
 	"mikrotik-exporter/internal/convert"
 	"mikrotik-exporter/internal/metrics"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -54,10 +54,10 @@ func (c *queueCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *queueCollector) Collect(ctx *metrics.CollectorContext) error {
-	return multierror.Append(nil,
+	return errors.Join(
 		c.collectQueue(ctx),
 		c.collectSimpleQueue(ctx),
-	).ErrorOrNil()
+	)
 }
 
 func metricFromQueueTxRx(value string) (float64, float64, error) {
@@ -95,7 +95,7 @@ func (c *queueCollector) collectSimpleQueue(ctx *metrics.CollectorContext) error
 		return fmt.Errorf("fetch simple queue error: %w", err)
 	}
 
-	var errs *multierror.Error
+	var errs error
 
 	for _, reply := range reply.Re {
 		lctx := ctx.WithLabelsFromMap(reply.Map, "name", "queue", "comment")
@@ -103,9 +103,9 @@ func (c *queueCollector) collectSimpleQueue(ctx *metrics.CollectorContext) error
 		if err := c.metrics.Collect(reply.Map, &lctx); err != nil {
 			name := reply.Map["name"]
 			queue := reply.Map["queue"]
-			errs = multierror.Append(errs, fmt.Errorf("collect %v/%v error: %w", name, queue, err))
+			errs = errors.Join(errs, fmt.Errorf("collect %v/%v error: %w", name, queue, err))
 		}
 	}
 
-	return errs.ErrorOrNil()
+	return errs
 }

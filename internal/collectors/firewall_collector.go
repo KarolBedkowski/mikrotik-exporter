@@ -1,13 +1,13 @@
 package collectors
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
 	"mikrotik-exporter/internal/config"
 	"mikrotik-exporter/internal/metrics"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -37,7 +37,7 @@ func (c *firewallCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *firewallCollector) Collect(ctx *metrics.CollectorContext) error {
-	var errs *multierror.Error
+	var errs error
 
 	fwchains, err := ctx.FeatureCfg.Strs("sources")
 	if err != nil {
@@ -51,7 +51,7 @@ func (c *firewallCollector) Collect(ctx *metrics.CollectorContext) error {
 	for _, fwc := range fwchains {
 		fw, chain, found := strings.Cut(fwc, ",")
 		if !found {
-			errs = multierror.Append(errs,
+			errs = errors.Join(errs,
 				config.InvalidConfigurationError(fmt.Sprintf("invalid entry %q, required 'firewall,chain'", fwc)))
 
 			continue
@@ -59,10 +59,10 @@ func (c *firewallCollector) Collect(ctx *metrics.CollectorContext) error {
 
 		fw = strings.TrimSpace(fw)
 		chain = strings.TrimSpace(chain)
-		errs = multierror.Append(errs, c.collectStats(fw, chain, ctx))
+		errs = errors.Join(errs, c.collectStats(fw, chain, ctx))
 	}
 
-	return errs.ErrorOrNil()
+	return errs
 }
 
 func (c *firewallCollector) collectStats(firewall, chain string, ctx *metrics.CollectorContext) error {
@@ -83,18 +83,18 @@ func (c *firewallCollector) collectStats(firewall, chain string, ctx *metrics.Co
 		return fmt.Errorf("fetch fw stats %s/%s error: %w", firewall, chain, err)
 	}
 
-	var errs *multierror.Error
+	var errs error
 
 	for _, re := range reply.Re {
 		if comment := re.Map["comment"]; comment != "" {
 			lctx := ctx.WithLabels(firewall, chain, comment)
 
 			if err := c.metrics.Collect(re.Map, &lctx); err != nil {
-				errs = multierror.Append(errs,
+				errs = errors.Join(errs,
 					fmt.Errorf("collect fw %s/%s error: %w", firewall, chain, err))
 			}
 		}
 	}
 
-	return errs.ErrorOrNil()
+	return errs
 }

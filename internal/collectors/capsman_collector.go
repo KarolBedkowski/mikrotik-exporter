@@ -1,12 +1,12 @@
 package collectors
 
 import (
+	"errors"
 	"fmt"
 
 	"mikrotik-exporter/internal/convert"
 	"mikrotik-exporter/internal/metrics"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -81,11 +81,11 @@ func (c *capsmanCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *capsmanCollector) Collect(ctx *metrics.CollectorContext) error {
-	return multierror.Append(nil,
+	return errors.Join(
 		c.collectRegistrations(ctx),
 		c.collectInterfaces(ctx),
 		c.collectRadiosProvisioned(ctx),
-	).ErrorOrNil()
+	)
 }
 
 func (c *capsmanCollector) collectRegistrations(ctx *metrics.CollectorContext) error {
@@ -100,17 +100,17 @@ func (c *capsmanCollector) collectRegistrations(ctx *metrics.CollectorContext) e
 		return fmt.Errorf("fetch capsman reg error: %w", err)
 	}
 
-	var errs *multierror.Error
+	var errs error
 
 	for _, re := range reply.Re {
 		lctx := ctx.WithLabelsFromMap(re.Map, "interface", "mac-address", "ssid", "eap-identity", "comment")
 
 		if err := c.stations.Collect(re.Map, &lctx); err != nil {
-			errs = multierror.Append(errs, fmt.Errorf("collect registrations error: %w", err))
+			errs = errors.Join(errs, fmt.Errorf("collect registrations error: %w", err))
 		}
 	}
 
-	return errs.ErrorOrNil()
+	return errs
 }
 
 func (c *capsmanCollector) collectInterfaces(ctx *metrics.CollectorContext) error {
@@ -122,23 +122,23 @@ func (c *capsmanCollector) collectInterfaces(ctx *metrics.CollectorContext) erro
 		return fmt.Errorf("fetch capsman interfaces error: %w", err)
 	}
 
-	var errs *multierror.Error
+	var errs error
 
 	for _, re := range reply.Re {
 		lctx := ctx.WithLabelsFromMap(re.Map, "name", "mac-address", "configuration", "master-interface")
 
 		if err := c.interfaces.Collect(re.Map, &lctx); err != nil {
-			errs = multierror.Append(errs, fmt.Errorf("collect interfaces error: %w", err))
+			errs = errors.Join(errs, fmt.Errorf("collect interfaces error: %w", err))
 		}
 
 		lctx.AppendLabelsFromMap(re.Map, "current-state")
 
 		if err := c.interfacesStatus.Collect(re.Map, &lctx); err != nil {
-			errs = multierror.Append(errs, fmt.Errorf("collect interfaces error: %w", err))
+			errs = errors.Join(errs, fmt.Errorf("collect interfaces error: %w", err))
 		}
 	}
 
-	return errs.ErrorOrNil()
+	return errs
 }
 
 func (c *capsmanCollector) collectRadiosProvisioned(ctx *metrics.CollectorContext) error {
@@ -148,15 +148,15 @@ func (c *capsmanCollector) collectRadiosProvisioned(ctx *metrics.CollectorContex
 		return fmt.Errorf("fetch capsman radio error: %w", err)
 	}
 
-	var errs *multierror.Error
+	var errs error
 
 	for _, re := range reply.Re {
 		lctx := ctx.WithLabelsFromMap(re.Map, "interface", "radio-mac", "remote-cap-identity", "remote-cap-name")
 
 		if err := c.radiosProvisionedDesc.Collect(re.Map, &lctx); err != nil {
-			errs = multierror.Append(errs, fmt.Errorf("collect provisions error: %w", err))
+			errs = errors.Join(errs, fmt.Errorf("collect provisions error: %w", err))
 		}
 	}
 
-	return errs.ErrorOrNil()
+	return errs
 }

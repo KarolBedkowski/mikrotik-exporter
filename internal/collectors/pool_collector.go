@@ -1,13 +1,13 @@
 package collectors
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 
 	"mikrotik-exporter/internal/metrics"
 	"mikrotik-exporter/routeros/proto"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -41,13 +41,13 @@ func (c *poolCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *poolCollector) Collect(ctx *metrics.CollectorContext) error {
-	errs := multierror.Append(nil, c.collectForIPv4(ctx))
+	errs := errors.Join(nil, c.collectForIPv4(ctx))
 
 	if !ctx.Device.IPv6Disabled {
-		errs = multierror.Append(errs, c.collectForIPv6(ctx))
+		errs = errors.Join(errs, c.collectForIPv6(ctx))
 	}
 
-	return errs.ErrorOrNil()
+	return errs
 }
 
 func (c *poolCollector) collectForIPv4(ctx *metrics.CollectorContext) error {
@@ -56,16 +56,16 @@ func (c *poolCollector) collectForIPv4(ctx *metrics.CollectorContext) error {
 		return fmt.Errorf("fetch ipv4 pool error: %w", err)
 	}
 
-	var errs *multierror.Error
+	var errs error
 
 	for _, re := range reply.Re {
 		lctx := ctx.WithLabels("4", re.Map["name"])
 		if err := c.metrics.Collect(re.Map, &lctx); err != nil {
-			errs = multierror.Append(errs, fmt.Errorf("collect error: %w", err))
+			errs = errors.Join(errs, fmt.Errorf("collect error: %w", err))
 		}
 	}
 
-	return errs.ErrorOrNil()
+	return errs
 }
 
 func (c *poolCollector) collectForIPv6(ctx *metrics.CollectorContext) error {

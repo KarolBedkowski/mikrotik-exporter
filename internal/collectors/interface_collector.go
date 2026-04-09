@@ -1,12 +1,12 @@
 package collectors
 
 import (
+	"errors"
 	"fmt"
 
 	"mikrotik-exporter/internal/convert"
 	"mikrotik-exporter/internal/metrics"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -59,7 +59,7 @@ func (c *interfaceCollector) Collect(ctx *metrics.CollectorContext) error {
 		return fmt.Errorf("fetch interfaces detail error: %w", err)
 	}
 
-	var errs *multierror.Error
+	var errs error
 
 	for _, re := range reply.Re {
 		if re.Map["name"] == "lo" {
@@ -69,9 +69,9 @@ func (c *interfaceCollector) Collect(ctx *metrics.CollectorContext) error {
 		lctx := ctx.WithLabelsFromMap(re.Map, "name", "type")
 
 		if err := c.metrics.Collect(re.Map, &lctx); err != nil {
-			errs = multierror.Append(errs, err)
+			errs = errors.Join(errs, err)
 		}
 	}
 
-	return errs.ErrorOrNil()
+	return errs
 }

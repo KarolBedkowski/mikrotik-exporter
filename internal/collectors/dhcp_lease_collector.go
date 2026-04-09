@@ -1,12 +1,12 @@
 package collectors
 
 import (
+	"errors"
 	"fmt"
 
 	"mikrotik-exporter/internal/metrics"
 	"mikrotik-exporter/routeros/proto"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -62,15 +62,15 @@ func (c *dhcpLeaseCollector) Collect(ctx *metrics.CollectorContext) error {
 		return nil
 	}
 
-	var errs *multierror.Error
+	var errs error
 
 	for _, re := range reply.Re {
 		if err := c.collectMetric(ctx, re); err != nil {
-			errs = multierror.Append(errs, err)
+			errs = errors.Join(errs, err)
 		}
 	}
 
-	return errs.ErrorOrNil()
+	return errs
 }
 
 func (c *dhcpLeaseCollector) collectMetric(ctx *metrics.CollectorContext, re *proto.Sentence) error {

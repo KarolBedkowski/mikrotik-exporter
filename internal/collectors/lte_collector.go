@@ -1,13 +1,13 @@
 package collectors
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
 	"mikrotik-exporter/internal/convert"
 	"mikrotik-exporter/internal/metrics"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -50,15 +50,15 @@ func (c *lteCollector) Collect(ctx *metrics.CollectorContext) error {
 
 	names := convert.ExtractPropertyFromReplay(reply, "name")
 
-	var errs *multierror.Error
+	var errs error
 
 	for _, n := range names {
 		if err := c.collectForInterface(n, ctx); err != nil {
-			errs = multierror.Append(errs, err)
+			errs = errors.Join(errs, err)
 		}
 	}
 
-	return errs.ErrorOrNil()
+	return errs
 }
 
 func (c *lteCollector) collectForInterface(iface string, ctx *metrics.CollectorContext) error {

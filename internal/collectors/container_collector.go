@@ -1,12 +1,12 @@
 package collectors
 
 import (
+	"errors"
 	"fmt"
 
 	"mikrotik-exporter/internal/convert"
 	"mikrotik-exporter/internal/metrics"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -48,12 +48,6 @@ func (c *container) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *container) Collect(ctx *metrics.CollectorContext) error {
-	return multierror.Append(nil,
-		c.collectMetrics(ctx),
-	).ErrorOrNil()
-}
-
-func (c *container) collectMetrics(ctx *metrics.CollectorContext) error {
 	if ctx.Device.FirmwareVersion.Compare(7, 5, 0) < 0 && //nolint:mnd
 		ctx.Device.FirmwareVersion.CheckArchitecture("x86_64", "arm", "arm64") {
 		return NotSupportedError("container")
@@ -67,15 +61,15 @@ func (c *container) collectMetrics(ctx *metrics.CollectorContext) error {
 
 	ctx.Logger.Debug("collect", "reply", reply)
 
-	var errs *multierror.Error
+	var errs error
 
 	for _, re := range reply.Re {
 		lctx := ctx.WithLabelsFromMap(re.Map, "name")
 
 		if err := c.metrics.Collect(re.Map, &lctx); err != nil {
-			errs = multierror.Append(errs, fmt.Errorf("collect error: %w", err))
+			errs = errors.Join(errs, fmt.Errorf("collect error: %w", err))
 		}
 	}
 
-	return errs.ErrorOrNil()
+	return errs
 }

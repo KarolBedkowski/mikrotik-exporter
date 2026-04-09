@@ -1,13 +1,13 @@
 package metrics
 
 import (
+	"errors"
 	"strconv"
 	"strings"
 
 	"mikrotik-exporter/internal/config"
 	"mikrotik-exporter/internal/convert"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -64,15 +64,15 @@ func (p PropertyMetricList) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (p PropertyMetricList) Collect(reply map[string]string, ctx *CollectorContext) error {
-	var errs *multierror.Error
+	var errs error
 
 	for _, m := range p {
 		if err := m.Collect(reply, ctx); err != nil {
-			errs = multierror.Append(errs, err)
+			errs = errors.Join(errs, err)
 		}
 	}
 
-	return errs.ErrorOrNil()
+	return errs
 }
 
 // --------------------------------------------
