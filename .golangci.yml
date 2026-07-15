@@ -12,6 +12,7 @@ linters:
     - tagliatelle
     - wsl
     - noinlineerr
+    - gomodguard
   settings:
     misspell:
       locale: US

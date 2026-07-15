@@ -31,12 +31,7 @@ func SetupLogging(level, format *string) *slog.Logger {
 	}
 
 	if logFormat == "tint" {
-		logger := slog.New(tint.NewHandler(os.Stderr, &tint.Options{
-			AddSource:  true,
-			Level:      parseLevel(level),
-			NoColor:    !isatty,
-			TimeFormat: time.TimeOnly,
-		}))
+		logger := slog.New(tint.NewTextHandler(os.Stderr, &tint.Options{AddSource: true, Level: parseLevel(level), NoColor: !isatty, TimeFormat: time.TimeOnly}))
 		slog.SetDefault(logger)
 
 		return logger
